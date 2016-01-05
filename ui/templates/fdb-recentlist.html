@@ -1,0 +1,31 @@
+{{define "fdb-recentlist"}}
+
+<html>
+  {{template "header"}}
+  <body>
+    <div class="allstack">
+      <h1>Recent</h1>
+      <p>Today: [<a href="/fdb/today?tags=SERFR1">SERFR1</a>,
+        <a href="/fdb/today?tags=BRIXX">BRIXX</a>,
+        <a href="/fdb/today?tags=ClassB:FA">ActionableClassB</a>]<br/>
+        Yesterday: [<a href="/fdb/yesterday?tags=SERFR1">SERFR1</a>,
+        <a href="/fdb/yesterday?tags=BRIXX">BRIXX</a>,
+        <a href="/fdb/yesterday?tags=ClassB:FA">ActionableClassB</a>]<br/>
+      </p>
+      <div class="box">
+        {{range .Flights}}
+        <p style="text-align:left">
+          <a target="_blank" href="{{.TrackUrl}}">[map view]</a>
+          <code>{{.IdentString}}</code>
+        </p>
+        {{end}}
+      </div>
+      <div class="stack">
+        <h3>Notes</h3>
+        <p>Blah</p>
+      </div>
+    </div>
+  </body>
+</html>
+
+{{end}}

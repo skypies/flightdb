@@ -1,0 +1,18 @@
+{{define "fdb-tracks"}}
+
+<html>
+  {{template "header-map"}}
+  <body>
+    <div id="map"></div>
+    <div id="legend"></div>
+    <script type="text/javascript">
+      {{template "js-map-setup" . }}
+      {{template "js-map-points" . }}
+    </script>
+    <script async defer
+      src="https://maps.googleapis.com/maps/api/js?key={{.MapsAPIKey}}&callback=initMap&libraries=drawing,geometry">
+    </script>
+  </body>
+</html>
+
+{{end}}

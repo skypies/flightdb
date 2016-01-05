@@ -1,0 +1,12 @@
+application: serfr0-fdb
+module: ui
+version: one
+runtime: go
+api_version: go1
+instance_class: F1
+
+handlers:
+- url: /static
+  static_dir: static
+- url: /.*
+  script: _go_app

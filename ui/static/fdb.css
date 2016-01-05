@@ -1,0 +1,117 @@
+.box {
+    margin:0;
+    padding: 8px;
+    display:inline-block;
+    background-color: #f8f8f8;
+    border-radius:3px;
+    box-shadow: 0 0 2px rgba(0,0,0, .75);
+}
+.box p {margin:0}
+
+.message {
+    margin:1em;
+    padding: 2em;
+    display:inline-block;
+    background-color: #ff4040;
+    border-radius:3px;
+    box-shadow: 0 0 12px rgba(0,0,0, .75);
+}
+
+input.button{
+    background-color: #ffd0d0;
+    padding:6px 12px;
+    font-size: 1.3em;
+    display:inline-block;
+    text-decoration:none;
+    border-radius:3px;
+    border:0;
+    box-shadow: 0 0 6px rgba(0,0,0, .75);
+    -webkit-appearance: none;
+    -webkit-border-radius:3px;
+}
+
+#complain { margin-left:0.8em; margin-top:0.25em; }
+#deletebutton{ font-size: 0.8em; padding: 0.5em; margin:0.1em; margin-bottom:1em}
+#editbutton{
+    font-size: 0.8em;
+    padding: 0.5em;
+    margin:0.8em;
+    margin-top:0em;
+    background-color: #d0ffd0;
+}
+#changebutton{ background-color: #d0ffd0 }
+
+span.indentme { margin-left: 2em }
+
+a.fakebutton {
+    font-size: 0.8em;
+    padding: 0.25em;
+    margin:0em;
+    margin-top:0.25em;
+    background-color: #d0ffd0;
+    color: #000000;
+    display:inline-block;
+    text-decoration:none;
+    border-radius:3px;
+    border:0;
+    box-shadow: 0 0 6px rgba(0,0,0, .75);
+    -webkit-appearance: none;
+    -webkit-border-radius:3px;
+}
+
+form { margin:0em}
+
+div.stack {
+    text-align:center;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 400px;
+}
+div.allstack { text-align:center }
+.stack p,li { text-align:left }
+
+.complaint {text-align:left}
+.flightnumber {font-family: monospace}
+.flightdetails {font-size: 0.8em}
+.violation {color:#ff4040; font-weight:bold}
+.deletebox {margin:0em}
+
+.complaintheader { margin-bottom: 0.5em }
+.complaintfooter { margin-top: 0.5em }
+
+.editboxindent { margin-left: 5.5em }
+
+input.disabled {
+    background-color: #f8f8f8;
+    color: #808080;
+    font-style: italic
+}
+
+@import url(//fonts.googleapis.com/css?family=Open+Sans:300,400,700&subset=latin,cyrillic-ext,greek-ext,cyrillic,greek,vietnamese,latin-ext);
+p,h1,h2,h3,h4,h5,blockquote,q{font-family:'open sans',arial,sans-serif}
+pre,code{color:#060;font:13px/1.54 'courier new',courier,monospace}
+html,input,textarea{font-family:arial,sans-serif}
+
+ul { padding-left:1.5em; margin:0em; margin-bottom:0.3em}
+li { border:0em; margin-top: 0em; }
+
+.about li { margin-bottom: 0.5em; }
+
+
+hr {
+    color:black;background-color:black;
+    height: 1;
+    border-width: 0;
+    margin-bottom: 1em
+}
+html { font-size:13px; }
+h1{
+    text-align:center;
+    color:#91959c;
+    font-size:27px;
+    font-weight:300;
+    line-height:1.26;
+    margin:0;
+    overflow:hidden
+}
+h5,h6,pre,table,input,textarea,code{font-size:1em}
