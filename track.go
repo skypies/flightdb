@@ -50,7 +50,8 @@ func (t Track)String() string {
 		s,e := t[0],t[len(t)-1]
 		str += fmt.Sprintf(", %s, %.1fKM (%.0f deg)",
 			e.TimestampUTC.Sub(s.TimestampUTC), s.Dist(e.Latlong), s.BearingTowards(e.Latlong))
-		str += fmt.Sprintf(", src=%s/%s", s.DataSource, s.ReceiverName)
+		str += fmt.Sprintf(", src=%s", s.DataSource)
+		if s.ReceiverName != "" { str += "/" + s.ReceiverName }
 	}
 /*	str += "\n"
 	for i,tp := range t {

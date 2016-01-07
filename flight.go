@@ -3,26 +3,23 @@ package flightdb2
 import(
 	"fmt"
 	"time"
-	"github.com/skypies/adsb"
 	"github.com/skypies/date"
 )
 
 type Flight struct {
-	// Temp junk
-	IcaoId adsb.IcaoId
-	Callsign string
-
-	// Final fields
+	Identity // embedded
+	EquipmentType string
 	Tracks map[string]*Track
 	Tags map[string]int
 
+	
 	// Internal fields
 	datastoreKey string
 	DebugLog     string
 }
 
 func (f Flight)String() string {
-	str := fmt.Sprintf("%s[%s]", f.Callsign, f.IcaoId)
+	str := f.IdentString() + " "
 	for k,t := range f.Tracks {
 		str += fmt.Sprintf(" %s %s", k, t)
 	}
@@ -72,8 +69,10 @@ func (f Flight)Timeslots(d time.Duration) []time.Time {
 
 func NewFlightFromADSBTrackFragment(frag *ADSBTrackFragment) *Flight {
 	f := Flight{
-		IcaoId: frag.IcaoId,
-		Callsign: frag.Callsign,
+		Identity: Identity{
+			IcaoId: string(frag.IcaoId),
+			Callsign: frag.Callsign,
+		},
 		Tracks: map[string]*Track{},
 		Tags: map[string]int{},
 	}

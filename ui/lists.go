@@ -1,21 +1,19 @@
 package main
 
 import(
-	//"fmt"
 	"net/http"
-	//"time"
 	
 	"google.golang.org/appengine"
+	"google.golang.org/appengine/log"
 
 	fdb "github.com/skypies/flightdb2"
 	"github.com/skypies/flightdb2/fgae"
+	"github.com/skypies/flightdb2/ref"
 )
 
 func init() {
 	http.HandleFunc("/fdb/recent", listHandler)
 }
-
-// {{{ listHandler
 
 func listHandler(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
@@ -24,7 +22,10 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 	tags := []string{}
 	flights := []*fdb.Flight{}
 
-	iter := db.NewIterator(db.QueryForRecent(tags, 10))
+	airframes := ref.NewAirframeCache(c)
+	log.Infof(c, "Hey, Cache !\n%s", airframes)
+	
+	iter := db.NewIterator(db.QueryForRecent(tags, 200))
 	for iter.Iterate() {
 		if iter.Err() != nil {
 			http.Error(w, iter.Err().Error(), http.StatusInternalServerError)
@@ -42,8 +43,6 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
-
-// }}}
 
 // {{{ -------------------------={ E N D }=----------------------------------
 

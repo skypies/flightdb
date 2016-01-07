@@ -5,6 +5,29 @@ import(
 	fdb "github.com/skypies/flightdb2"
 )
 
+func (db *FlightDB)findOrGenerateFlightKey(f *fdb.Flight) (*datastore.Key, error) {
+	if f.GetDatastoreKey() != "" {
+		return datastore.DecodeKey(f.GetDatastoreKey())
+	}
+	//rootKey := datastore.NewKey(db.C, kFlightKind, "foo", 0, nil)
+	return datastore.NewIncompleteKey(db.C, kFlightKind, nil), nil
+}
+
+func (db *FlightDB)PersistFlight(f *fdb.Flight) error {
+	key,err := db.findOrGenerateFlightKey(f)
+	if err != nil { return err }
+	
+	if blob,err := f.ToBlob(kTimeslotDuration); err != nil {
+		return err
+	} else {
+		_, err = datastore.Put(db.C, key, blob)
+		if err != nil {
+			db.Errorf("PersistFlight[%s]: %v", f, err)
+		}
+		return err
+	}
+}
+
 func (db FlightDB)AddADSBTrackFragment(frag *fdb.ADSBTrackFragment) error {
 	db.Debugf("* adding frag %s\n", frag)
 	f,err := db.LookupMostRecent(db.NewQuery().ByIcaoId(frag.IcaoId))
@@ -39,25 +62,8 @@ func (db FlightDB)AddADSBTrackFragment(frag *fdb.ADSBTrackFragment) error {
 	//return nil
 }
 
-func (db *FlightDB)findOrGenerateFlightKey(f *fdb.Flight) (*datastore.Key, error) {
-	if f.GetDatastoreKey() != "" {
-		return datastore.DecodeKey(f.GetDatastoreKey())
-	}
-	//rootKey := datastore.NewKey(db.C, kFlightKind, "foo", 0, nil)
-	return datastore.NewIncompleteKey(db.C, kFlightKind, nil), nil
-}
-
-func (db *FlightDB)PersistFlight(f *fdb.Flight) error {
-	key,err := db.findOrGenerateFlightKey(f)
-	if err != nil { return err }
-	
-	if blob,err := f.ToBlob(kTimeslotDuration); err != nil {
-		return err
-	} else {
-		_, err = datastore.Put(db.C, key, blob)
-		if err != nil {
-			db.Errorf("PersistFlight[%s]: %v", f, err)
-		}
-		return err
-	}
+// Say we've pulled some identity information from somewhere; if it matches something,
+// let's merge it in
+func (db FlightDB)AddPartialIdentity(id *fdb.Identity) error {
+	return nil
 }

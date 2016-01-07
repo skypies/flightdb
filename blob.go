@@ -26,7 +26,7 @@ func (f *Flight)ToBlob(d time.Duration) (*IndexedFlightBlob, error) {
 
 	return &IndexedFlightBlob{
 		Blob: buf.Bytes(),
-		Icao24: string(f.IcaoId),
+		Icao24: f.IcaoId,
 		Ident: f.Callsign,
 		Timeslots: f.Timeslots(d),
 		Tags: f.TagList(),

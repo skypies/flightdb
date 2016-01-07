@@ -29,7 +29,8 @@ func (mp MapPoint)ToJSStr(text string) string {
 			mp.ITP.Pre, mp.ITP, mp.ITP.Post, mp.ITP.Ratio, mp.Text)
 	} else*/ if mp.TP != nil {
 		tp = *mp.TP
-		mp.Text = fmt.Sprintf("** Raw TP\n* %s\n%s", mp.TP, mp.Text)
+		mp.Text = fmt.Sprintf("** Raw TP\n* %s\n* %s\n%s",
+			mp.TP, mp.TP.LongSource(), mp.Text)
 	} else {
 		tp.Latlong = *mp.Pos
 	}
@@ -94,7 +95,15 @@ func LatlongTimeBoxToMapLines(tb geo.LatlongTimeBox, color string) []MapLine {
 func TrackToMapPoints(t *fdb.Track, icon, text string) []MapPoint {
 	points := []MapPoint{}
 	for i,_ := range *t {
-		points = append(points, MapPoint{TP: &(*t)[i], Icon:icon, Text:text})
+		color := icon
+		tp := (*t)[i]
+		if tp.ReceiverName == "SouthPi" {
+			if color == "blue" { color = "red" } else { color = "green" }
+		} else if tp.ReceiverName == "ScottsValley" {
+			if color == "blue" { color = "pink" }
+		}
+
+		points = append(points, MapPoint{TP: &tp, Icon:color, Text:text})
 	}
 	return points
 }

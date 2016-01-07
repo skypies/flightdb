@@ -1,0 +1,7 @@
+application: serfr0-fdb
+
+cron:
+- description: Airframe scanning via fr24
+  url: /fdb/fr24
+  schedule: every 5 minutes
+  target: backend

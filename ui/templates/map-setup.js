@@ -58,15 +58,16 @@ function serfrOverlay() {
         "EDDYY": {pos:{lat: 37.3264500 , lng:  -122.0997083}},
         "SWELS": {pos:{lat: 37.3681556 , lng:  -122.1160806}},
         "MENLO": {pos:{lat: 37.4636861 , lng:  -122.1536583}},
-/* This is the rarely used 'bad weather' fork, WWAVS1 (uses the other runways)
+
+        // This is the rarely used 'bad weather' fork, WWAVS1 (uses the other runways)
         "WPOUT": {pos:{lat: 37.1194861 , lng:  -122.2927417}},
         "THEEZ": {pos:{lat: 37.5034694 , lng:  -122.4247528}},
         "WESLA": {pos:{lat: 37.6643722 , lng:  -122.4802917}},
-        "MVRKK": {pos:{lat: 37.7369722 , lng:  -122.4544500}},*/
+        "MVRKK": {pos:{lat: 37.7369722 , lng:  -122.4544500}},
 
         // BRIXX
-        "CORKK": {pos:{lat: 37.7335889 , lng:  -122.4975500}},
-        "BRIXX": {pos:{lat: 37.6178444 , lng:  -122.3745278}},
+        //"CORKK": {pos:{lat: 37.7335889 , lng:  -122.4975500}},
+        //"BRIXX": {pos:{lat: 37.6178444 , lng:  -122.3745278}},
         "LUYTA": {pos:{lat: 37.2948889 , lng:  -122.2045528}},
         "JILNA": {pos:{lat: 37.2488056 , lng:  -122.1495000}},
         "YADUT": {pos:{lat: 37.2039889 , lng:  -122.0232778}},
@@ -98,6 +99,20 @@ function serfrOverlay() {
         strokeWeight: 1
     });
     rightLine.setMap(map)
+
+    var wwavsFixes = ["WWAVS", "WPOUT", "THEEZ", "WESLA", "MVRKK"];
+    var wwavsLineCoords = []
+    for (var fix in wwavsFixes) {
+        wwavsLineCoords.push(fixes[wwavsFixes[fix]].pos);
+    }
+    var wwavsLine = new google.maps.Polyline({
+        path: wwavsLineCoords,
+        geodesic: true,
+        strokeColor: '#990099',
+        strokeOpacity: 0.8,
+        strokeWeight: 1
+    });
+    wwavsLine.setMap(map)
 
     var brixxFixes = ["LUYTA", "JILNA", "YADUT"];
     var brixxLineCoords = []
