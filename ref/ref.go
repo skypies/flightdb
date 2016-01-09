@@ -1,4 +1,5 @@
 // Package ref contains some reference lookups, implemented as singletons
+// Consider moving this out of flightdb2/, so that other projects can use it more easily
 package ref
 
 import(
@@ -16,9 +17,10 @@ import(
 // them. If/when we learn anything about a particular airframe, we store it here, and cache
 // it indefinitely.
 type Airframe struct {
-	Icao24        string
-	Registration  string
-	EquipmentType string
+	Icao24         string
+	Registration   string
+	EquipmentType  string
+	CallsignPrefix string // For airline-owned aircraft snag the ICAO Teleophony Code (e.g. "SWA")
 }
 
 type AirframeCache struct {
@@ -28,7 +30,8 @@ type AirframeCache struct {
 func (ac AirframeCache)String() string {
 	str := fmt.Sprintf("--- airframe cache (%d entries) ---\n", len(ac.Map))
 	for _,v := range ac.Map {
-		str += fmt.Sprintf(" [%s] %10.10s %s\n", v.Icao24, v.Registration, v.EquipmentType)
+		str += fmt.Sprintf(" [%s] %10.10s %3.3s %s\n", v.Icao24, v.Registration,
+			v.CallsignPrefix, v.EquipmentType)
 	}
 	return str
 }

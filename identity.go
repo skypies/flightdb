@@ -99,7 +99,60 @@ const(
 	BareFlightNumber  // Some airlines omit the Icao carrier code, grr
 	// EquipType      // We sometime see this, but it's useless
 )
+type ParsedCallsign struct {
+	CallsignType
+	Registration  string
+	IcaoPrefix    string
+	Number        int64
+}
+func ParseCallsignString(callsign string) (ret ParsedCallsign) {	
+	// Registration (e.g. N23ST). Wikipedia:
+	// An N-number may only consist of one to five characters, must
+	// start with a digit other than zero, and cannot end in a run of
+	// more than two letters. In addition, N-numbers may not contain the
+	// letters I or O
+	reg := regexp.MustCompile("^(N[1-9][0-9A-HJ-NP-Z]{0,4})$").FindStringSubmatch(callsign)
+	if reg != nil && len(reg)==2 {
+		ret.Registration = callsign
+		ret.CallsignType = Registration
+		return
+	}
+	
+	icao := regexp.MustCompile("^([A-Z]{3})([0-9]{1,4})$").FindStringSubmatch(callsign)
+	if icao != nil && len(icao)==3 {
+		ret.Number,_ = strconv.ParseInt(icao[2], 10, 64) // no errors here :)
+		ret.IcaoPrefix = icao[1]
+		ret.CallsignType = IcaoFlightNumber
+		return
+	}
+
+	bare := regexp.MustCompile("^([0-9]{2,4})$").FindStringSubmatch(callsign)
+	if bare != nil && len(bare)==2 {
+		ret.Number,_ = strconv.ParseInt(bare[1], 10, 64) // no errors here :)
+		ret.CallsignType = BareFlightNumber
+	}
+	
+	ret.CallsignType = JunkCallsign
+	return
+}
+
 func (id *Identity)ParseCallsign() CallsignType {
+	parsed := ParseCallsignString(id.Callsign)
+
+	// Upate the identity with any useful data
+	switch parsed.CallsignType {
+	case Registration:
+		id.Registration = id.Callsign
+	case IcaoFlightNumber:
+		id.Schedule.ICAO, id.Schedule.Number = parsed.IcaoPrefix, parsed.Number
+	case BareFlightNumber:
+		id.Schedule.Number = parsed.Number
+	}
+
+	return parsed.CallsignType
+}
+
+func (id *Identity)ParseCallsignOLD() CallsignType {
 	// Registration (e.g. N23ST). Wikipedia:
 	// An N-number may only consist of one to five characters, must
 	// start with a digit other than zero, and cannot end in a run of
@@ -126,6 +179,7 @@ func (id *Identity)ParseCallsign() CallsignType {
 	
 	return JunkCallsign
 }
+
 
 func (id *Identity)ParseIata(s string) error {
 	iata := regexp.MustCompile("^([A-Z][0-9A-Z])([0-9]{1,4})$").FindStringSubmatch(s)
@@ -162,6 +216,9 @@ aircraft spoof it. And some have two transponders or something.
  00000000   - was A69C72 (a Cessna Citation)
  ????????   - was A85D50 (a Virgin America A320, flying as VX938 !!)
  ''         - sometimes a MSG,1 will contain an empty string for the callsign
+
+6. Some airlines zero pad (e.g. "AMX058"); maybe we should normalize, like fr24 doe
+7. Note that fr24 'corrects' the bare flight numbers in (4) above.
 
 # Foreign identifiers
 
