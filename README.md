@@ -1,23 +1,21 @@
 # flightdb2 - the temp name for the flightdb
 
+To deploy all this ...
+
+$ goapp deploy              ui/ui.yaml
+$ goapp deploy              backend/backend.yaml
+$ appcfg.py update_cron     backend/
+$ appcfg.py update_indexes  backend/
+
+
 # Todo
 
 Move timeslot rounding into util/date
 Move timeslot duration out of fgae; the UI needs it (to round things down)
 Implement lookup.ByTime with single time, not just range
 UI: better 'recent' view
-
-Fixup / delete / deprecate bogus top-level fields in Flight{}
-More principled ID handling; Identity{} in identity.go, containing:
-  IATA/ICAO/number
-  Registration
-  Callsign-as-seen
-  Majority-squawk
-  Mode-ES/Airframe
-  Origin/Destination  (?? Not part of identity this time; multi-leg-ness)
-
-Icao24->Registration cache. Back into Datastore, autopublish into memcache.
-  ADS-B pipeline should use it, annotate the ADS-B data where possible
+UI: render a flight as lines (and impose min length ?)
+UI: render multiple flights as lots of lines ?
 
 Poller: implement a fr24 poller
   Takes snapshots (see just below) - probably only every 10m or so.
@@ -35,10 +33,11 @@ Workqueue - trackfetch:
   A] go to fr24, using most-recent fr24-key; plausible match to anything already there ?
   B] if interesting, go to fa, also do a plausible match
 
+Workqueue: incorporate flightaware data (either flightinfoex, track, or both)
+
 Workqueue - flightpath [re]analysis
   A] which waypoints ? Tag with well-known procedures
   B] Class B
-
 
 1. Normal scheduled flights
 ["7624382","AC7BF6",37.7370,-122.4019,195,6775,269,"3253","T-KSFO1","CRJ2","N903SW",1441900518,"SFO","BFL","UA5613",0,2176,"",0]
@@ -54,15 +53,3 @@ Workqueue - flightpath [re]analysis
 
 
 
-
-Workqueue: incorporate flightaware data (either flightinfoex, track, or both)
-
-
-
-UI: render a flight as lines (and impose min length ?)
-
-UI: render multiple flights as lots of lines ?
-
-ADSB: move msgbuffer and trackbuffer to use channels
-
-Consolidator: store singletons into datastore, and implement /_ah/stop

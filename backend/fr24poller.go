@@ -9,6 +9,7 @@ import(
 	//"google.golang.org/appengine/log"
 
 	"github.com/skypies/geo/sfo"
+	fdb "github.com/skypies/flightdb2"
 	"github.com/skypies/flightdb2/fr24"
 	"github.com/skypies/flightdb2/ref"
 )
@@ -18,6 +19,21 @@ func init() {
 }
 
 // dev_appserver.py --clear_datastore=yes ./ui.yaml
+
+func listResult2Airframe(fs fdb.FlightSnapshot) ref.Airframe {
+	af := ref.Airframe{
+		Icao24:fs.IcaoId,
+		Registration:fs.Registration,
+		EquipmentType:fs.EquipmentType,
+	}
+
+	callsign := fdb.ParseCallsignString(fs.Callsign)
+	if callsign.CallsignType == fdb.IcaoFlightNumber {
+		af.CallsignPrefix = callsign.IcaoPrefix
+	}
+	
+	return af
+}
 
 func fr24PollHandler(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
@@ -34,16 +50,24 @@ func fr24PollHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	airframes := ref.NewAirframeCache(c)
+	n := 0
 	for _,fs := range resp {
-		if fs.Registration == "" || airframes.Get(fs.IcaoId) != nil { continue }
-		af := ref.Airframe{fs.IcaoId, fs.Registration, fs.EquipmentType}
-		airframes.Set(&af)
-		str += fmt.Sprintf(" ** New [%s] %s\n", fs.Registration, fs)
+		if fs.Registration == "" { continue }
+		newAf := listResult2Airframe(fs)
+		oldAf := airframes.Get(fs.IcaoId)
+
+		if oldAf == nil || oldAf.CallsignPrefix != newAf.CallsignPrefix {
+			airframes.Set(&newAf)
+			str += fmt.Sprintf("* [%7.7s]%s %s\n", fs.Registration, newAf, fs)
+			n++
+		}
 	}
 
-	if err := airframes.Persist(c); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if n>0 {
+		if err := airframes.Persist(c); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	if r.FormValue("list") != "" {
