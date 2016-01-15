@@ -10,6 +10,7 @@ import(
 	"time"
 
 	"github.com/skypies/geo"
+	"github.com/skypies/util/date"
 )
 
 var(
@@ -39,17 +40,19 @@ func (t Track)Times() (s,e time.Time) { return t.Start(), t.End() }
 func (t Track)Duration() time.Duration { return t.End().Sub(t.Start()) }
 func (t Track)StartEndBoundingBox() geo.LatlongBox {
 	// This isn't the actual bounding box for the track; it assumes mostly linear flight.
-	// 
 	return t[0].BoxTo(t[len(t)-1].Latlong)
 }
 
+// {{{ t.[Short]String
+
 func (t Track)String() string {
-	str := fmt.Sprintf("Track: %d points, start=%s", len(t),
+	str := fmt.Sprintf("Track: %4d points, start=%s", len(t),
 		t[0].TimestampUTC.Format("2006.01.02 15:04:05"))
 	if len(t) > 1 {
 		s,e := t[0],t[len(t)-1]
 		str += fmt.Sprintf(", %s, %.1fKM (%.0f deg)",
-			e.TimestampUTC.Sub(s.TimestampUTC), s.Dist(e.Latlong), s.BearingTowards(e.Latlong))
+			date.RoundDuration(e.TimestampUTC.Sub(s.TimestampUTC)),
+			s.Dist(e.Latlong), s.BearingTowards(e.Latlong))
 		str += fmt.Sprintf(", src=%s", s.DataSource)
 		if s.ReceiverName != "" { str += "/" + s.ReceiverName }
 	}
@@ -60,6 +63,21 @@ func (t Track)String() string {
 	return str
 }
 
+func (t Track)ShortString() string {
+	if len(t) == 0 { return "[null track]" }
+
+	s,e := t[0],t[len(t)-1]
+	str := fmt.Sprintf("%s +%s (%.0fKM)",
+		date.InPdt(s.TimestampUTC).Format("Jan02 15:04:05 MST"),
+		date.RoundDuration(e.TimestampUTC.Sub(s.TimestampUTC)),
+		s.Dist(e.Latlong));
+
+	return str
+}
+
+// }}}
+// {{{ t.ToJSVar
+
 func (t Track)ToJSVar() template.JS {
 	str := ""
 	for i,tp := range t {
@@ -68,10 +86,8 @@ func (t Track)ToJSVar() template.JS {
 	return template.JS("{\n"+str+"  }\n")
 }
 
-//func (t Track)ToJSON() string {
-//	b,_ := json.Marshal(t)
-//	return string(b)
-//}
+// }}}
+// {{{ t.Base64{Encode,Decode}
 
 func (t Track)Base64Encode() (string, error) {
 	var buf bytes.Buffer
@@ -92,11 +108,17 @@ func (t *Track)Base64Decode(str string) error {
 	}
 }
 
+// }}}
+// {{{ t.LongSource
+
 func (t Track)LongSource() string {
 	if len(t) == 0 { return "(no trackpoints)" }
 	return t[0].LongSource()
 }
 
+// }}}
+
+// {{{ t.Merge
 
 func (t1 *Track)Merge(t2 *Track) {
 	for _,tp := range *t2 {
@@ -104,6 +126,9 @@ func (t1 *Track)Merge(t2 *Track) {
 	}
 	sort.Sort(byTimestampAscending(*t1))
 }
+
+// }}}
+// {{{ t.[Padded]TrimToTimes
 
 // Returns a (possibly empty) subtrack of points within [s,e] (inclusive).
 // If padding is non-zero, we include that many additional points just to
@@ -130,6 +155,8 @@ func (t *Track)PaddedTrimToTimes(s,e time.Time, n int) *Track {
 	return &ret
 }
 
+// }}}
+// {{{ t.Compare
 
 type CompareOutcome struct {
 	TimeDisposition  geo.OverlapOutcome // how the tracks compare in terms of time overlap
@@ -199,6 +226,9 @@ func (t1 *Track)Compare(t2 *Track) CompareOutcome {
 	return o
 }
 
+// }}}
+// {{{ t.CompareInSpace
+
 // OverlapOutcome isn't purely accurate; just use it for .IsDisjoint, etc
 func (t1 *Track)CompareInSpace(t2 *Track) (geo.OverlapOutcome,float64) {
 	if len(*t1) == 0 || len(*t2) == 0 {
@@ -216,6 +246,9 @@ func (t1 *Track)CompareInSpace(t2 *Track) (geo.OverlapOutcome,float64) {
 
 	return geo.DisjointR2ComesAfter, 0.0
 }
+
+// }}}
+// {{{ t.PlausibleExtension
 
 // Does t2 more or less continue where t1 left off ?
 func (t1 *Track)PlausibleExtension(t2 *Track) (bool, string) {
@@ -250,8 +283,90 @@ func (t1 *Track)PlausibleExtension(t2 *Track) (bool, string) {
 	}
 }
 
+// }}}
 
+// {{{ t.AsContiguousBoxes
 
+func (from Trackpoint)LatlongTimeBoxTo(to Trackpoint) geo.LatlongTimeBox {
+	return geo.LatlongTimeBox{
+		LatlongBox: from.Latlong.BoxTo(to.Latlong),
+		Start: from.TimestampUTC,
+		End: to.TimestampUTC,
+	}
+}
+
+// If there are gaps in the track, this will interpolate between them.
+// Will also fatten up the boxes, if they're too flat or too tall
+func (t Track)AsContiguousBoxes() []geo.LatlongTimeBox {
+	minSize := 0.05  // In 'latlong' units; comes out something like ~3NM (~5 vertical)
+	maxSize := 0.10  // Boxes bigger than this get chopped into smaller bits
+	minWidth := 0.01 // Boxes are stretched until at least this wide/tall
+
+	boxes := []geo.LatlongTimeBox{}
+	iLast := 0
+	for i:=1; i<len(t); i++ {
+		// i is the point we're looking at; iLast is the point at the end of the previous box.
+		// should we create a box from i back to iLast ? multiple boxes ? Or skip to i+1 ?
+		dist := t[iLast].Latlong.LatlongDist(t[i].Latlong)
+		if dist > maxSize {
+			// Need to interpolate some boxes into this gap
+			nNeeded := int(dist/maxSize) + 1  // num boxes to create. int() rounds down
+			len := 1.0 / float64(nNeeded)     // fraction of dist - size of each box 
+			sTP, eTP := t[iLast], t[i]
+			for j:=0; j<nNeeded; j++ {
+				startFrac := len * float64(j)
+				endFrac := startFrac + len
+				sITP := sTP.InterpolateTo(eTP, startFrac)
+				eITP := sTP.InterpolateTo(eTP, endFrac)
+				box := sITP.Trackpoint.LatlongTimeBoxTo(eITP.Trackpoint)
+				box.I,box.J = iLast,i
+				boxes = append(boxes, box)
+			}
+			iLast = i
+
+		} else if dist > minSize {
+			// Grow an initial box with all the succeeding trackpoints
+			box := t[iLast].LatlongTimeBoxTo(t[iLast+1])
+			for j:=iLast+2; j<=i; j++ {
+				box.Enclose(t[j].Latlong, t[j].TimestampUTC)
+			}
+			box.I,box.J = iLast,i
+			
+			boxes = append(boxes, box)
+			iLast = i
+
+		} else {
+			// This point is too close to the prev; let the loop iterate to the next one
+		}
+	}	
+
+	// We don't want boxes that are too skinny, so we pad them out here.
+	for i,_ := range boxes {
+		boxes[i].EnsureMinSide(minWidth)
+	}
+
+	return boxes
+}
+
+// }}}
+// {{{ t.OverlapsWith
+
+// Given two tracks, do they overlap in time and space well enough to be the same thing ?
+// NOTE: should precede this with a boundingbox test; tracks that can plausibly glue together
+// but which don't actually overlap in time will return 'false' from this.
+
+// overlaps: if we should consider them the same thing
+// conf: how confident we are
+// debug: some debug text about it.
+func (t1 Track)OverlapsWith(t2 Track) (overlaps bool, conf float64, debug string) {
+	b1 := t1.AsContiguousBoxes()
+	b2 := t2.AsContiguousBoxes()
+	return geo.CompareBoxSlices(&b1,&b2)
+}
+
+// }}}
+
+// {{{ OLD
 
 // PostProcess does some tidyup on the data
 /*
@@ -324,3 +439,13 @@ func (t Track)TimesInBox(b geo.LatlongBox) (s,e time.Time) {
 //}
 
 */
+
+// }}}
+
+// {{{ -------------------------={ E N D }=----------------------------------
+
+// Local variables:
+// folded-file: t
+// end:
+
+// }}}

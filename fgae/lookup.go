@@ -29,7 +29,8 @@ func (db FlightDB)getallByQuery(q *datastore.Query) ([]*fdb.Flight, error) {
 }
 
 func (db FlightDB)LookupAll(q *Query) ([]*fdb.Flight, error) {
-	return db.getallByQuery(q.Query)
+	// TODO: I'm not sure we want to secretly add this Order() everywhere ...
+	return db.getallByQuery(q.Query.Order("-LastUpdate"))
 }
 
 func (db FlightDB)LookupMostRecent(q *Query) (*fdb.Flight, error) {

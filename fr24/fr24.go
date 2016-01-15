@@ -15,12 +15,17 @@ const(
 	kURLBalancers      = "www.flightradar24.com/balance.json"
 	kURLQuery          = "www.flightradar24.com/v1/search/web/find"
 	kURLPlaybackTrack  = "mobile.api.fr24.com/common/v1/flight-playback.json"
+  kURLHistoryList    = "api.flightradar24.com/common/v1/flight/list.json"
 )
+
+var ErrNotInLiveDB = fmt.Errorf("No longer in live DB")
+var ErrNotFound = fmt.Errorf("Not found anywhere")
+var ErrBadInput = fmt.Errorf("Not enough data to work with")
 
 // {{{ Fr24{}
 
 type Fr24 struct {
-	Client *http.Client  // Or just a context ??
+	Client *http.Client
 	host    string
 	Prefix  string
 }
@@ -54,6 +59,13 @@ func (fr *Fr24) GetCurrentDetailsUrl(id string) string {
 }
 func (fr *Fr24) GetQueryUrl(query string) string {
 	return fmt.Sprintf("%s?query=%s&limit=8", kURLQuery, query)
+}
+func (fr *Fr24) GetLookupHistoryUrl(reg, iataFlightNumber string) string {
+	if reg != "" {
+		return fmt.Sprintf("%s%s?query=%s&fetchBy=reg", fr.Prefix, kURLHistoryList, reg)
+	} else {
+		return fmt.Sprintf("%s%s?query=%s&fetchBy=flight", fr.Prefix, kURLHistoryList, iataFlightNumber)
+	}
 }
 
 // }}}
@@ -150,11 +162,9 @@ func playbackTrack2FlightIdentity(r FlightPlaybackResponse, i *fdb.Identity) err
 	if i.ForeignKeys == nil { i.ForeignKeys = map[string]string{} }
 	i.ForeignKeys["fr24"] = id.Hex
 
-	i.Registration = flight.Aircraft.Identification.Registration
+	//i.Registration = flight.Aircraft.Identification.Registration
 	i.IcaoId       = flight.Aircraft.Identification.ModeS
-	i.Callsign     = id.Callsign
-
-	i.ParseCallsign()
+	i.Callsign     = fdb.NewCallsign(id.Callsign).String()
 
 	return nil
 }
@@ -168,13 +178,11 @@ func currentListEntry2FlightIdentity(v []interface{}, id *fdb.Identity) error {
 	if id.ForeignKeys == nil { id.ForeignKeys = map[string]string{} }
 	id.ForeignKeys["fr24"] = v[0].(string)
 
-	id.Registration = v[10].(string)
+	// id.Registration = v[10].(string)
   id.IcaoId = v[1].(string)
-	id.Callsign = v[17].(string)
+	id.Callsign = fdb.NewCallsign(v[17].(string)).String()
 
 	id.Schedule.PlannedDepartureUTC = time.Unix(int64(v[11].(float64)), 0)
-
-	id.ParseCallsign()
 
 	if v[14].(string) != "" {
 		if err := id.ParseIata(v[14].(string)); err != nil {
@@ -238,7 +246,10 @@ func (db *Fr24)ParseCurrentList(body []byte) ([]fdb.FlightSnapshot, error) {
 		v := vRaw.([]interface{})
 		fs := fdb.FlightSnapshot{
 			Flight: fdb.Flight{
-				EquipmentType: v[9].(string),
+				Airframe: fdb.Airframe{
+					Registration: v[10].(string),
+					EquipmentType: v[9].(string),
+				},
 			},
 			Trackpoint: fdb.Trackpoint{
 				DataSource:    "fr24:"+v[8].(string),
@@ -253,6 +264,8 @@ func (db *Fr24)ParseCurrentList(body []byte) ([]fdb.FlightSnapshot, error) {
 
 		if err := currentListEntry2FlightIdentity(v,&fs.Flight.Identity); err != nil { return nil, err }
 
+		fs.Flight.ParseCallsign()
+		
 		ret = append(ret, fs)
 	}
 
@@ -262,15 +275,18 @@ func (db *Fr24)ParseCurrentList(body []byte) ([]fdb.FlightSnapshot, error) {
 // }}}
 // {{{ db.ParseCurrentDetails
 
-func (db *Fr24)ParseCurrentDetails(body []byte) (*LiveDetailsResponse, error) {
+func (db *Fr24)ParseCurrentDetails(body []byte) (*CurrentDetailsResponse, error) {
 	jsonMap := map[string]interface{}{}
 	if err := json.Unmarshal(body, &jsonMap); err != nil { return nil, err }
 
-	ld := LiveDetailsResponse{		
+	// This block has panic()ed - interface conversion: interface is nil, not string
+	ld := CurrentDetailsResponse{		
 		FlightNumber: jsonMap["flight"].(string),
 		Status: jsonMap["status"].(string),
 		ScheduledDepartureUTC: time.Unix(int64(jsonMap["dep_schd"].(float64)), 0).UTC(),
 		ScheduledArrivalUTC:time.Unix(int64(jsonMap["arr_schd"].(float64)), 0).UTC(),
+		OriginTZOffset:jsonMap["from_tz_offset"].(string),
+		DestinationTZOffset:jsonMap["to_tz_offset"].(string),
 		ETAUTC:time.Unix(int64(jsonMap["eta"].(float64)), 0).UTC(),
 	}
 	
@@ -293,7 +309,7 @@ func (db *Fr24)ParsePlaybackTrack(body []byte) (*fdb.Flight, error) {
 			r.Result.Request.FlightId)
 	}
 	
-	// Note: we need the track before we can do the flight identifier (it needs a timestamp from the track data)
+	// Note: need track before we parse flight identifier (it needs a timestamp from the track data)
 	track := fdb.Track{}
 	for _,frame := range r.Result.Response.Data.Flight.Track {
 		track = append(track, fdb.Trackpoint{
@@ -308,13 +324,18 @@ func (db *Fr24)ParsePlaybackTrack(body []byte) (*fdb.Flight, error) {
 	}
 	
 	f := fdb.Flight{
-		EquipmentType: r.Result.Response.Data.Flight.Aircraft.Model.Code,
+		Airframe: fdb.Airframe{
+			Registration:  r.Result.Response.Data.Flight.Aircraft.Identification.Registration,
+			EquipmentType: r.Result.Response.Data.Flight.Aircraft.Model.Code,
+		},
 	}
 	f.Tracks = map[string]*fdb.Track{}
 	f.Tracks["fr24"] = &track
 	
 	if err := playbackTrack2FlightIdentity(r, &f.Identity); err != nil { return nil, err }
 
+	f.ParseCallsign()
+	
 	return &f, nil
 }
 
@@ -322,7 +343,8 @@ func (db *Fr24)ParsePlaybackTrack(body []byte) (*fdb.Flight, error) {
 
 // {{{ db.LookupCurrentList
 
-// LookCurrentList returns a snapshot of what's currently in the box
+// LookCurrentList returns a snapshot of what's currently in the box.
+// This is used to populate the mapview, with just enough info for tooltips on the aircraft.
 func (db *Fr24)LookupCurrentList(box geo.LatlongBox) ([]fdb.FlightSnapshot, error) {
 	if err := db.EnsureHostname(); err != nil {	return nil, err }
 	bounds := fmt.Sprintf("%.3f,%.3f,%.3f,%.3f", box.NE.Lat, box.SW.Lat, box.SW.Long, box.NE.Long)
@@ -338,8 +360,9 @@ func (db *Fr24)LookupCurrentList(box geo.LatlongBox) ([]fdb.FlightSnapshot, erro
 // }}}
 // {{{ db.LookupCurrentDetails
 
-// LookupCurrentDetails gets some details about a flight currently in the air
-func (db *Fr24)LookupCurrentDetails(fr24Id string) (*LiveDetailsResponse, error) {
+// LookupCurrentDetails gets just a few details about a flight currently in the air.
+// It's what pops up in the panel when you click on a plane on the map.
+func (db *Fr24)LookupCurrentDetails(fr24Id string) (*CurrentDetailsResponse, error) {
 	if body,err := db.url2body(db.GetCurrentDetailsUrl(fr24Id)); err != nil {
 		return nil, err
 	} else {
@@ -350,28 +373,21 @@ func (db *Fr24)LookupCurrentDetails(fr24Id string) (*LiveDetailsResponse, error)
 // }}}
 // {{{ db.LookupPlaybackTrack
 
+// Given an fr24Id, this call fetches its flight track.
 func (db *Fr24)LookupPlaybackTrack(fr24Id string) (*fdb.Flight, error) {
 	if body,err := db.url2body(db.GetPlaybackTrackUrl(fr24Id)); err != nil {
 		return nil, err
 	} else {
-		f,err := db.ParsePlaybackTrack(body)
-		
-		// This has the scheduledDepartureUTC; but the timezone to deduce the date is within `body` :/
-/*
-		if ld,err := db.LookupLiveDetails(fr24Id); err2 != nil {
-			return nil, err
-		} else {
-			// 
-		}
-*/
-		return f,err
+		return db.ParsePlaybackTrack(body)
 	}
 }
 
 // }}}
 // {{{ db.LookupQuery
 
-// LookupCurrentDetails gets some details about a flight currently in the air
+// This is the as-you-type instant results thing in the mainquery box. It's nice and cheap.
+// If you're searching for a callsign/flightnumber/registration that is "live", you can get
+// the fr24Id foriegn key. Things are only live for up to 10m after they land though.
 func (db *Fr24)LookupQuery(q string) (Identifier, error) {
 	body,err := db.url2body(db.GetQueryUrl(q))
 	if err != nil { return Identifier{},err }
@@ -381,10 +397,99 @@ func (db *Fr24)LookupQuery(q string) (Identifier, error) {
 	
 	for _,r := range resp.Results {
 		if r.Type == "live" {
-			return Identifier{r.Id, r.Detail.Reg, r.Detail.Callsign, r.Detail.Flight}, nil
+			return Identifier{
+				Fr24:r.Id,
+				Reg:r.Detail.Reg,
+				Callsign:r.Detail.Callsign,
+				IATAFlightNumber:r.Detail.Flight,
+			}, nil
 		}
 	}
-	return Identifier{}, fmt.Errorf("No live match found")
+	return Identifier{}, ErrNotInLiveDB
+}
+
+// }}}
+// {{{ db.LookupHistory
+
+// This is the heavyweight history lookup, giving schedule data for all legs flown:
+// (a) given a registration ID, lists all flights it has flown recently;
+// (b) given an IATA flightnumber, lists all instances of that flight (with various registrations)
+//
+// http://www.flightradar24.com/reg/n980uy
+// http://www.flightradar24.com/flight/aa1799
+
+// http://www.flightradar24.com/data/airplanes/hp-1830cmp  ???
+
+func (db *Fr24)LookupHistory(reg,iataflightnumber string) ([]Identifier, error) {
+	resp := LookupHistoryResponse{}
+
+	if body,err := db.url2body(db.GetLookupHistoryUrl(reg,iataflightnumber)); err != nil {
+		return nil, err
+	} else if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, err
+	}
+
+	out := []Identifier{}
+	for _, row := range resp.Result.Response.Data {
+		out = append(out, Identifier{
+			Fr24: row.Identification.Id,
+			IATAFlightNumber: row.Identification.Number.Default,
+			Callsign: row.Identification.Callsign,
+			Reg: row.Aircraft.Registration,
+			Orig: row.Airport.Origin.Code.Iata,
+			Dest: row.Airport.Destination.Code.Iata,
+			DepartureEpoch: int64(row.Time.Scheduled.Departure),
+			DepartureTimeLocation: row.Airport.Origin.Timezone.Name,
+		})
+	}
+	
+	//for _,id := range out { fmt.Printf("* %s\n", id)}
+
+	return out, nil
+}
+
+// }}}
+
+// {{{ db.GetFr24Id
+
+func (db *Fr24)GetFr24Id(f *fdb.Flight) (string, string, error) {
+	str := fmt.Sprintf("** ID lookup for %v\n", f.IdentityString())
+
+	if f.Airframe.Registration == "" {
+		return "", str+"** flight had no registration\n", ErrBadInput
+	//} else if len(f.Identity.Registration) > 7 {
+	//	return "", str+"** flight's registration was too long or fr24\n", ErrBadInput
+	}
+
+	// The callsign as observed via ADS-B can be a poor match for the post-processed one that
+	// fr24 usess; so we should post-process too.
+	callsign := f.NormalizedCallsignString()
+	
+	// Approach 1: fast, not always avail
+	str += fmt.Sprintf("** url1: %s\n", db.GetQueryUrl(f.Registration))
+	id,err := db.LookupQuery(f.Registration)	
+	if err == nil {
+		if fdb.CallsignStringsEqual(callsign, id.Callsign) {
+			return id.Fr24, str+fmt.Sprintf("** found via query: %v\n", id), nil
+		} else {
+			str += fmt.Sprintf("** query had mismatch(it had %s, we had %s\n", id.Callsign, callsign)
+		}
+	} else if err != ErrNotInLiveDB {
+		return "", str+"** lookup error\n", err
+	}
+
+	// Approach 2: slower
+	str += fmt.Sprintf("** url2: %s\n", db.GetLookupHistoryUrl(f.Registration,""))
+	ids,err := db.LookupHistory(f.Registration, "")
+	if err != nil {
+		return "", str, err
+	}
+	for _,id := range ids {
+		if fdb.CallsignStringsEqual(callsign, id.Callsign) {
+			return id.Fr24, str+fmt.Sprintf("** found via history: %v\n", id), nil
+		}
+	}
+	return "", str+fmt.Sprintf("** not found at all"), ErrNotFound
 }
 
 // }}}

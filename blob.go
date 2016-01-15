@@ -41,6 +41,7 @@ func (blob *IndexedFlightBlob)ToFlight(key string) (*Flight, error) {
 
 	// Various kinds of post-load fixups
 	f.SetDatastoreKey(key)
+	f.SetLastUpdate(blob.LastUpdate)
 	
 	return &f, err
 }

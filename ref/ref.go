@@ -10,28 +10,20 @@ import(
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/log"
 
+	fdb "github.com/skypies/flightdb2"
 	"github.com/skypies/util/gaeutil"
 )
 
-// An Airframe is a thing that flies. We use Icao24 (ADS-B Mode-S) identifiers to identify
-// them. If/when we learn anything about a particular airframe, we store it here, and cache
-// it indefinitely.
-type Airframe struct {
-	Icao24         string
-	Registration   string
-	EquipmentType  string
-	CallsignPrefix string // For airline-owned aircraft snag the ICAO Teleophony Code (e.g. "SWA")
-}
-
+// We build a big map, from Icao24 ADS-B Mode-S identifiers, to static data about the physical
+// airframe that is flying.
 type AirframeCache struct {
-	Map map[string]*Airframe
+	Map map[string]*fdb.Airframe
 }
 
 func (ac AirframeCache)String() string {
 	str := fmt.Sprintf("--- airframe cache (%d entries) ---\n", len(ac.Map))
 	for _,v := range ac.Map {
-		str += fmt.Sprintf(" [%s] %10.10s %3.3s %s\n", v.Icao24, v.Registration,
-			v.CallsignPrefix, v.EquipmentType)
+		str += fmt.Sprintf(" %s\n", v)
 	}
 	return str
 }
@@ -44,7 +36,7 @@ func NewAirframeCache(c context.Context) *AirframeCache {
 	}
 
 	buf := bytes.NewBuffer(data)
-	ac := AirframeCache{Map:map[string]*Airframe{}}
+	ac := AirframeCache{Map:map[string]*fdb.Airframe{}}
 	if err := gob.NewDecoder(buf).Decode(&ac); err != nil {
 		log.Errorf(c, "airframecache: could not decode: %v", err)
 	}
@@ -61,11 +53,11 @@ func (ac *AirframeCache)Persist(c context.Context) error {
 	return gaeutil.SaveSingleton(c,"airframes", buf.Bytes())
 }
 
-func (ac *AirframeCache)Get(id string) *Airframe {
+func (ac *AirframeCache)Get(id string) *fdb.Airframe {
 	return ac.Map[id]
 }
 
-func (ac *AirframeCache)Set(af *Airframe) {
+func (ac *AirframeCache)Set(af *fdb.Airframe) {
 	ac.Map[af.Icao24] = af
 }
 

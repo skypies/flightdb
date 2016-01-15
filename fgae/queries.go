@@ -3,7 +3,8 @@ package fgae
 import(
 	"time"
 	"google.golang.org/appengine/datastore"
-	adsb "github.com/skypies/adsb"
+	"github.com/skypies/adsb"
+	"github.com/skypies/util/date"
 )
 
 // Wrap the default query, so we can provide a higher level fluent query API
@@ -18,10 +19,16 @@ func (db FlightDB)NewQuery() *Query {
 	return &q
 }
 
-func (q *Query)ByTime(s,e time.Time) *Query {
-	// Build []TimeKey from [s,e)
+func (q *Query)ByTime(t time.Time) *Query {
+	return q.ByTimeRange(t,t)
+}
+func (q *Query)ByTimeRange(s,e time.Time) *Query {
+	for _,slot := range date.Timeslots(s,e,kTimeslotDuration) {
+		q.Query = q.Query.Filter("Timeslots = ", slot)
+	}
 	return q
 }
+
 func (q *Query)ByIcaoId(id adsb.IcaoId) *Query {
 	q.Query = q.Query.Filter("Icao24 = ", string(id))
 	return q
@@ -36,7 +43,6 @@ func (q *Query)ByTags(tags []string) *Query {
 	}
 	return q
 }
-
 
 // Some canned queries
 func (db FlightDB)QueryForRecent(tags []string, n int) *Query {

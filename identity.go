@@ -32,12 +32,19 @@ func (s Schedule)IataFlight() string {
 
 type Identity struct {
 	IcaoId          string   // hex string (cf. adsb.IcaoId)
-	Callsign        string   // up to 8 chars; can be many things, including blank
-	Registration    string
+
+	// For callsigns, consider f.NormalizedCallsignString() instead, or the stuff in callsign.go
+	Callsign        string   // This is raw, as found in ADS-B transmission.
 
 	Schedule // embedded; not always populated
 
 	ForeignKeys     map[string]string // fr24, fa, fdbV1(?), etc
+}
+
+func (id Identity)FullString() string {
+	return fmt.Sprintf("{%s|%s}%d[%s-%s] [%s]c:%s",
+		id.Schedule.IATA, id.Schedule.ICAO, id.Schedule.Number, id.Origin, id.Destination,
+		id.IcaoId, id.Callsign)
 }
 
 func (id Identity)IdentString() string {
@@ -88,98 +95,6 @@ func (f Flight)TrackUrl() string {
 	return u
 }
 
-// https://en.wikipedia.org/wiki/Airline_codes#Call_signs_.28flight_identification_or_flight_ID.29
-type CallsignType int
-const(
-	Undefined         CallsignType = iota
-	JunkCallsign
-	Registration      // Callsign Type A
-                    // Callsign Type B - we never see it, and it's useless anyway
-	IcaoFlightNumber  // Callsign Type C
-	BareFlightNumber  // Some airlines omit the Icao carrier code, grr
-	// EquipType      // We sometime see this, but it's useless
-)
-type ParsedCallsign struct {
-	CallsignType
-	Registration  string
-	IcaoPrefix    string
-	Number        int64
-}
-func ParseCallsignString(callsign string) (ret ParsedCallsign) {	
-	// Registration (e.g. N23ST). Wikipedia:
-	// An N-number may only consist of one to five characters, must
-	// start with a digit other than zero, and cannot end in a run of
-	// more than two letters. In addition, N-numbers may not contain the
-	// letters I or O
-	reg := regexp.MustCompile("^(N[1-9][0-9A-HJ-NP-Z]{0,4})$").FindStringSubmatch(callsign)
-	if reg != nil && len(reg)==2 {
-		ret.Registration = callsign
-		ret.CallsignType = Registration
-		return
-	}
-	
-	icao := regexp.MustCompile("^([A-Z]{3})([0-9]{1,4})$").FindStringSubmatch(callsign)
-	if icao != nil && len(icao)==3 {
-		ret.Number,_ = strconv.ParseInt(icao[2], 10, 64) // no errors here :)
-		ret.IcaoPrefix = icao[1]
-		ret.CallsignType = IcaoFlightNumber
-		return
-	}
-
-	bare := regexp.MustCompile("^([0-9]{2,4})$").FindStringSubmatch(callsign)
-	if bare != nil && len(bare)==2 {
-		ret.Number,_ = strconv.ParseInt(bare[1], 10, 64) // no errors here :)
-		ret.CallsignType = BareFlightNumber
-	}
-	
-	ret.CallsignType = JunkCallsign
-	return
-}
-
-func (id *Identity)ParseCallsign() CallsignType {
-	parsed := ParseCallsignString(id.Callsign)
-
-	// Upate the identity with any useful data
-	switch parsed.CallsignType {
-	case Registration:
-		id.Registration = id.Callsign
-	case IcaoFlightNumber:
-		id.Schedule.ICAO, id.Schedule.Number = parsed.IcaoPrefix, parsed.Number
-	case BareFlightNumber:
-		id.Schedule.Number = parsed.Number
-	}
-
-	return parsed.CallsignType
-}
-
-func (id *Identity)ParseCallsignOLD() CallsignType {
-	// Registration (e.g. N23ST). Wikipedia:
-	// An N-number may only consist of one to five characters, must
-	// start with a digit other than zero, and cannot end in a run of
-	// more than two letters. In addition, N-numbers may not contain the
-	// letters I or O
-	reg := regexp.MustCompile("^(N[1-9][0-9A-HJ-NP-Z]{0,4})$").FindStringSubmatch(id.Callsign)
-	if reg != nil && len(reg)==2 {
-		id.Registration = id.Callsign
-		return Registration
-	}
-	
-	icao := regexp.MustCompile("^([A-Z]{3})([0-9]{1,4})$").FindStringSubmatch(id.Callsign)
-	if icao != nil && len(icao)==3 {
-		id.Schedule.Number,_ = strconv.ParseInt(icao[2], 10, 64) // no errors here :)
-		id.Schedule.ICAO = icao[1]
-		return IcaoFlightNumber
-	}
-
-	bare := regexp.MustCompile("^([0-9]{2,4})$").FindStringSubmatch(id.Callsign)
-	if bare != nil && len(bare)==2 {
-		id.Schedule.Number,_ = strconv.ParseInt(bare[1], 10, 64) // no errors here :)
-		return BareFlightNumber
-	}
-	
-	return JunkCallsign
-}
-
 
 func (id *Identity)ParseIata(s string) error {
 	iata := regexp.MustCompile("^([A-Z][0-9A-Z])([0-9]{1,4})$").FindStringSubmatch(s)
@@ -199,26 +114,14 @@ These are six digit hex codes, handed out to aircraft. Most aircraft
 using ADS-B have this is a (semi?) permanent 'airframe' ID, but some
 aircraft spoof it. And some have two transponders or something.
 
-# Aircraft registration, e.g. N12312
+# Aircraft registration, e.g. N12312, HP-1846CMP.
 
-# ADSB Callsigns
+Codes assigned by governments, to physical aircraft. Many private
+aircraft will use this as their callsign. FlightAware uses this as
+their primary search ID.
 
-1. Many airlines use the ICAO flight number: SWA3848
-2. Many private aircraft use their registration: N839AL
-3. Some (private ?) aircraft use just their equipment type:
-4. Annoyingly, some airlines use a bare flight number:
-		1106  - was FFT 1106 (F9 Frontier)
-		4517  - was SWA 4517 (WN Southwest)
-		 948  - was SWA 948  (WN Southwest)
-     210  - was AAY 210  (G4 Allegiant Air)
+# Callsigns : see callsigns.go
 
-5. Various kinds of null idenitifiers:
- 00000000   - was A69C72 (a Cessna Citation)
- ????????   - was A85D50 (a Virgin America A320, flying as VX938 !!)
- ''         - sometimes a MSG,1 will contain an empty string for the callsign
-
-6. Some airlines zero pad (e.g. "AMX058"); maybe we should normalize, like fr24 doe
-7. Note that fr24 'corrects' the bare flight numbers in (4) above.
 
 # Foreign identifiers
 

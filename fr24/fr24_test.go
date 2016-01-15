@@ -122,13 +122,13 @@ func TestParseCurrentList(t *testing.T) {
 func TestParseCurrentDetails(t *testing.T) {
 	db,_ := NewFr24(nil)
 	
-	ld,err := db.ParseCurrentDetails(liveDetailsJSON)
+	resp,err := db.ParseCurrentDetails(liveDetailsJSON)
 	if err != nil {
 		t.Errorf("LiveDetails; err=%v", err)
 	}
 
 	expected := "2015-09-11 23:55:00 +0000 UTC"
-	actual := fmt.Sprintf("%s",ld.ScheduledArrivalUTC)
+	actual := fmt.Sprintf("%s",resp.ScheduledArrivalUTC)
 	if expected != actual {
 		t.Errorf("ParsePlayback: expected '%s', actual '%s'", expected, actual)
 	}
@@ -165,8 +165,8 @@ func TestFetchLookupCurrentDetails(t *testing.T) {
 		if err != nil {
 			t.Errorf("Lookupcurrdetails err: %v", err)
 		} else {
-			if r2.FlightNumber == "" {
-				t.Errorf("%#v\nLookupcurrdetails did not have a flightnumber", r2)
+			if r2.Status == "" {
+				t.Errorf("%#v\nLookupcurrdetails did not have a status", r2)
 			}
 		}
 	}
@@ -198,6 +198,20 @@ func TestFetchLookupPlaybackTrack(t *testing.T) {
 func TestFetchQuery(t *testing.T) {
 	db,_ := NewFr24(nil)
 	if id, err := db.LookupQuery("SWA1219"); err != nil {
+		// This only works if SWA1219 is actually in flight!
+		//t.Errorf("Lookuplist error:%v", err)
+	} else {
+		_=id
+		//fmt.Printf("Lookup found: %#v\n", id)
+	}
+}
+
+// }}}
+// {{{ TestLookupHistory
+
+func TestLookupHistory(t *testing.T) {
+	db,_ := NewFr24(nil)
+	if id, err := db.LookupHistory("n980uy",""); err != nil {
 		t.Errorf("Lookuplist error:%v", err)
 	} else {
 		_=id

@@ -23,6 +23,17 @@ type Trackpoint struct {
 	Squawk       string    // Generally, a string of four digits.
 }
 
+type InterpolatedTrackpoint struct {
+	Trackpoint   // Embedded struct; only the interpolatable bits will be populated
+
+	Pre, Post *Trackpoint // The points we were interpolated from
+	Ratio      float64    // How far we were inbetween them
+
+	Ref        geo.Latlong      // The point we were in reference to
+	Line       geo.LatlongLine  // The line that connects the ref point to the line {pre->post}
+	Perp       geo.LatlongLine
+}
+
 func (tp Trackpoint)String() string {
 	return fmt.Sprintf("[%s] %s %.0fft, %.0fkts", tp.TimestampUTC, tp.Latlong,
 		tp.Altitude, tp.GroundSpeed)
@@ -57,4 +68,34 @@ func TrackpointFromADSB(m *adsb.CompositeMsg) Trackpoint {
 		VerticalRate: float64(m.VerticalRate),
 		Squawk: m.Squawk,
 	}
+}
+
+
+func (from Trackpoint)InterpolateTo(to Trackpoint, ratio float64) InterpolatedTrackpoint {
+	itp := InterpolatedTrackpoint{
+		Pre: &from,
+		Post: &to,
+		Ratio: ratio,
+		Trackpoint: Trackpoint{
+			GroundSpeed: interpolateFloat64(from.GroundSpeed, to.GroundSpeed, ratio),
+			VerticalRate: interpolateFloat64(from.VerticalRate, to.VerticalRate, ratio),
+			Altitude: interpolateFloat64(from.Altitude, to.Altitude, ratio),
+			Heading: interpolateFloat64(from.Heading, to.Heading, ratio),
+			Latlong: from.Latlong.InterpolateTo(to.Latlong, ratio),
+			TimestampUTC: interpolateTime(from.TimestampUTC, to.TimestampUTC, ratio),
+		},
+	}
+	return itp
+}
+
+func interpolateFloat64(from, to, ratio float64) float64 {
+	return from + (to-from)*ratio
+}
+
+func interpolateTime(from, to time.Time, ratio float64) time.Time {
+	d1 := to.Sub(from)
+	nanosToAdd := ratio * float64(d1.Nanoseconds())
+	d2 := time.Nanosecond * time.Duration(nanosToAdd)
+	d3 := time.Second * time.Duration(d2.Seconds()) // Round down to second precision
+	return from.Add(d3)
 }

@@ -4,11 +4,11 @@ import(
 	"net/http"
 	
 	"google.golang.org/appengine"
-	"google.golang.org/appengine/log"
+	//"google.golang.org/appengine/log"
 
 	fdb "github.com/skypies/flightdb2"
 	"github.com/skypies/flightdb2/fgae"
-	"github.com/skypies/flightdb2/ref"
+	//"github.com/skypies/flightdb2/ref"
 )
 
 func init() {
@@ -22,8 +22,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 	tags := []string{}
 	flights := []*fdb.Flight{}
 
-	airframes := ref.NewAirframeCache(c)
-	log.Infof(c, "Hey, Cache !\n%s", airframes)
+	//airframes := ref.NewAirframeCache(c)
 	
 	iter := db.NewIterator(db.QueryForRecent(tags, 200))
 	for iter.Iterate() {

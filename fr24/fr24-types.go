@@ -1,8 +1,30 @@
 package fr24
 
+import "fmt"
 import "time"
 
-type Identifier struct { Fr24, Reg, ICAO, IATA string }
+type Identifier struct {
+	Fr24, Reg, Callsign, IATAFlightNumber  string
+	Orig, Dest             string
+	DepartureEpoch         int64
+	DepartureTimeLocation  string
+}
+
+func (id Identifier)String() string {
+	timeStr := ""
+	if id.DepartureTimeLocation != "" {
+		loc,err := time.LoadLocation(id.DepartureTimeLocation)
+		if err != nil {
+			timeStr = fmt.Sprintf("err with '%s': %v", id.DepartureTimeLocation, err)
+		} else {
+			t := time.Unix(id.DepartureEpoch, 0).In(loc)
+			timeStr = fmt.Sprintf("%s", t)
+		}
+	}
+
+	return fmt.Sprintf("%7s/%6s/%7s/%7s %3s-%3s %s",
+		id.Fr24, id.IATAFlightNumber, id.Callsign, id.Reg, id.Orig, id.Dest, timeStr)
+}
 
 // Mechanical type definitions, to match the json responses.
 
@@ -30,7 +52,6 @@ type FlightPlaybackResponse struct {
 						} `json:"number"`
 						Callsign string `json:"callsign"`
 					} `json:"identification"`
-
 
 					Aircraft struct {
 						Identification struct {
@@ -251,14 +272,16 @@ w        },                               // response
 */
 
 // }}}
-// {{{ LiveDetails
+// {{{ CurrentDetails
 
 // We want very little of this; hand-extract it via a jsonMap
-type LiveDetailsResponse struct {
+type CurrentDetailsResponse struct {
 	FlightNumber string
 	Status string
 	ScheduledDepartureUTC time.Time
 	ScheduledArrivalUTC time.Time
+	OriginTZOffset string
+	DestinationTZOffset string
 	ETAUTC time.Time
 }
 
@@ -360,6 +383,198 @@ type QueryResponse struct {
   }
 }
 
+*/
+
+// }}}
+// {{{ LookupHistoryResponse
+
+// This is a subset, only parsing out some interesting fields
+type LookupHistoryResponse struct {
+	Result struct {
+		Response struct {
+			Data []struct {
+
+				Identification struct {
+					Id string `json:"id"`
+					Number struct {
+						Default string `json:"default"`
+					} `json:"number"`
+					Callsign string `json:"callsign"`
+				} `json:"identification"`
+
+				Time struct {
+					Other struct {
+						ETA int `json:"eta"`
+						Updated int `json:"updated"`
+					} `json:"other"`
+					Scheduled struct {
+						Departure int `json:"departure"`
+						Arrival int `json:"arrival"`
+					} `json:"scheduled"`
+					Real struct {
+						Departure int `json:"departure"`
+						Arrival int `json:"arrival"`
+					} `json:"real"`
+					Estimated struct {
+						Departure int `json:"departure"`
+						Arrival int `json:"arrival"`
+					} `json:"estimated"`
+				} `json:"time"`
+				
+				Aircraft struct {
+					Model struct {
+						Text string `json:"text"`
+						Code string `json:"code"`
+					} `json:"model"`
+					Registration string `json:"registration"`
+				} `json:"aircraft"`
+
+				Airport struct {
+					Destination AirportData `json:"destination"`
+					Origin AirportData `json:"origin"`
+				} `json:"airport"`
+
+			} `json:"data"`
+		} `json:"response"`		
+	} `json:"result"`
+}
+
+/* 
+
+http://www.flightradar24.com/reg/n980uy
+http://www.flightradar24.com/flight/aa1799
+
+http://api.flightradar24.com/common/v1/flight/list.json?query=n980uy&fetchBy=reg
+http://api.flightradar24.com/common/v1/flight/list.json?query=aa1799&fetchBy=flight
+
+{
+    "result": {
+        "response": {
+            "data": [
+
+                    "airline": {
+                        "name": "American Airlines",
+                        "code": {
+                            "icao": "AAL",
+                            "iata": "AA"
+                        }
+                    },
+
+                    "status": {
+                        "ambiguous": false,
+                        "text": "Landed 21:15",
+                        "icon": "yellow",
+                        "estimated": null,
+                        "live": false,
+                        "generic": {
+                            "status": {
+                                "color": "yellow",
+                                "text": "landed",
+                                "diverted": null,
+                                "type": "arrival"
+                            },
+                            "eventTime": {
+                                "local": 1452201356,
+                                "utc": 1452230156
+                            }
+                        }
+                    },
+
+                    "identification": {
+                        "codeshare": null,
+                        "row": 2428550798,
+                        "id": "87a0aa4",
+                        "number": {
+                            "alternative": "AA1799",
+                            "default": "AA1799"
+                        },
+                        "callsign": "AAL1799"
+                    },
+
+                    "time": {
+                        "other": {
+                            "eta": 1452230156,
+                            "updated": 1452230703
+                        },
+                        "scheduled": {
+                            "departure": 1452207600,
+                            "arrival": 1452228600
+                        },
+                        "real": {
+                            "departure": 1452213397,
+                            "arrival": 1452230160
+                        },
+                        "estimated": {
+                            "departure": null,
+                            "arrival": null
+                        }
+                    },
+
+                    "aircraft": {
+                        "model": {
+                            "text": "Airbus A321-231",
+                            "code": "A321"
+                        },
+                        "registration": "N552UW"
+                    },
+
+                    "airport": {
+                        "destination": {
+                            "visible": true,
+                            "name": "San Francisco International Airport",
+                            "code": {
+                                "icao": "KSFO",
+                                "iata": "SFO"
+                            },
+                            "timezone": {
+                                "offset": -28800,
+                                "abbr": "PST",
+                                "abbrName": "Pacific Standard Time",
+                                "name": "America/Los_Angeles",
+                                "isDst": false
+                            },
+                            "position": {
+                                "country": {
+                                    "name": "United States",
+                                    "code": "US"
+                                },
+                                "latitude": 37.618969,
+                                "region": {
+                                    "city": "San Francisco"
+                                },
+                                "longitude": -122.374001
+                            }
+                        },
+
+                        "origin": {
+                            "visible": true,
+                            "name": "Charlotte Douglas International Airport",
+                            "code": {
+                                "icao": "KCLT",
+                                "iata": "CLT"
+                            },
+                            "timezone": {
+                                "offset": -18000,
+                                "abbr": "EST",
+                                "abbrName": "Eastern Standard Time",
+                                "name": "America/New_York",
+                                "isDst": false
+                            },
+                            "position": {
+                                "country": {
+                                    "name": "United States",
+                                    "code": "US"
+                                },
+                                "latitude": 35.214001,
+                                "region": {
+                                    "city": "Charlotte"
+                                },
+                                "longitude": -80.9431
+                            }
+                        },
+                        "real": null
+                    }
+                },
 */
 
 // }}}

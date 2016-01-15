@@ -1,16 +1,33 @@
 package fgae
 
 import(
+	"fmt"
+	
 	"google.golang.org/appengine/datastore"
 	fdb "github.com/skypies/flightdb2"
+	"github.com/skypies/flightdb2/ref"
 )
+
+// Will be nil if we don't have the data we need to specify an ancestor ID
+func (db *FlightDB)rootKeyOrNil(f *fdb.Flight) *datastore.Key {
+	if f.IcaoId == "" {
+		return nil
+	}
+
+	return datastore.NewKey(db.C, kFlightKind, string(f.IcaoId), 0, nil)
+}
 
 func (db *FlightDB)findOrGenerateFlightKey(f *fdb.Flight) (*datastore.Key, error) {
 	if f.GetDatastoreKey() != "" {
 		return datastore.DecodeKey(f.GetDatastoreKey())
 	}
-	//rootKey := datastore.NewKey(db.C, kFlightKind, "foo", 0, nil)
-	return datastore.NewIncompleteKey(db.C, kFlightKind, nil), nil
+		
+	// We use IcaoId (if we have one) to build the unique ancestor key.
+	// This is so we can use ancestor queries when we're looking up by
+	// IcaoId, and get strongly consistent query results (e.g.
+	// read-your-writes). (We need this for AddADSBTrackFragment)
+	rootKey := db.rootKeyOrNil(f)
+	return datastore.NewIncompleteKey(db.C, kFlightKind, rootKey), nil
 }
 
 func (db *FlightDB)PersistFlight(f *fdb.Flight) error {
@@ -32,32 +49,42 @@ func (db FlightDB)AddADSBTrackFragment(frag *fdb.ADSBTrackFragment) error {
 	db.Debugf("* adding frag %s\n", frag)
 	f,err := db.LookupMostRecent(db.NewQuery().ByIcaoId(frag.IcaoId))
 	if err != nil { return err }
+
+	prefix := fmt.Sprintf("[%s/%s]", frag.IcaoId, frag.Callsign)
 	
 	if f == nil {
 		f = fdb.NewFlightFromADSBTrackFragment(frag)
-		db.Debugf("* brand new IcaoID: %s", f)
+		db.Debugf("* %s brand new IcaoID: %s", prefix, f)
 		
 	} else {
-		db.Debugf("* found %s", f)
+		db.Debugf("* %s found %s", prefix, f)
 
 		if adsbTrack,exists := f.Tracks["ADSB"]; !exists {
-			db.Debugf("* no pre-existing ADSB track %v", 1)
+			db.Infof("* %s no pre-existing ADSB track; adding right in", prefix)
 			f.Tracks["ADSB"] = &frag.Track
 
 		} else if plausible,debug := adsbTrack.PlausibleExtension(&frag.Track); plausible==true {
-			db.Debugf("* extending ADSB track ... debug:\n%s", debug)
+			db.Infof("* %s extending ADSB track ... debug:\n%s", prefix, debug)
 			db.Debugf("** pre : %s", f.Tracks["ADSB"])
 			f.Tracks["ADSB"].Merge(&frag.Track)
 			db.Debugf("** post: %s", f.Tracks["ADSB"])
 
 		}	else {
 			f = fdb.NewFlightFromADSBTrackFragment(frag)
-			db.Infof("* not a plausible addition for [%s]; starting afresh ...", frag.Callsign)
-			db.Infof("* debug:\n%s", debug)
+			db.Infof("* %s not a plausible addition; starting afresh ... debug\n%s", prefix, debug)
 			f.DebugLog = debug
 		}
 	}
 
+	// Consult the airframe cache, and perhaps add some metadata, if not already present
+	// This doesn't appear to be working :(
+	if f.Airframe.Registration == "" {
+		airframes := ref.NewAirframeCache(db.C)
+		if af := airframes.Get(f.IcaoId); af != nil {
+			f.Airframe = *af
+		}
+	}
+	
 	return db.PersistFlight(f)
 	//return nil
 }

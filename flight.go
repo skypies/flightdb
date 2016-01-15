@@ -8,22 +8,57 @@ import(
 
 type Flight struct {
 	Identity // embedded
-	EquipmentType string
+	Airframe // embedded
 	Tracks map[string]*Track
 	Tags map[string]int
-
 	
 	// Internal fields
 	datastoreKey string
+	lastUpdate   time.Time
 	DebugLog     string
+}
+
+// USE THIS ONE AT ALL TIMES
+func (f Flight)IdentityString() string {
+	str := f.Identity.FullString()
+	str += fmt.Sprintf(" r:%s", f.Airframe.Registration)
+	return str
 }
 
 func (f Flight)String() string {
 	str := f.IdentString() + " "
+	str += f.Airframe.String() + " "
 	for k,t := range f.Tracks {
 		str += fmt.Sprintf(" %s %s", k, t)
 	}
 	return str
+}
+
+// This happens at the flight level, as we shuffle data between identity & airframe
+func (f *Flight)ParseCallsign() CallsignType {
+	c := NewCallsign(f.Identity.Callsign)
+	// Upate the identity with any useful data
+	switch c.CallsignType {
+	case Registration:
+		f.Airframe.Registration = f.Identity.Callsign
+	case IcaoFlightNumber:
+		f.Identity.Schedule.ICAO, f.Identity.Schedule.Number = c.IcaoPrefix, c.Number
+	case BareFlightNumber:
+		f.Identity.Schedule.Number = c.Number
+	}
+
+	return c.CallsignType
+}
+
+// Normalization: only applies to the ICAO style ones (and then, really just SWA, etc)
+// 1. Remove all zero padding on numbers
+// 2. Incorporate missing carrier code, if we have it from airframe
+func (f *Flight)NormalizedCallsignString() string {
+	c := NewCallsign(f.Identity.Callsign)
+	if c.CallsignType == BareFlightNumber && f.Airframe.CallsignPrefix != "" {
+		c.MaybeAddPrefix(f.Airframe.CallsignPrefix)
+	}
+	return c.String()
 }
 
 func (f Flight)TagList() []string {
@@ -32,6 +67,24 @@ func (f Flight)TagList() []string {
 		ret = append(ret,tag)
 	}
 	return ret
+}
+
+func (f Flight)HasTrack(name string) bool {
+	_,exists := f.Tracks[name]
+	return exists
+}
+func (f Flight)ListTracks() []string {
+	ret := []string{}
+	for k := range f.Tracks { ret = append(ret, k) }
+	return ret
+}
+
+func (f Flight)AnyTrack() Track {
+	for _,name := range []string{"ADSB", "FA:TA", "FA:TZ", "fr24"} {
+		if f.HasTrack(name) { return *f.Tracks[name] }
+	}
+
+	return Track{}
 }
 
 func (f Flight)Times() (s,e time.Time) {
@@ -61,6 +114,9 @@ func (f *Flight)PruneTrackContents() {
 
 func (f Flight)GetDatastoreKey() string { return f.datastoreKey }
 func (f *Flight)SetDatastoreKey(k string) { f.datastoreKey = k }
+
+func (f Flight)GetLastUpdate() time.Time { return f.lastUpdate }
+func (f *Flight)SetLastUpdate(t time.Time) { f.lastUpdate = t }
 
 func (f Flight)Timeslots(d time.Duration) []time.Time {
 	s,e := f.Times()

@@ -3,13 +3,15 @@ package main
 import(
 	"fmt"
 	"html/template"
+	"time"
 	
 	"github.com/skypies/geo"
 	fdb "github.com/skypies/flightdb2"
+	"github.com/skypies/util/date"
 )
 
 type MapPoint struct {
-//	ITP   *fdb.InterpolatedTrackPoint
+	ITP   *fdb.InterpolatedTrackpoint
 	TP    *fdb.Trackpoint
 	Pos   *geo.Latlong
 
@@ -21,16 +23,20 @@ func (mp MapPoint)ToJSStr(text string) string {
 	if mp.Icon == "" { mp.Icon = "pink" }
 	tp := fdb.Trackpoint{DataSource:"n/a"}
 	
-/*	if mp.ITP != nil {
+	if mp.ITP != nil {
+		// Transform this into a tp with extra text
 		tp = mp.ITP.Trackpoint
-		tp.Source += "/interp"
+		tp.DataSource += "/interp"
 		mp.Text = fmt.Sprintf("** Interpolated trackpoint\n"+
 			" * Pre :%s\n * This:%s\n * Post:%s\n * Ratio: %.2f\n%s",
 			mp.ITP.Pre, mp.ITP, mp.ITP.Post, mp.ITP.Ratio, mp.Text)
-	} else*/ if mp.TP != nil {
+	} else if mp.TP != nil {
 		tp = *mp.TP
-		mp.Text = fmt.Sprintf("** Raw TP\n* %s\n* %s\n%s",
-			mp.TP, mp.TP.LongSource(), mp.Text)
+		age := date.RoundDuration(time.Since(tp.TimestampUTC))
+		times := fmt.Sprintf("%s (age:%s, epoch:%d)",
+			date.InPdt(tp.TimestampUTC), age, tp.TimestampUTC.Unix())
+		mp.Text = fmt.Sprintf("** TP\n*  %s\n* %s\n* DataSource: %s\n* %s",
+			times, mp.TP, mp.TP.LongSource(), mp.Text)
 	} else {
 		tp.Latlong = *mp.Pos
 	}
@@ -92,18 +98,62 @@ func LatlongTimeBoxToMapLines(tb geo.LatlongTimeBox, color string) []MapLine {
 	return lines
 }
 
-func TrackToMapPoints(t *fdb.Track, icon, text string) []MapPoint {
+type ColoringStrategy int
+const(
+	ByADSBReceiver ColoringStrategy = iota
+	ByDataSource
+	ByInstance
+	ByCandyStripe // a mix of ADSBreceiver & instance
+)
+
+func TrackToMapPoints(t *fdb.Track, icon, text string, coloring ColoringStrategy) []MapPoint {
+	sourceColors := map[string]string{
+		"ADSB":  "yellow",
+		"fr24":  "green",
+		"FA:TA": "blue",
+		"FA:TZ": "blue",
+	}
+	receiverColors := map[string]string{
+		"ScottsValley":  "yellow",
+		"NorthPi":       "blue",
+		"default":       "red",
+	}
+
 	points := []MapPoint{}
+	if len(*t) == 0 { return points }
+
 	for i,_ := range *t {
 		color := icon
 		tp := (*t)[i]
-		if tp.ReceiverName == "SouthPi" {
-			if color == "blue" { color = "red" } else { color = "green" }
-		} else if tp.ReceiverName == "ScottsValley" {
-			if color == "blue" { color = "pink" }
+
+		if coloring == ByCandyStripe {
+			if tp.ReceiverName == "NorthPi" {
+				if color == "blue" { color = "red" } else { color = "green" }
+			} else if tp.ReceiverName == "ScottsValley" {
+				if color == "blue" { color = "pink" }
+			}
+
+		} else if icon == "" {
+			if coloring == ByADSBReceiver {
+				if c,exists := receiverColors[tp.ReceiverName]; exists {
+					color = c
+				} else {
+					color = receiverColors["default"]
+				}
+				// Offset receivers, slightly
+				if tp.ReceiverName == "ScottsValley" {
+					tp.Lat  += 0.0006
+					tp.Long += 0.0006
+				}
+			} else if coloring == ByDataSource {
+				if c,exists := sourceColors[tp.DataSource]; exists { color = c }
+			}
 		}
 
-		points = append(points, MapPoint{TP: &tp, Icon:color, Text:text})
+		points = append(points, MapPoint{
+			TP: &tp, Icon:color,
+			Text:fmt.Sprintf("Point %d/%d\n%s", i, len(*t), text),
+		})
 	}
 	return points
 }

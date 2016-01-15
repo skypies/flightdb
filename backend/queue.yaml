@@ -1,0 +1,12 @@
+application: serfr0-fdb
+
+queue:
+
+# This queue is for arbitrary / oneoff batch jobs
+- name: batch
+  rate: 60/m
+  max_concurrent_requests: 4
+  bucket_size: 4
+  retry_parameters:
+    min_backoff_seconds: 1
+    task_retry_limit: 2
