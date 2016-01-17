@@ -292,6 +292,7 @@ func (from Trackpoint)LatlongTimeBoxTo(to Trackpoint) geo.LatlongTimeBox {
 		LatlongBox: from.Latlong.BoxTo(to.Latlong),
 		Start: from.TimestampUTC,
 		End: to.TimestampUTC,
+		HeadingDelta: geo.HeadingDelta(from.Heading, to.Heading),
 	}
 }
 
@@ -311,6 +312,15 @@ func (t Track)AsContiguousBoxes() []geo.LatlongTimeBox {
 		if dist > maxSize {
 			// Need to interpolate some boxes into this gap
 			nNeeded := int(dist/maxSize) + 1  // num boxes to create. int() rounds down
+/*
+			// If the aircraft is changing direction, then we should have fewer (and thus
+			// fatter) boxes, to better approximate what the aircraft might be doing.
+			headingDelta := math.Abs(geo.HeadingDelta(t[iLast].Heading, t[i].Heading))
+			if headingDelta > 0 {
+				nHeadingMax := int(65.0/headingDelta) + 1
+				if nHeadingMax < nNeeded { nNeeded = nHeadingMax }
+			}
+*/
 			len := 1.0 / float64(nNeeded)     // fraction of dist - size of each box 
 			sTP, eTP := t[iLast], t[i]
 			for j:=0; j<nNeeded; j++ {
@@ -320,6 +330,19 @@ func (t Track)AsContiguousBoxes() []geo.LatlongTimeBox {
 				eITP := sTP.InterpolateTo(eTP, endFrac)
 				box := sITP.Trackpoint.LatlongTimeBoxTo(eITP.Trackpoint)
 				box.I,box.J = iLast,i
+				box.Interpolated = true
+				box.RunLength = nNeeded
+				
+				centroidHeading := sITP.BearingTowards(box.Center())
+				box.CentroidHeadingDelta = geo.HeadingDelta(sITP.Heading, centroidHeading)
+				
+				box.Debug = fmt.Sprintf("** sTP: %s\n** eTP: %s\n** span: %.2f-%.2f\n"+
+					"** centroid: %.2f; sITP: %.2f; delta: %.2f\n"+
+					"** interp: %d points\n"+
+					"** sITP: %s\n** eITP: %s\n", sTP, eTP, startFrac, endFrac,
+					centroidHeading, sITP.Heading, box.CentroidHeadingDelta,
+					nNeeded,
+					sITP, eITP)
 				boxes = append(boxes, box)
 			}
 			iLast = i
@@ -331,6 +354,9 @@ func (t Track)AsContiguousBoxes() []geo.LatlongTimeBox {
 				box.Enclose(t[j].Latlong, t[j].TimestampUTC)
 			}
 			box.I,box.J = iLast,i
+
+			centroidHeading := t[iLast].BearingTowards(box.Center())
+			box.CentroidHeadingDelta = geo.HeadingDelta(t[iLast].Heading, centroidHeading)
 			
 			boxes = append(boxes, box)
 			iLast = i

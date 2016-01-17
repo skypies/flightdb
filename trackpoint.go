@@ -35,8 +35,8 @@ type InterpolatedTrackpoint struct {
 }
 
 func (tp Trackpoint)String() string {
-	return fmt.Sprintf("[%s] %s %.0fft, %.0fkts", tp.TimestampUTC, tp.Latlong,
-		tp.Altitude, tp.GroundSpeed)
+	return fmt.Sprintf("[%s] %s %.0fft, %.0fkts, %.0fdeg", tp.TimestampUTC, tp.Latlong,
+		tp.Altitude, tp.GroundSpeed, tp.Heading)
 }
 
 func (tp Trackpoint)ToJSString() string {
@@ -80,7 +80,7 @@ func (from Trackpoint)InterpolateTo(to Trackpoint, ratio float64) InterpolatedTr
 			GroundSpeed: interpolateFloat64(from.GroundSpeed, to.GroundSpeed, ratio),
 			VerticalRate: interpolateFloat64(from.VerticalRate, to.VerticalRate, ratio),
 			Altitude: interpolateFloat64(from.Altitude, to.Altitude, ratio),
-			Heading: interpolateFloat64(from.Heading, to.Heading, ratio),
+			Heading: geo.InterpolateHeading(from.Heading, to.Heading, ratio),
 			Latlong: from.Latlong.InterpolateTo(to.Latlong, ratio),
 			TimestampUTC: interpolateTime(from.TimestampUTC, to.TimestampUTC, ratio),
 		},
@@ -91,6 +91,7 @@ func (from Trackpoint)InterpolateTo(to Trackpoint, ratio float64) InterpolatedTr
 func interpolateFloat64(from, to, ratio float64) float64 {
 	return from + (to-from)*ratio
 }
+
 
 func interpolateTime(from, to time.Time, ratio float64) time.Time {
 	d1 := to.Sub(from)

@@ -51,6 +51,8 @@ func NewFr24(c *http.Client) (*Fr24, error) {
 func (fr *Fr24) GetPlaybackTrackUrl(id string) string {
 	return fmt.Sprintf("%s%s?flightId=%s", fr.Prefix, kURLPlaybackTrack, id)
 }
+
+// adsb=1&mlat=1&flarm=1&faa=1&estimated=1&air=1&gnd=1&vehicles=1&gliders=1&array=1
 func (fr *Fr24) GetCurrentListUrl(bounds string) string {
 	return fmt.Sprintf("%s/zones/fcgi/feed.json?array=1&bounds=%s", fr.host, bounds)
 }
