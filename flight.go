@@ -2,6 +2,7 @@ package flightdb2
 
 import(
 	"fmt"
+	"sort"
 	"time"
 	"github.com/skypies/geo/altitude"
 	"github.com/skypies/flightdb2/metar"
