@@ -1,4 +1,4 @@
-package main
+package ui
 
 import(
 	"net/http"
@@ -12,7 +12,7 @@ import(
 )
 
 func init() {
-	http.HandleFunc("/fdb/recent", listHandler)
+	http.HandleFunc("/fdb/recent2", listHandler)
 }
 
 func listHandler(w http.ResponseWriter, r *http.Request) {

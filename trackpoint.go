@@ -16,11 +16,18 @@ type Trackpoint struct {
 
 	geo.Latlong            // Embedded type, so we can call all the geo stuff directly on trackpoints
 
-	Altitude     float64   // In feet
+	Altitude     float64   // This is pressure altitude (i.e. altitude in a standard atmosphere)
 	GroundSpeed  float64   // In knots
 	Heading      float64   // [0.0, 360.0) degrees. Direction plane is pointing in. Mag or real north?
 	VerticalRate float64   // In feet per minute (multiples of 64)
 	Squawk       string    // Generally, a string of four digits.
+
+	// These two are transient fields, populated during analysis, and displayed on the map view
+	AnalysisAnnotation string `datastore:"-" json:"-"`
+	AnalysisMapIcon    string `datastore:"-" json:"-"`
+
+	// These fields are derived
+	IndicatedAltitude float64 `datastore:"-" json:"-"` // Corrected for local air pressure
 }
 
 type InterpolatedTrackpoint struct {

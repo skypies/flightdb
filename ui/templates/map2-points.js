@@ -1,4 +1,4 @@
-{{define "js-map-points"}} // Depends on: .Center (geo.Latlong), and .Zoom (int)
+{{define "js-map2-points"}} // Depends on: .Center (geo.Latlong), and .Zoom (int)
 
 function pointsOverlay() {
     var infowindow = new google.maps.InfoWindow({ content: "holding..." });
@@ -38,5 +38,21 @@ function pointsOverlay() {
         });
         line.setMap(map)
     }
+
+    circles = {{.Circles}}
+    for (var i in circles) {
+        var color = circles[i].color
+        var circle = new google.maps.Circle({
+            strokeColor: color,
+            strokeOpacity: 1,
+            strokeWeight: 1,
+            //fillColor: '#0000FF',
+            fillOpacity: 0,
+            map: map,
+            center: circles[i].center,
+            radius: circles[i].radiusmeters
+        });
+    }
+   
 }
 {{end}}

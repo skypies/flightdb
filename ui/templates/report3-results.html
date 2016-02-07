@@ -1,0 +1,42 @@
+{{define "report3-results"}}
+
+<html>
+  {{template "header"}}
+  <body>
+    <div class="allstack">
+      <h1>Report {{.R.Name}}: {{.R.Start.Format "Mon 01/02"}} - {{.R.End.Format "Mon 01/02"}}, 
+        {{len .R.RowsHTML}} flights</h1><br/>
+
+      <div class="box">
+        <table>
+          {{range .Metadata}}<tr>
+          <td>{{index . 0}} : </td><td><b>{{index . 1}}</b></td>
+          </tr>{{end}}
+        </table>
+      </div>
+      <p/>
+
+      <p>{{.PostButtons}}</p>
+
+      <div class="box">
+        <table>
+        {{range .R.RowsHTML}}
+        <tr>
+          {{range . }}<td>{{.}}</td>{{end}}
+        </tr>{{end}}
+        </table>
+      </div>
+
+
+      <div class="box">
+        <p><code>{{.OptStr}}</code></p>
+      </div>
+
+      <div class="stack">
+        <h3>Notes</h3>
+      </div>
+    </div>
+  </body>
+</html>
+
+{{end}}

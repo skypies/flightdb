@@ -1,4 +1,4 @@
-package main
+package ui
 
 import(
 	"errors"
@@ -6,7 +6,7 @@ import(
 	"regexp"
 	"time"
 
-	"github.com/skypies/date"
+	"github.com/skypies/util/date"
 )
 
 var (

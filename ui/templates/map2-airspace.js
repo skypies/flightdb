@@ -1,4 +1,4 @@
-{{define "js-map-airspace"}} // Depends on: .Center (geo.Latlong), and .Zoom (int)
+{{define "js-map2-airspace"}} // Depends on: .Center (geo.Latlong), and .Zoom (int)
 
 function localOverlay() {
     var legend = document.getElementById('legend');

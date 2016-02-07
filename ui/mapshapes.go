@@ -1,4 +1,4 @@
-package main
+package ui
 
 import(
 	"fmt"
@@ -9,6 +9,24 @@ import(
 	fdb "github.com/skypies/flightdb2"
 	"github.com/skypies/util/date"
 )
+
+type MapCircle struct {
+	C *geo.LatlongCircle
+	Color string
+}
+func (mc MapCircle)ToJSStr(text string) string {
+	color := mc.Color
+	if color == "" { color = "#000000" }
+	return fmt.Sprintf("center :{lat:%f, lng:%f}, radiusmeters: %.0f, color:%q",
+		mc.C.Lat, mc.C.Long, mc.C.RadiusKM*1000.0, color)
+}
+func MapCirclesToJSVar(circles []MapCircle) template.JS {
+	str := "{\n"
+	for i,mc := range circles {
+		str += fmt.Sprintf("    %d: {%s},\n", i, mc.ToJSStr(""))
+	}
+	return template.JS(str + "  }\n")		
+}
 
 type MapPoint struct {
 	ITP   *fdb.InterpolatedTrackpoint
@@ -35,14 +53,15 @@ func (mp MapPoint)ToJSStr(text string) string {
 		age := date.RoundDuration(time.Since(tp.TimestampUTC))
 		times := fmt.Sprintf("%s (age:%s, epoch:%d)",
 			date.InPdt(tp.TimestampUTC), age, tp.TimestampUTC.Unix())
-		mp.Text = fmt.Sprintf("** TP\n*  %s\n* %s\n* DataSource: %s\n* %s",
-			times, mp.TP, mp.TP.LongSource(), mp.Text)
+		mp.Text = fmt.Sprintf("** %s\n* %s\n* DataSource: <b>%s</b>\n%s* %s",
+			times, mp.TP, mp.TP.LongSource(), tp.AnalysisAnnotation, mp.Text)
+		if tp.AnalysisMapIcon != "" {
+			mp.Icon = tp.AnalysisMapIcon
+			}
 	} else {
 		tp.Latlong = *mp.Pos
 	}
-
-	mp.Text += text
-
+	
 	str := tp.ToJSString()
 	str += fmt.Sprintf(", icon:%q, info:%q", mp.Icon, mp.Text)
 	return str
@@ -87,6 +106,14 @@ func MapLinesToJSVar(lines []MapLine) template.JS {
 
 
 func LatlongTimeBoxToMapLines(tb geo.LatlongTimeBox, color string) []MapLine {
+	maplines := []MapLine{}
+	for _,line := range tb.LatlongBox.ToLines() {
+		x := line
+		maplines = append(maplines, MapLine{Line: &x, Color:color})
+	}
+	return maplines
+
+	/*
 	SW,NE,SE,NW := tb.SW, tb.NE, tb.SE(), tb.NW()
 	if color == "" { color = "#22aa33" }
 	lines := []MapLine{
@@ -95,7 +122,7 @@ func LatlongTimeBoxToMapLines(tb geo.LatlongTimeBox, color string) []MapLine {
 		MapLine{Start:&NW, End:&NE, Color:color},
 		MapLine{Start:&NE, End:&SE, Color:color},
 	}
-	return lines
+	return lines*/
 }
 
 type ColoringStrategy int
@@ -115,8 +142,9 @@ func TrackToMapPoints(t *fdb.Track, icon, text string, coloring ColoringStrategy
 	}
 	receiverColors := map[string]string{
 		"ScottsValley":  "yellow",
-		"NorthPi":       "blue",
-		"default":       "red",
+		"NorthPi":       "pink",
+		"LosAltosHills": "blue",
+		"Saratoga":      "red",
 	}
 
 	points := []MapPoint{}
@@ -141,15 +169,15 @@ func TrackToMapPoints(t *fdb.Track, icon, text string, coloring ColoringStrategy
 					color = receiverColors["default"]
 				}
 				// Offset receivers, slightly
-				if tp.ReceiverName == "ScottsValley" {
-					tp.Lat  += 0.0006
-					tp.Long += 0.0006
-				}
+				//if tp.ReceiverName == "ScottsValley" {
+				//	tp.Lat  += 0.0006
+				//	tp.Long += 0.0006
+				//}
 			} else if coloring == ByDataSource {
 				if c,exists := sourceColors[tp.DataSource]; exists { color = c }
 			}
 		}
-
+		
 		points = append(points, MapPoint{
 			TP: &tp, Icon:color,
 			Text:fmt.Sprintf("Point %d/%d\n%s", i, len(*t), text),

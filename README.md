@@ -6,13 +6,38 @@ $ goapp deploy              ui/ui.yaml
 $ goapp deploy              backend/backend.yaml
 $ appcfg.py update_cron     backend/
 $ appcfg.py update_indexes  backend/
+$ appcfg.py update_queues   backend/
+
+
+# Messes
+
+1. fdb2, report2, map2*. Is there not a better way to host this in newfdb ?
+1a. Host all the maps/MapShapes stuff over in util ?
+1b. Have a way to give fdb2 a 'foreign key' into fdb1, fomr which it
+pulls over the data and then renders it the new way. (Doesn't fix
+reports though)
+
+2. Totally blitz reports to use the new generic model, so they're
+trivial to write.
+
+# plan ...
+
+1. need to populate DD with 'seed' objects for non-ADSB flights
+2. need a mechanism to pull down fr24 paths - at the right time - for all flights
+3. need a mechanism to pull down daily SFO/SJC lists from fa, and
+flightinfoex them into the db (they should already be there - fr24
+them if not ?
+4. need a general 'flightpath analysis' mechanism - identify STAR
+procedure, maybe do class B
 
 
 # Todo
 
-Move timeslot rounding into util/date
-Move timeslot duration out of fgae; the UI needs it (to round things down)
-Implement lookup.ByTime with single time, not just range
+Data: flights that have a registration as a callsign show up as 'no
+registration' when polling fr24. Promote the callsign data into the
+airframe field. (Only relevant to non-airline aircraft, really; they
+don't end up in the airframe cache.)
+
 UI: better 'recent' view
 UI: render a flight as lines (and impose min length ?)
 UI: render multiple flights as lots of lines ?
@@ -26,8 +51,6 @@ Poller: implement a fr24 poller
   D] add to a workqueue for trackfetch
 
   Add the flight to a workqueue, for track fetching
-  Add a thingy that uses fr24 to lookup a registration: https://www.flightradar24.com/reg/n903sw
-   and turns it into a flightnumber ? (what for ??)
 
 Workqueue - trackfetch:
   A] go to fr24, using most-recent fr24-key; plausible match to anything already there ?
@@ -50,6 +73,3 @@ Workqueue - flightpath [re]analysis
 3. Anonymous flights, with nothing but a crappy callsign (private jets / general aviation ?)
 ["7624195","",      37.6762,-122.5215,275,4143,142,"3347","T-MLAT2","GLF4","",      1441900519,"","","",            0,2048,"GLF4",0]
 ["76226db","",      37.6278,-122.3826,163,0,0,     "3226","F-KSFO1","E55P","",      1441900520,"","","",            1,0,   "E55P",0]
-
-
-

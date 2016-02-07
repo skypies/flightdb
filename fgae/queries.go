@@ -5,6 +5,8 @@ import(
 	"google.golang.org/appengine/datastore"
 	"github.com/skypies/adsb"
 	"github.com/skypies/util/date"
+
+	fdb "github.com/skypies/flightdb2"
 )
 
 // Wrap the default query, so we can provide a higher level fluent query API
@@ -41,6 +43,12 @@ func (q *Query)ByTags(tags []string) *Query {
 	for _,tag := range tags {
 		q.Query = q.Query.Filter("Tags = ", tag)
 	}
+	return q
+}
+
+func (q *Query)ByIdSpec(idspec fdb.IdSpec) *Query {
+	q = q.ByTime(idspec.Time)
+	q = q.ByIcaoId(adsb.IcaoId(idspec.IcaoId))
 	return q
 }
 

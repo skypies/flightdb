@@ -285,6 +285,38 @@ func (t1 *Track)PlausibleExtension(t2 *Track) (bool, string) {
 
 // }}}
 
+// {{{ t.SampleEvery
+
+// Returns a track that has (more or less) one point per time.Duration.
+// If interpolate is true, then we interpolate through gaps that are too long.
+// The returned track contains copies of the trackpoints
+func (t Track)SampleEvery(d time.Duration, interpolate bool) Track {
+	if len(t) == 0 { return []Trackpoint{} }
+
+	new := []Trackpoint{t[0]}
+
+	iLast := 0
+	for i:=1; i<len(t); i++ {
+		// i is the point we're looking at; iLast is the point at the end of the previous box.
+
+		tDelta := t[i].TimestampUTC.Sub(t[iLast].TimestampUTC)
+
+		if tDelta > d {
+			if interpolate && tDelta > 2*d {
+				// IMPLEMENT ME
+			}
+			new = append(new, t[i])
+			iLast = i
+
+		} else {
+			// Do nothing, skip to next
+		}
+	}
+	
+	return new
+}
+
+// }}}
 // {{{ t.AsContiguousBoxes
 
 func (from Trackpoint)LatlongTimeBoxTo(to Trackpoint) geo.LatlongTimeBox {
@@ -293,6 +325,7 @@ func (from Trackpoint)LatlongTimeBoxTo(to Trackpoint) geo.LatlongTimeBox {
 		Start: from.TimestampUTC,
 		End: to.TimestampUTC,
 		HeadingDelta: geo.HeadingDelta(from.Heading, to.Heading),
+		Source: from.DataSource,
 	}
 }
 
@@ -336,13 +369,17 @@ func (t Track)AsContiguousBoxes() []geo.LatlongTimeBox {
 				centroidHeading := sITP.BearingTowards(box.Center())
 				box.CentroidHeadingDelta = geo.HeadingDelta(sITP.Heading, centroidHeading)
 				
-				box.Debug = fmt.Sprintf("** sTP: %s\n** eTP: %s\n** span: %.2f-%.2f\n"+
-					"** centroid: %.2f; sITP: %.2f; delta: %.2f\n"+
-					"** interp: %d points\n"+
-					"** sITP: %s\n** eITP: %s\n", sTP, eTP, startFrac, endFrac,
+				box.Debug = fmt.Sprintf(
+					" - src: %s\n"+
+					" - sTP: %s\n - eTP: %s\n - span: %.2f-%.2f\n"+
+					" - centroid: %.2f; sITP: %.2f; delta: %.2f\n"+
+					" - interp: %d points\n"+
+					" - sITP: %s\n - eITP: %s\n",
+					t[0].DataSource, sTP, eTP, startFrac, endFrac,
 					centroidHeading, sITP.Heading, box.CentroidHeadingDelta,
 					nNeeded,
 					sITP, eITP)
+
 				boxes = append(boxes, box)
 			}
 			iLast = i

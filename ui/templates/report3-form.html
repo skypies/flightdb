@@ -1,0 +1,107 @@
+{{define "report3-form"}}
+
+<html>
+  {{template "header"}}
+  <body>
+    <h1>Reports</h1><p/>
+
+    <form action="{{.FormUrl}}" method="post">
+      <div class="stack">
+
+        <div class="box">
+
+        <table border="0">
+
+          <tr>
+            <td>Report type</td>
+            <td><select name="rep">
+                {{range .Reports}}
+                <option value="{{.Name}}">{{.Description}}</option>{{end}}
+            </select></td>
+          </tr>
+<!--          
+          <tr>
+            <td>Result format</td>
+            <td>
+              <input type="radio" name="resultformat" value="list" checked="yes"/>web page,
+              <input type="radio" name="resultformat" value="csv"/>download CSV,
+              <input type="radio" name="resultformat" value="gcs"/>Cloud Storage.
+            </td>
+          </tr>
+-->
+
+          <tr><td colspan="2"><hr/></td></tr>
+          <tr><td colspan="2"><b>Time filtering</b> - define a time range for flights.
+              Approximate. If you pick more than a few days, it may timeout.<br/>
+          </td></tr>
+
+          <tr>
+            <td>Date range</td>
+            <td>
+              {{template "widget-date-range" .}}
+            </td>
+          </tr>
+          
+          <tr><td colspan="2"><hr/></td></tr>
+          <tr><td colspan="2"><b>Geo filtering</b> - define a region of interest;
+              pick a center for a box or circle. Leave
+              blank to report on all flights. Don't use regions less than a few KM in size.<br/><br/>
+          </td></tr>
+            
+          <tr>
+            <td>Center</td>
+            <td>
+              <select name="waypoint">
+                <option value="" selected="1">(none)</option> 
+                {{range .Waypoints}}
+                <option value="{{.}}">{{.}}</option>{{end}}
+              </select>, or latlong
+              <input type="text" name="centerlat" size="7" value=""/>,
+              <input type="text" name="centerlong" size="7" value=""/>
+            </td>
+          </tr>
+          
+          <tr>
+            <td>Size (KM)</td>
+            <td>
+              Radius <input type="text" name="radiuskm" size="4" value=""/>, or
+              Boxside <input type="text" name="sidekm" size="4" value=""/>
+            </td>
+          </tr>
+
+          <tr><td colspan="2"><hr/></td></tr>
+          <tr><td colspan="2"><b>Report-specific options</b> - some reports use these tolerance parameters.<br/><br/>
+          </td></tr>
+            
+          <tr>
+            <td>Altitude</td>
+            <td>
+              Tolerance: <input type="text" name="altitudetolerance" size="4" value="300"/> feet
+            </td>
+          </tr>
+
+          <tr><td colspan="2"><hr/></td></tr>
+          <tr>
+            <td>Flight tags</td>
+            <td><input type="text" name="tags" size="12" value=""/> (e.g. <code>SERFR1</code>)</td>
+          </tr>
+
+          <tr><td colspan="2"><hr/></td></tr>
+        </table>
+
+        <br/>
+        <p style="text-align:center"><input class="button" type="submit" value="GENERATE"/></p>
+        <br/>
+        </div>
+
+<!--
+        <p> Debug: <input type="text" name="debug" size="1"/></p>
+-->
+        <p>Data only really starts at 11:30am on Wed Sep 23.</p>
+
+      </div>
+    </form>
+  </body>
+</html>
+
+{{end}}

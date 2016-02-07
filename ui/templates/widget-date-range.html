@@ -1,0 +1,12 @@
+{{define "widget-date-range"}}
+
+              <input type="radio" name="date" value="today"/>Today<br/>
+              <input type="radio" name="date" value="yesterday"/>Yesterday<br/>
+              <input type="radio" name="date" value="range" checked="checked"/>Range:
+
+              <input type="text" size="10" name="range_from"
+                     value="{{.Yesterday.Format "2006/01/02"}}"/> to
+              <input type="text" size="10" name="range_to"
+                     value="{{.Yesterday.Format "2006/01/02"}}"/>
+              
+{{end}}

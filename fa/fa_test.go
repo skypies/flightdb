@@ -18,6 +18,14 @@ var (
 	TestAPIUsername = "abworrall"
 )
 
+/*
+// Call this just once per flightaware account, to get stable result lists
+func TestCallSetMaximumResultSize(t *testing.T) {
+	fa := Flightaware{APIKey:TestAPIKey, APIUsername:TestAPIUsername}
+	fa.Init()
+	fa.CallSetMaximumResultSize(45)
+}
+*/
 
 func TestCallSearch(t *testing.T) {
 	fa := Flightaware{APIKey:TestAPIKey, APIUsername:TestAPIUsername}
@@ -25,7 +33,7 @@ func TestCallSearch(t *testing.T) {
 
 	box := sfo.KLatlongSFO.Box(120,120)
 
-	q := "-filter airline -inAir 1 -aboveAltitude 8"
+	q := "" // "-filter airline -inAir 1 -aboveAltitude 8"
 	
 	ret,err := fa.CallSearch(q, box)
 	if err != nil { t.Errorf("init call: %v", err) }

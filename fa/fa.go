@@ -83,6 +83,28 @@ func (fa Flightaware)UrlToJsonMap(verb string, args map[string]string) (map[stri
 
 // }}}
 
+// {{{ CallSetMaximumResultSize
+
+// This means you get more than 15 results back in a single page. But you still pay
+// one API call for every 15 results.
+
+func (fa Flightaware)CallSetMaximumResultSize(n int) {
+	args := map[string]string{
+		"max_size": fmt.Sprintf("%d", n),
+	}
+	
+	if resp,err := fa.UrlToResp("SetMaximumResultSize", args); err != nil {
+		return
+
+	} else {
+		defer resp.Body.Close()
+
+		bytes,_ := u.DumpResponse(resp, true)
+		fmt.Printf(">>>> %d >>>>\n<<<< resp\n%s<<<<\n", n, string(bytes))		
+	}
+}
+
+// }}}
 // {{{ CallGetHistoricalTrack
 
 // GetHistoricalTrack(FaFlightID) -> ArrayOfTrackStruct
@@ -292,8 +314,12 @@ func (fa Flightaware)CallSearch(query string, box geo.LatlongBox) ([]InFlightStr
 	query += fmt.Sprintf(" -latlong \"%.5f %.5f %.5f %.5f\"",
 		box.SW.Lat, box.SW.Long, box.NE.Lat, box.NE.Long)
 
+	// NOTE - howMany should be enough to capture everything. The ordering/selection between
+	// different result pages is inconsistent (dupes, dropped things). For this to be honored
+	// though, you need to CallSetMaximumResultSize just once per flightaware account (see the
+	// test file for a routine for this.)
 	args := map[string]string{
-		"howMany": "15",
+		"howMany": "45",
 		"offset": "0",
 		"query": query,
 	}

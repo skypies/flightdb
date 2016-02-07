@@ -4,6 +4,7 @@ import(
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -87,11 +88,7 @@ func (f Flight)OldIdentifier() string {
 
 // Also: faUrl := fmt.Sprintf("http://flightaware.com/live/flight/%s", m.Callsign)
 func (f Flight)TrackUrl() string {
-	u := fmt.Sprintf("/fdb/tracks?icaoid=%s", f.IcaoId)
-	times := f.Timeslots(time.Minute * 30)  // ARGH
-	if len(times)>0 {
-		u += fmt.Sprintf("&t=%d", times[0].Unix())
-	}
+	u := fmt.Sprintf("/fdb/tracks?idspec=%s", f.IdSpec())
 	return u
 }
 
@@ -105,6 +102,45 @@ func (id *Identity)ParseIata(s string) error {
 	}
 	return fmt.Errorf("ParseIata: could not parse '%s'", s)
 }
+
+
+// An identifier specifier - something we receive that should uniquely identify a flight
+// Can be {airframe+time}, or maybe later we'll support flight designators.
+type IdSpec struct {
+	IcaoId       string
+	Registration string
+	Callsign     string
+	time.Time    // embed
+}
+func (idspec IdSpec)String() string {
+	return fmt.Sprintf("%s@%s", idspec.IcaoId,
+		idspec.Time.Format("2006.01.02-15:04:05-0700"))
+}
+
+// Input formats:
+//  A23A23@14123123123123  (IcaoId at an epoch time)
+func NewIdSpec(idspec string) (IdSpec,error) {
+	bits := strings.Split(idspec, "@")
+	if len(bits) != 2 {
+		return IdSpec{}, fmt.Errorf("IdSpec '%s' did not match <airframe>@<epoch>", idspec)
+	}
+
+	epochInt,err := strconv.ParseInt(bits[1], 10, 64)
+	if err != nil {
+		return IdSpec{}, fmt.Errorf("IdSpec '%s' did not have parseable int after @: %v", idspec, err)
+	}
+
+	// Should check for IcaoId vs. Registration or callsign; for now, just assume IcaoId.
+	return IdSpec{
+		IcaoId: bits[0],
+		Time: time.Unix(epochInt, 0),
+	}, nil
+}
+
+func (id Identity)IsScheduled() bool {
+	return (id.Number > 0 && (id.IATA != "" || id.ICAO != ""))
+}
+
 
 /* Some notes on identifiers for aircraft
 
@@ -121,7 +157,6 @@ aircraft will use this as their callsign. FlightAware uses this as
 their primary search ID.
 
 # Callsigns : see callsigns.go
-
 
 # Foreign identifiers
 
