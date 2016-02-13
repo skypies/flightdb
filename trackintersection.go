@@ -1,9 +1,6 @@
 package flightdb2
 
-import(
-	"fmt"
-	"github.com/skypies/geo"
-)
+import "fmt"
 
 type TrackIntersection struct {
 	Start,End Trackpoint
@@ -19,9 +16,23 @@ func (ev TrackIntersection)String() string {
 		itp.GroundSpeed, (ev.End.GroundSpeed - ev.Start.GroundSpeed))
 }
 
+func (ti TrackIntersection)IsPointIntersection() bool { return ti.J == 0 }
+
 func (ev TrackIntersection)RowHTML() []string {
+	if ev.IsPointIntersection() {
+		return []string{
+			"<b>Alt</b>",
+			fmt.Sprintf("%.0f", ev.Start.Altitude),
+			"<b>GroundSpeed</b>",
+			fmt.Sprintf("%.0f", ev.Start.GroundSpeed),
+			"<b>Vert(fpm)</b>",
+			fmt.Sprintf("%.0f", ev.Start.VerticalRate),
+		}
+	}
+
 	itp := ev.Start.InterpolateTo(ev.End, 0.5)
 	s := []string{
+		//fmt.Sprintf("[I=%d,J=%d]", ev.I,ev.J),
 		"<b>Duration</b>",
 		fmt.Sprintf("%.0fs", ev.End.TimestampUTC.Sub(ev.Start.TimestampUTC).Seconds()),
 
@@ -30,26 +41,28 @@ func (ev TrackIntersection)RowHTML() []string {
 		fmt.Sprintf("%.0f", ev.End.Altitude),
 		fmt.Sprintf("%.0f", (ev.End.Altitude - ev.Start.Altitude)),
 		fmt.Sprintf("%.0f", itp.Altitude),
-
+/*
 		"<b>GroundSpeed</b>",
 		fmt.Sprintf("%.0f", ev.Start.GroundSpeed),
 		fmt.Sprintf("%.0f", ev.End.GroundSpeed),
 		fmt.Sprintf("%.0f", (ev.End.GroundSpeed - ev.Start.GroundSpeed)),
 		fmt.Sprintf("%.0f", itp.GroundSpeed),
+*/
 	}
-
-/*	ret := []template.HTML{}
-	for _,str := range s {
-		ret = append(ret, template.HTML(str))
-	}
-	return ret*/
 	return s
 }
+
+
+
+
+
+/* This is fully obseleted by the SatisfiesGeoRestriction stuff, which is faster
 
 // Will annotate the trackpoints in-place.
 // Note that an intersection may have only one point inside it.
 // Note this is rubbish; it should really build lines between trackpoints and intersect those, or
 // something.
+
 func (track Track)IntersectWith(reg geo.Region, name string) (*TrackIntersection, string) {
 	str := fmt.Sprintf("** Intersecting %s[%s] against track %s\n", name, reg, track)
 	iStart,iEnd := 0,0
@@ -92,3 +105,4 @@ func (track Track)IntersectWith(reg geo.Region, name string) (*TrackIntersection
 
 	return &ti, str
 }
+*/

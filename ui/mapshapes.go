@@ -10,6 +10,30 @@ import(
 	"github.com/skypies/util/date"
 )
 
+// MapShapes is a single thing that contains all the things we want to render on a map
+type MapShapes struct {
+	Circles []MapCircle
+	Lines []MapLine
+	Points []MapPoint
+}
+func NewMapShapes() *MapShapes {
+	ms := MapShapes{
+		Circles: []MapCircle{},
+		Lines: []MapLine{},
+		Points: []MapPoint{},
+	}
+	return &ms
+}
+func (ms1 *MapShapes)Add(ms2 *MapShapes) {
+	ms1.Circles = append(ms1.Circles, ms2.Circles...)
+	ms1.Lines   = append(ms1.Lines,   ms2.Lines...)
+	ms1.Points  = append(ms1.Points,  ms2.Points...)
+}
+func (ms1 *MapShapes)AddLine(ml MapLine) { ms1.Lines = append(ms1.Lines, ml) }
+func (ms1 *MapShapes)AddPoint(mp MapPoint) { ms1.Points = append(ms1.Points, mp) }
+func (ms1 *MapShapes)AddCircle(mc MapCircle) { ms1.Circles = append(ms1.Circles, mc) }
+
+
 type MapCircle struct {
 	C *geo.LatlongCircle
 	Color string

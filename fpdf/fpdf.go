@@ -23,7 +23,7 @@ const(
 
 // The ApproachBox is from NW(10,10) to SE(270,110)
 var(
-	ApproachBoxWidth = 260.0
+	ApproachBoxWidth = 245.0
 	ApproachBoxHeight = 100.0
 	ApproachBoxOffsetX = 10.0
 	ApproachBoxOffsetY = 10.0
@@ -181,7 +181,7 @@ func DrawDeltaGradientKey(pdf *gofpdf.Fpdf) {
 // {{{ DrawTitle
 
 func DrawTitle(pdf *gofpdf.Fpdf, title string) {
-	pdf.MoveTo(10, ApproachBoxHeight + ApproachBoxOffsetY)
+	pdf.MoveTo(10, ApproachBoxHeight + ApproachBoxOffsetY + 10)
 	pdf.Cell(40, 10, title)
 }
 
@@ -189,14 +189,46 @@ func DrawTitle(pdf *gofpdf.Fpdf, title string) {
 // {{{ DrawApproachFrame
 
 func DrawApproachFrame(pdf *gofpdf.Fpdf) {
-	pdf.SetDrawColor(0x0, 0x00, 0x00)
-	pdf.SetLineWidth(0.5)
+	pdf.SetLineWidth(0.05)
+	pdf.SetDrawColor(0xa0, 0xa0, 0xa0)
 	pdf.MoveTo(ApproachBoxOffsetX,                  ApproachBoxOffsetY)
 	pdf.LineTo(ApproachBoxOffsetX+ApproachBoxWidth, ApproachBoxOffsetY)
 	pdf.LineTo(ApproachBoxOffsetX+ApproachBoxWidth, ApproachBoxOffsetY+ApproachBoxHeight)
 	pdf.LineTo(ApproachBoxOffsetX,                  ApproachBoxOffsetY+ApproachBoxHeight)
 	pdf.LineTo(ApproachBoxOffsetX,                  ApproachBoxOffsetY)
 	pdf.DrawPath("D")
+
+	// X axis tickmarks and labels
+	pdf.SetLineWidth(0.05)
+	pdf.SetFont("Arial", "", 8)	
+	for _,nm := range []float64{10,20,30,40,50,60,70,80} {
+		pdf.SetDrawColor(0x00, 0x00, 0x00)
+		pdf.MoveTo(distNMToX(nm), ApproachBoxHeight+ApproachBoxOffsetY)
+		pdf.LineTo(distNMToX(nm), ApproachBoxHeight+ApproachBoxOffsetY+1.5)
+
+		pdf.SetDrawColor(0xa0, 0xa0, 0xa0)
+		pdf.MoveTo(distNMToX(nm), ApproachBoxHeight+ApproachBoxOffsetY)
+		pdf.LineTo(distNMToX(nm), ApproachBoxOffsetY)
+
+		pdf.MoveTo(distNMToX(nm)-4, ApproachBoxHeight+ApproachBoxOffsetY+2)
+		pdf.Cell(30, float64(4), fmt.Sprintf("%.0f NM", nm))
+	}
+	pdf.MoveTo(distNMToX(0)-4, ApproachBoxHeight+ApproachBoxOffsetY+2)
+	pdf.Cell(30, float64(4), "SFO")
+	pdf.DrawPath("D")
+
+	// Y axis gridlines and labels
+	pdf.SetLineWidth(0.05)
+	pdf.SetDrawColor(0xa0, 0xa0, 0xa0)
+	for _,alt := range []float64{5000, 10000, 15000, 20000} {
+		pdf.MoveTo(ApproachBoxOffsetX, altitudeToY(alt))
+		pdf.LineTo(ApproachBoxOffsetX+ApproachBoxWidth, altitudeToY(alt))
+
+		pdf.MoveTo(ApproachBoxOffsetX+ApproachBoxWidth+0.5, altitudeToY(alt)-2)
+		pdf.Cell(30, float64(4), fmt.Sprintf("%.0fft", alt))
+	}
+	pdf.DrawPath("D")
+
 }
 
 // }}}
@@ -204,17 +236,8 @@ func DrawApproachFrame(pdf *gofpdf.Fpdf) {
 
 func DrawSFOClassB(pdf *gofpdf.Fpdf) {
 	pdf.SetDrawColor(0x00, 0x00, 0x66)
-	pdf.SetLineWidth(0.25)		
+	pdf.SetLineWidth(0.45)
 	pdf.MoveTo(ApproachBoxOffsetX+ApproachBoxWidth, altitudeToY(10000.0))
-
-/*
-					{ 7,  0, 100},   // from origin to  7NM : 100/00 (no floor)
-					{10, 15, 100},   // from   7NM  to 10NM : 100/15
-					{15, 30, 100},   // from  10NM  to 15NM : 100/30
-					{20, 40, 100},   // from  15NM  to 20NM : 100/40
-					{25, 60, 100},   // from  20NM  to 25NM : 100/60
-					{30, 80, 100},   // from  25NM  to 30NM : 100/80
-*/
 
 	// Should really parse this all out of the constants in geo/sfo ...
 	pdf.LineTo(distNMToX(30.0), altitudeToY(10000.0))
@@ -229,8 +252,50 @@ func DrawSFOClassB(pdf *gofpdf.Fpdf) {
 	pdf.LineTo(distNMToX(10.0), altitudeToY( 1500.0))
 	pdf.LineTo(distNMToX( 7.0), altitudeToY( 1500.0))
 	pdf.LineTo(distNMToX( 7.0), altitudeToY(    0.0))
-
+	
 	pdf.DrawPath("D")
+}
+
+// }}}
+// {{{ DrawWaypoints
+
+type WaypointFurniture struct {
+	Name string
+	Min,Max float64
+}
+
+func DrawWaypoints(pdf *gofpdf.Fpdf) {
+	pdf.SetDrawColor(0xa0, 0xa0, 0x20)
+	pdf.SetTextColor(0xa0, 0xa0, 0x20)
+	pdf.SetFont("Arial", "B", 8)	
+
+	wpFurn := []WaypointFurniture{
+		{"EPICK", 10000, 15000},
+		{"EDDYY",  5850,  6150},
+		{"SWELS",  4550,  4850},
+		{"MENLO",  3850,  4150},
+	}
+
+	for _,wp := range wpFurn {
+		nm := sfo.KLatlongSFO.DistNM(sfo.KFixes[wp.Name])
+		yOffset := 5.5
+		if wp.Name == "SWELS" { yOffset = 9 }
+		pdf.MoveTo(distNMToX(nm)-5.5, ApproachBoxHeight+ApproachBoxOffsetY+yOffset)
+		pdf.Cell(30, float64(4), wp.Name)
+		//	pdf.Cell(30, float64(4), fmt.Sprintf("EPICK (%.1fNM)", epickNM))
+
+		pdf.SetLineWidth(1.3)
+		pdf.MoveTo(distNMToX(nm), altitudeToY(wp.Min))
+		pdf.LineTo(distNMToX(nm), altitudeToY(wp.Max))
+
+		pdf.SetLineWidth(0.5)
+		pdf.MoveTo(distNMToX(nm), altitudeToY(-100))
+		pdf.LineTo(distNMToX(nm), altitudeToY(100))
+	}
+	
+	pdf.DrawPath("D")
+	pdf.SetTextColor(0x00, 0x00, 0x00)
+	pdf.SetFont("Arial", "", 10)
 }
 
 // }}}
@@ -239,25 +304,6 @@ func DrawSFOClassB(pdf *gofpdf.Fpdf) {
 func trackpointToApproachXY(tp fdb.Trackpoint) (float64, float64) {
 	return distNMToX(tp.DistNM(sfo.KLatlongSFO)), altitudeToY(tp.IndicatedAltitude)
 }
-// {{{ DrawTrackOld
-
-func DrawTrackOld(pdf *gofpdf.Fpdf, t fdb.Track) {
-	pdf.SetDrawColor(0xff, 0x00, 0x00)
-	pdf.SetLineWidth(1)
-	for i,_ := range t[1:] {
-		x1,y1 := trackpointToApproachXY(t[i])
-		x2,y2 := trackpointToApproachXY(t[i+1])
-		if x2 < ApproachBoxOffsetX { continue }
-		if y2 < ApproachBoxOffsetY { continue }
-
-		rgb := groundspeedToRGB(t[i].GroundSpeed)
-		pdf.SetDrawColor(rgb[0], rgb[1], rgb[2])
-		pdf.Line(x1,y1,x2,y2)
-	}
-	pdf.DrawPath("D")	
-}
-
-// }}}
 
 func DrawTrack(pdf *gofpdf.Fpdf, tInput fdb.Track, colorscheme ColorScheme) {
 	pdf.SetDrawColor(0xff, 0x00, 0x00)
@@ -270,6 +316,8 @@ func DrawTrack(pdf *gofpdf.Fpdf, tInput fdb.Track, colorscheme ColorScheme) {
 	if len(t) == 0 { return }
 	
 	for i,_ := range t[1:] {
+		if t[i].IndicatedAltitude < 100 && t[i+1].IndicatedAltitude < 100 { continue }
+
 		x1,y1 := trackpointToApproachXY(t[i])
 		x2,y2 := trackpointToApproachXY(t[i+1])
 		// ... or compare against x2/y2 and clip against frame ...
@@ -303,6 +351,7 @@ func NewApproachPdf(colorscheme ColorScheme) *gofpdf.Fpdf {
 	pdf.SetFont("Arial", "", 10)	
 	DrawApproachFrame(pdf)
 	DrawSFOClassB(pdf)
+	DrawWaypoints(pdf)
 
 	if colorscheme == ByDeltaGroundspeed {
 		DrawDeltaGradientKey(pdf)
@@ -328,7 +377,7 @@ func WriteTrack(output io.Writer, t fdb.Track) error {
 func WriteFlight(output io.Writer, f fdb.Flight) error {
 	pdf := NewApproachPdf(ByGroundspeed)
 
-	pdf.MoveTo(10, ApproachBoxHeight + ApproachBoxOffsetY)
+	pdf.MoveTo(10, ApproachBoxHeight + ApproachBoxOffsetY+12)
 	pdf.Cell(40, 10, fmt.Sprintf("%s", f))
 
 	DrawTrack(pdf, f.AnyTrack(), ByGroundspeed)

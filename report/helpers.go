@@ -30,6 +30,8 @@ func (r *Report)Links(f *fdb.Flight) string {
 		addFrag("map",  v1host + "/fdb/track2?idspec="   +k+"&"+reportArgs)
 		addFrag("vec",  v1host + "/fdb/trackset2?idspec="+k+"&"+reportArgs)
 		addFrag("side", v1host + "/fdb/approach2?idspec="+k+"&"+dateArgs)
+	} else {
+		addFrag("v2",            "/fdb/tracks?idspec="+f.IdSpec()+"&"+reportArgs)
 	}
 
 	if f.HasTrack("ADSB") {
@@ -38,4 +40,22 @@ func (r *Report)Links(f *fdb.Flight) string {
 	}
 	
 	return "[" + strings.Join(frags, ",") + "]"
+}
+
+func (r *Report)GetFirstAreaIntersection(t []fdb.TrackIntersection) (*fdb.TrackIntersection,error) {
+	if len(t) == 0 {
+		return nil, fmt.Errorf("no area intersection (list empty)")
+	}
+
+	ti := fdb.TrackIntersection{}
+	for _,intersection := range t {
+		if ! intersection.IsPointIntersection() {
+			ti = intersection
+		}
+	}
+	if ti.I == 0 {
+		return nil, fmt.Errorf("no area intersection")
+	}
+
+	return &ti, nil
 }

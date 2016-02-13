@@ -3,6 +3,7 @@
 <html>
   {{template "header"}}
   <body>
+    
     <div class="allstack">
       <h1>Report {{.R.Name}}: {{.R.Start.Format "Mon 01/02"}} - {{.R.End.Format "Mon 01/02"}}, 
         {{len .R.RowsHTML}} flights</h1><br/>
@@ -27,11 +28,12 @@
         </table>
       </div>
 
+      <p><a target="_blank"
+      href="localhost:8080/fdb/snarf?idspec={{.IdSpecs}}">DEBUG: Snarf To Local</a></p>
+      <p>{{.OptStr}}</p>
 
-      <div class="box">
-        <p><code>{{.OptStr}}</code></p>
-      </div>
-
+      <pre>{{.DebugLog}}</pre>
+      
       <div class="stack">
         <h3>Notes</h3>
       </div>

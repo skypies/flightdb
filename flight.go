@@ -97,6 +97,13 @@ func (f Flight)AnyTrack() Track {
 
 	return Track{}
 }
+func (f Flight)PreferredTrack(pref []string) (string, Track) {
+	for _,name := range pref {
+		if f.HasTrack(name) { return name, *f.Tracks[name] }
+	}
+	return "", Track{}
+}
+
 
 func (f Flight)Times() (s,e time.Time) {
 	if len(f.Tracks) == 0 { return }

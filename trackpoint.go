@@ -42,8 +42,8 @@ type InterpolatedTrackpoint struct {
 }
 
 func (tp Trackpoint)String() string {
-	return fmt.Sprintf("[%s] %s %.0fft, %.0fkts, %.0fdeg", tp.TimestampUTC, tp.Latlong,
-		tp.Altitude, tp.GroundSpeed, tp.Heading)
+	return fmt.Sprintf("[%s] %s %.0fft, %.0fkts, %.0ff/m, %.0fdeg", tp.TimestampUTC, tp.Latlong,
+		tp.Altitude, tp.GroundSpeed, tp.VerticalRate, tp.Heading)
 }
 
 func (tp Trackpoint)ToJSString() string {

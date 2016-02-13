@@ -3,6 +3,7 @@ package ui
 import(
 	"fmt"
 	"net/http"
+	"time"
 	
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"
@@ -92,6 +93,19 @@ func OutputApproachesAsPDF(w http.ResponseWriter, r *http.Request, flights []*fd
 
 	s,e,_ := widget.FormValueDateRange(r)
 
+	// Default to the time range of the flights
+	if time.Since(e) > time.Hour*24*365 {
+		// assume undef
+		s = time.Now().Add(30*24*time.Hour) // Implausibly in the future
+		for _,f := range flights {
+			fs,fe := f.Times()
+			if fs.Before(s) { s = fs }
+			if fe.After(e) { e = fe }
+		}
+		s = s.Add(-24*time.Hour)
+		e = s.Add(24*time.Hour)
+	}
+	
 	c := appengine.NewContext(r)
 	metar,err := metar.FetchFromNOAA(urlfetch.Client(c), "KSFO",s.AddDate(0,0,-1), e.AddDate(0,0,1))
 	if err != nil {

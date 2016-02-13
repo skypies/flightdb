@@ -29,6 +29,9 @@ func (db *FlightDB)NewIterator(q *Query) *Iterator {
    f := iter.Flight()
    ...
  }
+ if iter.Err() {
+   return iter.Err()
+ }
 
 */
 
@@ -64,6 +67,3 @@ func (iter *Iterator)Next() *fdb.Flight {
 	f,_ := iter.NextWithErr()
 	return f
 }
-
-
-//// Some canned iterators

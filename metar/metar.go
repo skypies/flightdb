@@ -28,9 +28,8 @@ type Report struct {
 	AltimeterSettingInHg float64    // In inches of mercury, e.g. 30.06 (only ever 4 sig figs)
 }
 func (mr Report)String() string {
-	return fmt.Sprintf("%s@%s: %.4f inHg [%s]", mr.IcaoAirport,
-		mr.Format("2006.01.02-15:04:05-0700"), mr.AltimeterSettingInHg,
-		"")//mr.Raw)
+	return fmt.Sprintf("%s@%s: %.4f inHg", mr.IcaoAirport,
+		mr.Format("2006.01.02-15:04:05-0700"), mr.AltimeterSettingInHg)
 }
 
 // }}}

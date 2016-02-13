@@ -6,6 +6,7 @@ import(
 	"encoding/gob"
 	"html/template"
 	"fmt"
+	"math"
 	"sort"
 	"time"
 
@@ -425,6 +426,52 @@ func (t1 Track)OverlapsWith(t2 Track) (overlaps bool, conf float64, debug string
 	b1 := t1.AsContiguousBoxes()
 	b2 := t2.AsContiguousBoxes()
 	return geo.CompareBoxSlices(&b1,&b2)
+}
+
+// }}}
+
+// {{{ t.AsLinesSampledEvery
+
+// Consider caching this in an ephemeral field ?
+func (t Track)AsLinesSampledEvery(d time.Duration) []geo.LatlongLine {
+	lines := []geo.LatlongLine{}
+
+	if len(t)<2 { return lines }
+
+	iLast := 0
+	for i:=1; i<len(t); i++ {
+		// i is the point we're looking at; iLast is the point at the end of the previous line.
+		if d < t[i].TimestampUTC.Sub(t[iLast].TimestampUTC) {
+			// Time to flush a line segment
+			line := t[iLast].BuildLine(t[i].Latlong)
+			line.I,line.J = iLast,i
+			lines = append(lines, line)
+			iLast = i
+		}
+	}
+
+	return lines
+}
+
+// }}}
+
+// {{{ t.ClosestTo
+
+// returns the index of the trackpoint that was closest to the reference point, or -1 if track
+// has no points.
+func (t Track)ClosestTo(ref geo.Latlong) (int) {
+	if len(t) == 0 { return -1 }
+
+	iMin,sqDistMin := 0,math.MaxFloat64
+
+	for i,tp := range t {
+		dist := ref.LatlongDistSq(tp.Latlong)
+		if dist < sqDistMin {
+			iMin,sqDistMin = i,dist
+		}
+	}
+
+	return iMin
 }
 
 // }}}

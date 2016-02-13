@@ -58,3 +58,8 @@ func (db FlightDB)QueryForRecent(tags []string, n int) *Query {
 	q.Query = q.Query.Order("-Timeslots").Limit(n)
 	return q
 }
+func (db FlightDB)QueryForRecentIcaoId(icaoid string, n int) *Query {
+	q := db.NewQuery().ByIcaoId(adsb.IcaoId(icaoid))
+	q.Query = q.Query.Order("-LastUpdate").Limit(n)
+	return q
+}

@@ -111,7 +111,7 @@ func tracksetHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
+	
 	flights := []*fdb.Flight{}
 	for _,idspec := range idspecs {
 		f,err := db.LookupMostRecent(db.NewQuery().ByIdSpec(idspec))
@@ -128,41 +128,6 @@ func tracksetHandler(w http.ResponseWriter, r *http.Request) {
 
 	OutputTracksAsLinesOnAMap(w,r,flights)
 }
-
-/*
-		sampleRate := time.Second * 5
-		t := f.AnyTrack().SampleEvery(sampleRate, false)
-		for i,_ := range t[1:] { // Line from i to i+1
-			color := "#ff8822"
-			line := MapLine{
-				Start: &t[i].Latlong,
-				End: &t[i+1].Latlong,
-				Color: color,
-			}
-			lines = append(lines, line)
-		}
-	}
-	
-	if r.FormValue("debug") != "" {
-		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte(fmt.Sprintf("OK\n\n%s", str)))
-		return
-	}
-
-	legend := fmt.Sprintf("%d tracks", len(idspecs))
-	var params = map[string]interface{}{
-		"Legend": legend,
-		"Points": template.JS("{}"),
-		"Lines": MapLinesToJSVar(lines),
-		"MapsAPIKey": "",//kGoogleMapsAPIKey,
-		"Center": sfo.KFixes["EPICK"], //sfo.KLatlongSFO,
-		"Zoom": 8,
-	}
-	if err := templates.ExecuteTemplate(w, "fdb-tracks", params); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-*/
 
 // }}}
 // {{{ MapHandler
@@ -203,23 +168,23 @@ func getReport(r *http.Request) (*report.Report, error) {
 // }}}
 // {{{ renderReportFurniture
 
-func renderReportFurniture(rep *report.Report) ([]MapPoint, []MapLine, []MapCircle) {
-	mappoints  := []MapPoint{}
-	maplines   := []MapLine{}
-	mapcircles := []MapCircle{}
+func renderReportFurniture(rep *report.Report) *MapShapes {
+	ms := NewMapShapes()
 
-	for _,reg := range rep.Options.ListRegions() {
-		for _,line := range reg.ToLines() {
+
+	
+	for _,mr := range rep.Options.ListMapRenderers() {
+		for _,line := range mr.ToLines() {
 			x := line
-			maplines = append(maplines, MapLine{Line:&x, Color:"#080808"})
+			ms.AddLine(MapLine{Line:&x, Color:"#080808"})
 		}
-		for _,circle := range reg.ToCircles() {
+		for _,circle := range mr.ToCircles() {
 			x := circle
-			mapcircles = append(mapcircles, MapCircle{C:&x, Color:"#080808"})
+			ms.AddCircle(MapCircle{C:&x, Color:"#080808"})
 		}
 	}
 
-	return mappoints,maplines,mapcircles
+	return ms
 }
 
 // }}}
@@ -244,19 +209,18 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 		//	flights[i].GetLastUpdate())
 	}
 
-	points  := []MapPoint{}
-	lines   := []MapLine{}
-	circles := []MapCircle{}
+	ms := NewMapShapes()
+	
+//	points  := []MapPoint{}
+//	lines   := []MapLine{}
+//	circles := []MapCircle{}
 	
 	rep,err := getReport(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	} else if rep != nil {
-		p,l,c := renderReportFurniture(rep)
-		points = append(points, p...)
-		lines = append(lines, l...)
-		circles = append(circles, c...)
+		ms.Add(renderReportFurniture(rep))
 	}
 	
 	// This whole Airframe cache thing should be automatic, and upstream from here.
@@ -292,8 +256,8 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 	if r.FormValue("debug") != "" {
 		w.Header().Set("Content-Type", "text/plain")
 		if rep != nil {
-			for reg,_ := range rep.ListRegions() {
-				bannerText += fmt.Sprintf(" * region %s\n", reg)
+			for reg,_ := range rep.ListGeoRestrictors() {
+				bannerText += fmt.Sprintf(" * GeoRestriction: %s\n", reg)
 			}
 		}
 		w.Write([]byte(fmt.Sprintf("OK\n\n%s", bannerText)))
@@ -305,7 +269,7 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 		color := "blue"
 		for _,f := range flights {
 			text := bannerText + fmt.Sprintf("* %s", f.IdentString())
-			points = append(points, TrackToMapPoints(f.Tracks["ADSB"], color, text, coloring)...)
+			ms.Points = append(ms.Points, TrackToMapPoints(f.Tracks["ADSB"], color, text, coloring)...)
 			if color == "blue" { color = "yellow" } else { color = "blue" }
 		}
 
@@ -315,7 +279,7 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 		for _,trackType := range []string{"ADSB", "fr24", "FA:TA", "FA:TZ"} {
 			if len(r.FormValue("track")) > 1 && r.FormValue("track") != trackType { continue }
 			if _,exists := f.Tracks[trackType]; !exists { continue }
-			points = append(points, TrackToMapPoints(f.Tracks[trackType], "", bannerText, coloring)...)
+			ms.Points = append(ms.Points, TrackToMapPoints(f.Tracks[trackType], "", bannerText, coloring)...)
 		}
 
 		// &boxes=1
@@ -326,7 +290,7 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 				if len(r.FormValue("boxes")) > 1 && r.FormValue("boxes") != name { continue }
 				if t,exists := f.Tracks[name]; exists==true {
 					for _,box := range t.AsContiguousBoxes() {
-						lines = append(lines, LatlongTimeBoxToMapLines(box, color)...)
+						ms.Lines = append(ms.Lines, LatlongTimeBoxToMapLines(box, color)...)
 					}
 				}
 			}
@@ -338,12 +302,12 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 	
 	var params = map[string]interface{}{
 		"Legend": legend,
-		"Points": MapPointsToJSVar(points),
-		"Lines": MapLinesToJSVar(lines),
-		"Circles": MapCirclesToJSVar(circles),
+		"Points": MapPointsToJSVar(ms.Points),
+		"Lines": MapLinesToJSVar(ms.Lines),
+		"Circles": MapCirclesToJSVar(ms.Circles),
 		"MapsAPIKey": "",//kGoogleMapsAPIKey,
-		"Center": sfo.KFixes["EPICK"], //sfo.KLatlongSFO,
-		"Zoom": 8,
+		"Center": sfo.KFixes["BOLDR"], //sfo.KLatlongSFO,
+		"Zoom": 9,
 	}
 
 	if err := templates.ExecuteTemplate(w, "fdb2-tracks", params); err != nil {
@@ -358,47 +322,40 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 // &colorby=procedure   (what we tagged them as)
 
 func OutputTracksAsLinesOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.Flight) {
-	points  := []MapPoint{}
 	lines   := []MapLine{}
-	circles := []MapCircle{}
 
+	for _,f := range flights {
+		flightLines := FlightToMapLines(f)
+		lines = append(lines, flightLines...)
+	}
+
+	OutputMapLinesOnAMap(w,r,lines)
+}
+
+// }}}
+// {{{ OutputMapLinesOnAMap
+
+// ?idspec==XX,YY,...
+// &colorby=procedure   (what we tagged them as)
+
+func OutputMapLinesOnAMap(w http.ResponseWriter, r *http.Request, inputLines []MapLine) {
+
+	ms := NewMapShapes()
+	ms.Lines = append(ms.Lines, inputLines...)
+	
 	if rep,err := getReport(r); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	} else if rep != nil {
-		p,l,c := renderReportFurniture(rep)
-		points = append(points, p...)
-		lines = append(lines, l...)
-		circles = append(circles, c...)
-	}
-	
-	for _,f := range flights {
-		sampleRate := time.Second * 5
-		t := f.AnyTrack().SampleEvery(sampleRate, false)
-		if len(t) < 2 { continue }
-		for i,_ := range t[1:] { // Line from i to i+1
-			color := "#ff8822"
-			line := MapLine{
-				Start: &t[i].Latlong,
-				End: &t[i+1].Latlong,
-				Color: color,
-			}
-			lines = append(lines, line)
-		}
-	}
-	
-	if r.FormValue("debug") != "" {
-		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte(fmt.Sprintf("OK\n")))
-		return
+		ms.Add(renderReportFurniture(rep))
 	}
 
-	legend := fmt.Sprintf("%d tracks", len(flights))
+	legend := fmt.Sprintf("")
 	var params = map[string]interface{}{
 		"Legend": legend,
-		"Points": MapPointsToJSVar(points),
-		"Lines": MapLinesToJSVar(lines),
-		"Circles": MapCirclesToJSVar(circles),
+		"Points": MapPointsToJSVar(ms.Points),
+		"Lines": MapLinesToJSVar(ms.Lines),
+		"Circles": MapCirclesToJSVar(ms.Circles),
 		"MapsAPIKey": "",//kGoogleMapsAPIKey,
 		"Center": sfo.KFixes["EPICK"], //sfo.KLatlongSFO,
 		"Zoom": 8,
@@ -410,6 +367,27 @@ func OutputTracksAsLinesOnAMap(w http.ResponseWriter, r *http.Request, flights [
 
 // }}}
 
+// {{{ FlightToMapLines
+
+func FlightToMapLines(f *fdb.Flight) []MapLine{
+	lines   := []MapLine{}
+
+	sampleRate := time.Second * 5
+	flightLines := f.AnyTrack().AsLinesSampledEvery(sampleRate)
+	
+	for i,_ := range flightLines {
+		color := "#ff8822"
+		mapLine := MapLine{
+			Line: &flightLines[i],
+			Color: color,
+		}
+		lines = append(lines, mapLine)
+	}
+
+	return lines
+}
+
+// }}}
 
 // {{{ -------------------------={ E N D }=----------------------------------
 

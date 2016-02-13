@@ -14,16 +14,22 @@ import(
 type ReportEntry struct {
 	ReportFunc
 	Name, Description string
+	TrackSpec []string
 }
 
 var reportRegistry = map[string]ReportEntry{}
 
-func HandleReport(f ReportFunc, name, description string) {
+func HandleReport(name string, f ReportFunc, description string) {
 	reportRegistry[name] = ReportEntry{
 		ReportFunc: f,
 		Name: name,
 		Description: description,
 	}
+}
+func TrackSpec(name string, tracks []string) {
+	entry := reportRegistry[name]
+	entry.TrackSpec = tracks
+	reportRegistry[name] = entry
 }
 
 func ListReports() []ReportEntry {

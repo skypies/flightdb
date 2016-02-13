@@ -4,7 +4,7 @@
   {{template "header"}}
   <body>
     <div class="allstack">
-      <h1>Recent</h1>
+      <h1>Recent ({{len .Flights}})</h1>
       <div class="box">
         <table>
         {{range .Flights}}
