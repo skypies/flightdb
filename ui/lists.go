@@ -12,7 +12,7 @@ import(
 )
 
 func init() {
-	http.HandleFunc("/fdb/recent2", listHandler)
+	http.HandleFunc("/fdb/recent", listHandler)
 }
 
 // icaoid=A12345 - lookup recent flights on that airframe

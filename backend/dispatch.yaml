@@ -14,7 +14,7 @@ dispatch:
 - url: "*/static/*"
   module: ui
 
-- url: "fdb.serfr1.org/status"
+- url: "*/status"
   module: consolidator
 - url: "fdb.serfr1.org/reset"
   module: consolidator
