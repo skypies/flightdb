@@ -7,3 +7,4 @@ To deploy all this ...
     $ appcfg.py update_cron     backend/
     $ appcfg.py update_indexes  backend/
     $ appcfg.py update_queues   backend/
+    $ appcfg.py update_dispatch backend/
