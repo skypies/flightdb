@@ -356,6 +356,7 @@ func OutputMapLinesOnAMap(w http.ResponseWriter, r *http.Request, inputLines []M
 		"Points": MapPointsToJSVar(ms.Points),
 		"Lines": MapLinesToJSVar(ms.Lines),
 		"Circles": MapCirclesToJSVar(ms.Circles),
+		"WhiteOverlay": true,
 		"MapsAPIKey": "",//kGoogleMapsAPIKey,
 		"Center": sfo.KFixes["EPICK"], //sfo.KLatlongSFO,
 		"Zoom": 8,
@@ -376,10 +377,11 @@ func FlightToMapLines(f *fdb.Flight) []MapLine{
 	flightLines := f.AnyTrack().AsLinesSampledEvery(sampleRate)
 	
 	for i,_ := range flightLines {
-		color := "#ff8822"
+		color := "#dd6610"
 		mapLine := MapLine{
 			Line: &flightLines[i],
 			Color: color,
+			Opacity: 0.6,
 		}
 		lines = append(lines, mapLine)
 	}

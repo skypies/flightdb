@@ -31,8 +31,9 @@ func ClosestApproachReporter(r *report.Report, f *fdb.Flight, tis []fdb.TrackInt
 	if iClosest < 0 { return false, nil } // track was in fact empty ?
 
 	dist := (*t)[iClosest].DistKM(r.ReferencePoint)
-	(*t)[iClosest].AnalysisAnnotation += fmt.Sprintf("* Closest to %s\n* <b>%.2f</b> KM away\n",
-		r.ReferencePoint, dist)
+	summaryStr := fmt.Sprintf("* Closest to %s\n* <b>%.2f</b> KM away\n", r.ReferencePoint, dist)
+	(*t)[iClosest].AnalysisMapIcon = "red-large"
+	(*t)[iClosest].AnalysisAnnotation += summaryStr
 
 	r.I[fmt.Sprintf("[C] <b>Flights compared against ref pt %s </b>", r.ReferencePoint)]++
 	r.S["[Z] Stats: <b>distance from ref pt in meters</b>"] = ""

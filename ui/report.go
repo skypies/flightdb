@@ -36,8 +36,9 @@ func reportHandler(w http.ResponseWriter, r *http.Request) {
 		var params = map[string]interface{}{
 			"Yesterday": date.NowInPdt().AddDate(0,0,-1),
 			"Reports": report.ListReports(),
-			"FormUrl": "/fdb/report",
+			"FormUrl": "/report",
 			"Waypoints": sfo.ListWaypoints(),
+			"Title": "Reports (DB v2)",
 		}
 		if err := templates.ExecuteTemplate(w, "report3-form", params); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -107,6 +108,7 @@ func reportHandler(w http.ResponseWriter, r *http.Request) {
 		"PostButtons": template.HTML(postButtons),
 		"IdSpecs": template.HTML(strings.Join(idspecs,",")),
 		"DebugLog": rep.DebugLog,
+		"Title": "Reports (DB v2)",
 	}
 	if err := templates.ExecuteTemplate(w, "report3-results", params); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

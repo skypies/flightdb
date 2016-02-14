@@ -25,7 +25,9 @@ function pointsOverlay() {
     lines = {{.Lines}}
     for (var i in lines) {
         var color = lines[i].color
-        if (!color) { color = "#ff6611" }
+        if (!color) { color = "#dd5508" }
+        var opacity = lines[i].opacity
+        if (!opacity) { opacity = 1.0 }
         var coords = []
         coords.push(lines[i].s)
         coords.push(lines[i].e)
@@ -33,7 +35,7 @@ function pointsOverlay() {
             path: coords,
             geodesic: true,
             strokeColor: color,
-            strokeOpacity: 1,
+            strokeOpacity: opacity,
             strokeWeight: 1
         });
         line.setMap(map)

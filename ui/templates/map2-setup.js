@@ -12,6 +12,20 @@ function initMap() {
         document.getElementById('legend'));
     
     classBOverlay()
+    {{if .WhiteOverlay}}
+    var olay = new google.maps.Rectangle({
+        strokeColor: '#ffffff',
+        strokeOpacity: 0,
+        strokeWeight: 0,
+        fillColor: '#ffffff',
+        fillOpacity: 0.4,
+        map: map,
+        bounds: new google.maps.LatLngBounds(
+            new google.maps.LatLng(35,-125),
+            new google.maps.LatLng(40,-117)),
+    });
+    {{end}}
+
     pathsOverlay()
 
     {{if .Legend}}

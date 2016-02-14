@@ -3,7 +3,7 @@
 <html>
   {{template "header"}}
   <body>
-    <h1>Reports</h1><p/>
+    <h1>{{.Title}}</h1><p/>
 
     <form action="{{.FormUrl}}" method="get">
       <div class="stack">
@@ -94,7 +94,7 @@ Skyline Window
 <!--              <input type="text" name="winfromlat" size="11" value="37.206145"/>,
               <input type="text" name="winfromlong" size="11" value="-122.048494"/>-->
               <input type="text" name="winfromlat" size="11" value=""/>,
-              <input type="text" name="winfromlong" size="11" value=""/>
+              <input type="text" name="winfromlong" size="11" value=""/> (latlong)
             </td>
           </tr>            
           <tr>
@@ -103,7 +103,7 @@ Skyline Window
 <!--              <input type="text" name="wintolat" size="11" value="37.495131"/>,
               <input type="text" name="wintolong" size="11" value="-122.368961"/>-->
               <input type="text" name="wintolat" size="11" value=""/>,
-              <input type="text" name="wintolong" size="11" value=""/>
+              <input type="text" name="wintolong" size="11" value=""/> (latlong)
             </td>
           </tr>
 <!--          <tr>
@@ -116,7 +116,8 @@ Skyline Window
           </tr>-->
           
           <tr><td colspan="2"><hr/></td></tr>
-          <tr><td colspan="2"><b>Report-specific options</b> - some reports use these tolerance parameters.<br/><br/>
+          <tr><td colspan="2"><b>Report-specific options</b> - some
+          reports use these tolerance parameters or anchor positions.<br/><br/>
           </td></tr>
             
           <tr>
@@ -127,7 +128,7 @@ Skyline Window
           </tr>
 
           <tr>
-            <td>Reference Point</td>
+            <td>Ref Point</td>
             <td>
               <select name="refpt_waypoint">
                 <option value="" selected="1">(waypoint)</option> 

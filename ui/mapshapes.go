@@ -96,18 +96,20 @@ type MapLine struct {
 	Line        *geo.LatlongLine
 	Start, End  *geo.Latlong
 
-	Color  string  // A hex color value (e.g. "#ff8822")
+	Color        string  // A hex color value (e.g. "#ff8822")
+	Opacity      float64
 }
 func (ml MapLine)ToJSStr(text string) string {
-	color := ml.Color
+	color,op := ml.Color, ml.Opacity
 	if color == "" { color = "#000000" }
-
+	if op == 0.0 { op = 1.0 }
+	
 	if ml.Line != nil {
-		return fmt.Sprintf("s:{lat:%f, lng:%f}, e:{lat:%f, lng:%f}, color:\"%s\"",
-			ml.Line.From.Lat, ml.Line.From.Long, ml.Line.To.Lat, ml.Line.To.Long, color) 
+		return fmt.Sprintf("s:{lat:%f, lng:%f}, e:{lat:%f, lng:%f}, color:\"%s\", opacity:%.2f",
+			ml.Line.From.Lat, ml.Line.From.Long, ml.Line.To.Lat, ml.Line.To.Long, color, op) 
 	} else {
-		return fmt.Sprintf("s:{lat:%f, lng:%f}, e:{lat:%f, lng:%f}, color:\"%s\"",
-			ml.Start.Lat, ml.Start.Long, ml.End.Lat, ml.End.Long, color) 
+		return fmt.Sprintf("s:{lat:%f, lng:%f}, e:{lat:%f, lng:%f}, color:\"%s\", opacity:%.2f",
+			ml.Start.Lat, ml.Start.Long, ml.End.Lat, ml.End.Long, color, op) 
 	}
 }
 

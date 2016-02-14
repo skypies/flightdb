@@ -1,0 +1,26 @@
+application: serfr0-fdb
+
+dispatch:
+
+- url: "airspace.serfr1.org/"
+  module: frontend
+
+- url: "fdb.serfr1.org/"
+  module: frontend
+
+- url: "fdb.serfr1.org/fdb/*"
+  module: ui
+
+- url: "*/static/*"
+  module: ui
+
+- url: "fdb.serfr1.org/status"
+  module: consolidator
+- url: "fdb.serfr1.org/reset"
+  module: consolidator
+
+#- url: "fdb.serfr1.org/report/*"
+#  module: backend
+
+- url: "fdb.serfr1.org/batch/*"
+  module: backend
