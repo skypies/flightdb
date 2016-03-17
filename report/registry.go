@@ -2,7 +2,6 @@ package report
 
 import(
 	"fmt"
-	"html/template"
 	"net/http"
 	"sort"
 
@@ -13,6 +12,7 @@ import(
 // A simple registry of all known reports.
 type ReportEntry struct {
 	ReportFunc
+	SummarizeFunc
 	Name, Description string
 	TrackSpec []string
 }
@@ -25,6 +25,11 @@ func HandleReport(name string, f ReportFunc, description string) {
 		Name: name,
 		Description: description,
 	}
+}
+func SummarizeReport(name string, sf SummarizeFunc) {
+	entry := reportRegistry[name]
+	entry.SummarizeFunc = sf
+	reportRegistry[name] = entry
 }
 func TrackSpec(name string, tracks []string) {
 	entry := reportRegistry[name]
@@ -63,18 +68,16 @@ func SetupReport(r *http.Request) (Report, error) {
 
 func InstantiateReport(name string) (Report,error) {
 	// Lookup in registry
-	r := Report{
-		Name: name,
-		I: map[string]int{},
-		F: map[string]float64{},
-		S: map[string]string{},
-		RowsHTML: [][]template.HTML{},
-		RowsText: [][]string{},
-	}
+	r := BlankReport()
+
+	r.Name = name
+	
 	if entry,exists := reportRegistry[name]; !exists {
 		return r, fmt.Errorf("report '%s' not known", name)
 	} else {
 		r.Func = entry.ReportFunc
+		r.SummarizeFunc = entry.SummarizeFunc
+		r.TrackSpec = entry.TrackSpec
 	}
 	return r, nil
 }

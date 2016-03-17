@@ -16,6 +16,7 @@ type IndexedFlightBlob struct {
 	Timeslots        []time.Time
 	Tags             []string
 
+	Waypoints        []string //`datastore:",noindex"`
 }
 
 func (f *Flight)ToBlob(d time.Duration) (*IndexedFlightBlob, error) {
@@ -30,13 +31,14 @@ func (f *Flight)ToBlob(d time.Duration) (*IndexedFlightBlob, error) {
 		Ident: f.Callsign,
 		Timeslots: f.Timeslots(d),
 		Tags: f.TagList(),
+		Waypoints: f.WaypointList(),
 		LastUpdate: time.Now(),
 	}, nil
 }
 
 func (blob *IndexedFlightBlob)ToFlight(key string) (*Flight, error) {
 	buf := bytes.NewBuffer(blob.Blob)
-	f := Flight{}
+	f := BlankFlight()
 	err := gob.NewDecoder(buf).Decode(&f)
 
 	// Various kinds of post-load fixups

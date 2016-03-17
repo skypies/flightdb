@@ -17,19 +17,23 @@ func alt2bkt(f float64) string {
 	return fmt.Sprintf("%05.0f-%05.0f", g*1000-500, g*1000+500)
 }
 
-func AltitudeBandsReporter(r *report.Report, f *fdb.Flight, tis []fdb.TrackIntersection) (bool, error) {
+func AltitudeBandsReporter(r *report.Report, f *fdb.Flight, tis []fdb.TrackIntersection) (report.FlightReportOutcome, error) {
 	ti,err := r.GetFirstAreaIntersection(tis)
-	if err != nil { return false, err }
+	if err != nil {
+		errStr := fmt.Sprintf("id=%s\n%s\nerr: %v", f.IdentString(), f, err)
+		r.Info(errStr)
+		return report.RejectedByReport, nil
+	}
 
 	avgAlt := ti.Start.Altitude + (ti.End.Altitude - ti.Start.Altitude) / 2.0
-	if avgAlt < 8000.0 {
-		r.I["[C] Flights skipped, below 8000'"]++
-		return false, nil
-	} // Too low to be interesting
+//	if avgAlt < 8000.0 {
+//		r.I["[C] Flights skipped, below 8000'"]++
+//		return report.RejectedByReport, nil
+//	} // Too low to be interesting
 
 	bkt := alt2bkt(avgAlt)
-		
-	r.I["[C] <b>Flights passing through region, above 8000'</b>"]++
+
+	r.I["[C] <b>Flights included in altitude stack</b>"]++
 	r.I[fmt.Sprintf("[D] %s",bkt)]++
 	
 	row := []string{
@@ -40,5 +44,5 @@ func AltitudeBandsReporter(r *report.Report, f *fdb.Flight, tis []fdb.TrackInter
 
 	r.AddRow(&row, &row)
 	
-	return true, nil
+	return report.Accepted, nil
 }

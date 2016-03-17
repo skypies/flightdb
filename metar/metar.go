@@ -16,8 +16,6 @@ import(
 
 // Metar: https://en.wikipedia.org/wiki/METAR, http://meteocentre.com/doc/metar.html
 
-// We use Ogimet, as it prefixes with real timestamps, making historical fetching easier
-
 // {{{ Report{}
 
 type Report struct {

@@ -12,12 +12,13 @@ import (
 	"github.com/skypies/util/histogram"
 
 	fdb "github.com/skypies/flightdb2"
+	"github.com/skypies/flightdb2/metar"
 	"github.com/skypies/flightdb2/report"
 )
 
 func init() {
-	report.HandleReport("sfoclassb", SFOClassBReporter, "SFO Class B excursions on SERFR")
-	report.TrackSpec("sfoclassb", []string{"ADSB","FA"}) // That's all we'll accept
+	report.HandleReport("sfoclassb", SFOClassBReporter, "SFO Class B excursions (use SERFR1 tag)")
+	report.TrackSpec("sfoclassb", []string{"ADSB","FA", "FOIA"}) // That's all we'll accept
 }
 
 
@@ -31,11 +32,15 @@ func ClassBForTrack(r *report.Report, track fdb.Track) (*geo.TPClassBAnalysis,er
 		if tp.Altitude < 50 { continue } // Skip datapoints with null/empty altitude data
 
 		lookup := r.Archive.Lookup(tp.TimestampUTC)
-		track[i].AnalysisAnnotation += fmt.Sprintf("* METAR: %v\n", lookup)
-		if lookup.Raw == "" {
+		if lookup == nil {
+			track[i].AnalysisAnnotation += fmt.Sprintf("* No Metar, using fake data (assume 29.62)\n")
+			lookup = &metar.Report{"asd", "KSFO", tp.TimestampUTC, 29.62}
+		}
+		if lookup == nil || lookup.Raw == "" {
 			track[i].AnalysisAnnotation += fmt.Sprintf("* No Metar, skipping\n")
 			return nil, fmt.Errorf("No metar, aborting")
 		}
+		track[i].AnalysisAnnotation += fmt.Sprintf("* METAR: %v\n", lookup)
 		
 		iAlt := altitude.PressureAltitudeToIndicatedAltitude(tp.Altitude, lookup.AltimeterSettingInHg)
 
@@ -72,23 +77,23 @@ func ClassBForTrack(r *report.Report, track fdb.Track) (*geo.TPClassBAnalysis,er
 
 // {{{ SFOClassBReporter
 
-func SFOClassBReporter(r *report.Report, f *fdb.Flight, tis []fdb.TrackIntersection) (bool, error) {
+func SFOClassBReporter(r *report.Report, f *fdb.Flight, tis []fdb.TrackIntersection) (report.FlightReportOutcome, error) {
 	// Now store our results
 	r.I["[C] Total Flights Examined"]++
 
-	if f == nil { return false,nil }
-	if f.Tracks == nil { return false, fmt.Errorf("f.Tracks == nil !") }
+	if f == nil { return report.RejectedByReport,nil }
+	if f.Tracks == nil { return report.RejectedByReport, fmt.Errorf("f.Tracks == nil !") }
 	
 	if f.Destination != "SFO" {
 		r.I["[D] dest != SFO"]++
-		return false,nil
+		return report.RejectedByReport,nil
 	}
 
 	// For Class B, we're very picky about data sources.
-	typePicked,track := f.PreferredTrack([]string{"ADSB", "FA"})
+	typePicked,track := f.PreferredTrack([]string{"ADSB", "FA", "FOIA"})
 	if typePicked == "" {
-		r.I["[D] Skipped, no ADSB or FA track avail"]++
-		return false,nil
+		r.I["[D] Skipped, no ADSB, FA or FOIA track avail"]++
+		return report.RejectedByReport,nil
 	}
 
 	r.I["[D] <b>Accepted for Class B Analysis</b>"]++
@@ -96,24 +101,25 @@ func SFOClassBReporter(r *report.Report, f *fdb.Flight, tis []fdb.TrackIntersect
 	deepest,err := ClassBForTrack(r, track)
 	if err != nil {
 		r.I["_classb_err_"+err.Error()]++
-		return false, err
+		return report.RejectedByReport, err
 	}
 
 	if deepest == nil {
 		r.I["[E] No excursion found"]++
-		return false, nil
+		return report.RejectedByReport, nil
 	}
 
-	if typePicked != "ADSB" {
-		r.I["[E] Excursion skipped ("+track.LongSource()+")"]++
-		return false,nil
+	if typePicked != "ADSB" && typePicked != "FOIA" {
+		r.I["[E] Excursions skipped, datasource ("+track.LongSource()+")"]++
+		return report.RejectedByReport,nil
 	}
 	//r.Hist.Add(histogram.ScalarVal(deepest.BelowBy))
 
-	if !f.HasTag("SERFR1") {
-		r.I["[E] Excurions skipped, not tagged as SERFR1"]++
-		return false,nil
-	}
+// Also check for SKUNK+BOLDR
+//	if !f.HasWaypoint("EDDYY") && !f.HasWaypoint("EPICK") {
+//		r.I["[E] Excurions skipped, not on EPICK-EDDYY"]++
+//		return report.RejectedByReport,nil
+//	}
 
 	r.I["[E] <b>Excursion found</b> via "+track.LongSource()]++
 
@@ -137,7 +143,7 @@ func SFOClassBReporter(r *report.Report, f *fdb.Flight, tis []fdb.TrackIntersect
 	}
 	r.AddRow(&row, &row)
 	
-	return true, nil
+	return report.Accepted, nil
 }
 
 // }}}

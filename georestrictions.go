@@ -10,14 +10,15 @@ import(
 
 // Also return trackpoint info ?
 func (f *Flight)SatisfiesGeoRestriction(gr geo.GeoRestrictor, tracks []string) (bool, TrackIntersection, string) {
-	//if f.Callsign != "CCA985" { return false, fmt.Sprintf("hackety hack %s\n", f) }
 
 	if len(tracks) == 0 {
 		return f.AnyTrack().SatisfiesGeoRestriction(gr)
 	} else {
 		for _,tName := range tracks {
 			if f.HasTrack(tName) {
-				return f.Tracks[tName].SatisfiesGeoRestriction(gr)
+				str := fmt.Sprintf("* wanted tracks %v, found %v", tracks, tName)
+				ok,tis,deb := f.Tracks[tName].SatisfiesGeoRestriction(gr)
+				return ok,tis,str+deb
 			}
 		}
 		str := fmt.Sprintf("* wanted tracks %v, only had %v", tracks, f.ListTracks())
@@ -31,13 +32,15 @@ func (f *Flight)SatisfiesGeoRestriction(gr geo.GeoRestrictor, tracks []string) (
 
 func (t Track)findEntry(lines []geo.LatlongLine, start int, gr geo.GeoRestrictor) (int,int,string) {
 	str := ""
+	//str += fmt.Sprintf("looking at %d lines, from %d", len(lines), start)
+
 	for i:=start; i<len(lines); i++ {
 		line := lines[i]
 		if line.IsDegenerate() { continue }
-//		str += fmt.Sprintf("* %03d line[%3d,%3d] == %v (look for entry)\n", i, line.I, line.J,
-//			gr.IntersectsLine(line))
+		//str += fmt.Sprintf("* %03d line[%3d,%3d] == %v (look for entry)\n", i, line.I, line.J,
+		//	gr.IntersectsLine(line))
 		if gr.IntersectsLine(line) == true {
-						// The state change happens in this line segment - track down the point at which happens
+			// The state change happens in this line segment - track down the point at which happens
 			if line.J-line.I > 1 {
 				for i:=line.I+1; i<line.J; i++ {
 					subLine := t[i-1].LineTo(t[i].Latlong)
@@ -54,6 +57,8 @@ func (t Track)findEntry(lines []geo.LatlongLine, start int, gr geo.GeoRestrictor
 			// the index of the contained point.
 			str += fmt.Sprintf("* returning [%d] for lookFor=entry\n", line.J)
 			return line.J,i,str // We were looking to start intersecting - so second point is inside
+		} else {
+			str += fmt.Sprintf("  no; box=%s, line=%s\n", gr, line)
 		}
 	}
 
@@ -115,14 +120,14 @@ func (t Track)findExit(lines []geo.LatlongLine, start int, gr geo.GeoRestrictor)
 // {{{ t.SatisfiesGeoRestriction
 
 func (t Track)SatisfiesGeoRestriction(gr geo.GeoRestrictor) (bool, TrackIntersection, string) {
-	lines := t.AsLinesSampledEvery(time.Second * 5)
+	lines := t.AsLinesSampledEvery(time.Second * 1)
 	str := fmt.Sprintf("** %s\n** Geo   %s\n", t, gr)
-
+	
 	iEntry,iLine,deb := t.findEntry(lines, 0, gr)
 	str += deb
 	
 	if iEntry < 0 {
-		str = "* No entry point found\n"
+		str += "* No entry point found\n"
 		return false, TrackIntersection{}, str
 	}
 

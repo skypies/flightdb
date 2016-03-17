@@ -6,8 +6,6 @@ import(
 )
 
 func (db FlightDB)getallByQuery(q *datastore.Query) ([]*fdb.Flight, error) {
-	//tolerantContext := appengine.Timeout(cdb.C, 30*time.Second)  // Default context has a 5s timeout
-	
 	blobs := []fdb.IndexedFlightBlob{}
 	db.Debugf(" #--- going to datastore ... %v", *q)
 	keys, err := q.GetAll(db.C, &blobs)

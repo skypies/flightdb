@@ -6,40 +6,51 @@
     <h1>{{.Title}}</h1><p/>
 
     <form action="{{.FormUrl}}" method="get">
-      <div class="stack">
+      <div class="stack" style="max-width:600px">
 
         <div class="box">
 
         <table border="0">
 
           <tr>
-            <td>Report type</td>
+            <td>Report Type</td>
             <td><select name="rep">
                 {{range .Reports}}
                 <option value="{{.Name}}">{{.Description}}</option>{{end}}
             </select></td>
           </tr>
-<!--          
-          <tr>
-            <td>Result format</td>
-            <td>
-              <input type="radio" name="resultformat" value="list" checked="yes"/>web page,
-              <input type="radio" name="resultformat" value="csv"/>download CSV,
-              <input type="radio" name="resultformat" value="gcs"/>Cloud Storage.
-            </td>
-          </tr>
--->
 
           <tr><td colspan="2"><hr/></td></tr>
           <tr><td colspan="2"><b>Flight restrictions</b> - efficiently
-          trim the dataset. TBD.<br/>
+          trim the dataset.<br/>
           </td></tr>
           <tr>
             <td>Flight tags</td>
             <td><input type="text" name="tags" size="12" value=""/>
-            (e.g. <code>SERFR1</code>, <code>OCEANIC</code>)</td>
+            (e.g. <code>SERFR1</code>,<code>OCEANIC:</code>,<code>:SFO</code>,<code>AL</code>)</td>
           </tr>
 
+          <tr>
+            <td>Waypoints</td>
+            <td>
+              <select name="waypoint1">
+                <option value="" selected="1">(waypoint)</option> 
+                {{range .Waypoints}}
+                <option value="{{.}}">{{.}}</option>{{end}}
+              </select>,
+              <select name="waypoint2">
+                <option value="" selected="1">(waypoint)</option> 
+                {{range .Waypoints}}
+                <option value="{{.}}">{{.}}</option>{{end}}
+              </select>,
+              <select name="waypoint3">
+                <option value="" selected="1">(waypoint)</option> 
+                {{range .Waypoints}}
+                <option value="{{.}}">{{.}}</option>{{end}}
+              </select>.
+            </td>
+          </tr>
+          
           <tr><td colspan="2"><hr/></td></tr>
           <tr><td colspan="2"><b>Time restrictions</b> - define a time range for flights.
               Approximate. If you pick more than a few days, it may timeout.<br/>
@@ -53,7 +64,7 @@
           </tr>
           
           <tr><td colspan="2"><hr/></td></tr>
-          <tr><td colspan="2"><b>Geo restrictions (1)</b>: Define a region of interest;
+          <tr><td colspan="2"><b>Geo restrictions (1)</b>: Define a <b>{region}</b> of interest;
               pick a center for a box. Leave
               blank to report on all flights. Don't use regions less
               than a few KM in size.<br/>
@@ -81,7 +92,7 @@
           </tr>
 
           <tr><td colspan="2"><br/><b>Geo restrictions (2)</b>:
-              Or, define a geo window that flights must fly through.<br/>
+              And/or, define a geo <b>{window}</b> that flights must fly through.<br/>
           </td></tr>
 <!--
 Skyline Window
@@ -116,10 +127,22 @@ Skyline Window
           </tr>-->
           
           <tr><td colspan="2"><hr/></td></tr>
-          <tr><td colspan="2"><b>Report-specific options</b> - some
-          reports use these tolerance parameters or anchor positions.<br/><br/>
+          <tr><td colspan="2"><b>Report-specific options</b> -
+          different reports may use some of these values; look
+          carefully at the report description for <b>{thing}</b> to
+          see which.<br/><br/>
           </td></tr>
-            
+
+          <tr>
+            <td>Data Source</td>
+            <td>
+              <input type="radio" name="datasource" value="ADSB"/>ADSB-only,
+              <input type="radio" name="datasource" value="fr24"/>fr24-only,
+              <input type="radio" name="datasource" value="any" checked="yes"/>
+              let the report choose.
+            </td>
+          </tr>
+          
           <tr>
             <td>Altitude</td>
             <td>
@@ -128,8 +151,17 @@ Skyline Window
           </tr>
 
           <tr>
-            <td>Ref Point</td>
+            <td>Distance</td>
             <td>
+              <b>{dist}</b> <input type="text" name="refdistancekm"
+              size="8" value=""/> (in KM)
+            </td>
+          </tr>
+
+          <tr>
+            <td>Reference Point</td>
+            <td>
+              <b>{refpoint}</b>
               <select name="refpt_waypoint">
                 <option value="" selected="1">(waypoint)</option> 
                 {{range .Waypoints}}
@@ -140,20 +172,52 @@ Skyline Window
             </td>
           </tr>
 
+          <tr>
+            <td>Duration</td>
+            <td>
+              <b>{duration}</b>
+              <input type="text" name="duration" size="8" value="2m"/>
+              (e.g. <code>30s</code>, <code>2h25m15s</code>)
+            </td>
+          </tr>
+          
+          
+          <tr><td colspan="2"><hr/></td></tr>
+          <tr><td colspan="2"><b>Formatting / output options</b> - how
+          to display the output.<br/><br/>
+          </td></tr>
+            
+          <tr>
+            <td>Line opacity</td>
+            <td>
+              <input type="text" name="maplineopacity" size="4"
+              value="0.3"/> (for vector maps)
+            </td>
+          </tr>
+
+
+          <tr>
+            <td>Result format</td>
+            <td>
+              <input type="radio" name="resultformat" value="list" checked="yes"/>web page,
+              <input type="radio" name="resultformat" value="csv"/>download CSV<!--,
+              <input type="radio" name="resultformat" value="gcs"/>Cloud Storage-->.
+            </td>
+          </tr>
           
           <tr><td colspan="2"><hr/></td></tr>
         </table>
 
-        <br/>
+
+          <br/>
         <p style="text-align:center"><input class="button" type="submit" value="GENERATE"/></p>
         <br/>
         </div>
-
 <!--
         <p> Debug: <input type="text" name="debug" value="1" size="1"/></p>
 -->
         <p>Data only really starts at 11:30am on Wed Sep 23.</p>
-
+        
       </div>
     </form>
   </body>

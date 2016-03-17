@@ -11,7 +11,14 @@ import (
 // Trackpoint is a data point that locates an aircraft in space and time, etc
 type Trackpoint struct {
 	DataSource   string    // What kind of trackpoint is this; flightaware radar, local ADSB, etc
+
+/*
+	DataSystem   string    // ADSB, MLAT, Radar, ...
+	DataProvider string    // LocalReceiver, FOIA, FA, fr24, ...
+*/
+
 	ReceiverName string    // For local ADSB
+
 	TimestampUTC time.Time // Always in UTC, to make life SIMPLE
 
 	geo.Latlong            // Embedded type, so we can call all the geo stuff directly on trackpoints
@@ -62,6 +69,8 @@ func (tp Trackpoint)LongSource() string {
 	}
 	return tp.DataSource
 }
+
+func (tp Trackpoint)GetDataSystem() string { return "ADSB" }
 
 func TrackpointFromADSB(m *adsb.CompositeMsg) Trackpoint {
 	return Trackpoint{

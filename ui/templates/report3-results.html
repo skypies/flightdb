@@ -28,11 +28,12 @@
         </table>
       </div>
 
-      <p><a target="_blank"
-      href="localhost:8080/fdb/snarf?idspec={{.IdSpecs}}">DEBUG: Snarf To Local</a></p>
-      <p>{{.OptStr}}</p>
-
-      <pre>{{.DebugLog}}</pre>
+      <div style="text-align:left">
+      <p>DEBUG:<a target="_blank" href="localhost:8080/fdb/snarf?idspec={{.IdSpecs}}">snarf
+      to a local flightdb2/ui</a></p>
+      <p><pre>{{.OptStr}}</pre></p>
+      <p><pre>{{.R.Log}}</pre></p>
+      </div>
       
       <div class="stack">
         <h3>Notes</h3>

@@ -29,7 +29,7 @@ func (db *FlightDB)NewIterator(q *Query) *Iterator {
    f := iter.Flight()
    ...
  }
- if iter.Err() {
+ if iter.Err() != nil {
    return iter.Err()
  }
 

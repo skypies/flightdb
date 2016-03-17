@@ -66,7 +66,8 @@ func snarfHandler(w http.ResponseWriter, r *http.Request) {
 	client := urlfetch.Client(c)
 	db := fgae.FlightDB{C:c}
 
-	url := "http://stop.jetnoise.net/fdb/json2?idspec=" + r.FormValue("idspec")
+	//url := "http://stop.jetnoise.net/fdb/json2?idspec=" + r.FormValue("idspec")
+	url := "http://fdb.serfr1.org/fdb/json?idspec=" + r.FormValue("idspec")
 
 	str := fmt.Sprintf("Snarfer!\n--\n%s\n--\n", url)
 	

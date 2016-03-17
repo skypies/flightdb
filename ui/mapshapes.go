@@ -93,24 +93,19 @@ func (mp MapPoint)ToJSStr(text string) string {
 
 
 type MapLine struct {
-	Line        *geo.LatlongLine
-	Start, End  *geo.Latlong
+	Start geo.Latlong `json:"s"`
+	End   geo.Latlong `json:"e"`
 
-	Color        string  // A hex color value (e.g. "#ff8822")
-	Opacity      float64
+	Color        string  `json:"color"`    // A hex color value (e.g. "#ff8822")
+	Opacity      float64 `json:"opacity"`
 }
+
 func (ml MapLine)ToJSStr(text string) string {
 	color,op := ml.Color, ml.Opacity
 	if color == "" { color = "#000000" }
 	if op == 0.0 { op = 1.0 }
-	
-	if ml.Line != nil {
-		return fmt.Sprintf("s:{lat:%f, lng:%f}, e:{lat:%f, lng:%f}, color:\"%s\", opacity:%.2f",
-			ml.Line.From.Lat, ml.Line.From.Long, ml.Line.To.Lat, ml.Line.To.Long, color, op) 
-	} else {
-		return fmt.Sprintf("s:{lat:%f, lng:%f}, e:{lat:%f, lng:%f}, color:\"%s\", opacity:%.2f",
-			ml.Start.Lat, ml.Start.Long, ml.End.Lat, ml.End.Long, color, op) 
-	}
+	return fmt.Sprintf("s:{lat:%f, lng:%f}, e:{lat:%f, lng:%f}, color:\"%s\", opacity:%.2f",
+		ml.Start.Lat, ml.Start.Long, ml.End.Lat, ml.End.Long, color, op) 
 }
 
 func MapPointsToJSVar(points []MapPoint) template.JS {
@@ -134,21 +129,11 @@ func MapLinesToJSVar(lines []MapLine) template.JS {
 func LatlongTimeBoxToMapLines(tb geo.LatlongTimeBox, color string) []MapLine {
 	maplines := []MapLine{}
 	for _,line := range tb.LatlongBox.ToLines() {
-		x := line
-		maplines = append(maplines, MapLine{Line: &x, Color:color})
+		mapline := MapLine{Start:line.From, End:line.To}
+		mapline.Color = color
+		maplines = append(maplines, mapline)
 	}
 	return maplines
-
-	/*
-	SW,NE,SE,NW := tb.SW, tb.NE, tb.SE(), tb.NW()
-	if color == "" { color = "#22aa33" }
-	lines := []MapLine{
-		MapLine{Start:&SE, End:&SW, Color:color},
-		MapLine{Start:&SW, End:&NW, Color:color},
-		MapLine{Start:&NW, End:&NE, Color:color},
-		MapLine{Start:&NE, End:&SE, Color:color},
-	}
-	return lines*/
 }
 
 type ColoringStrategy int

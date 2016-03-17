@@ -140,7 +140,7 @@ func TestParseCurrentDetails(t *testing.T) {
 
 func TestFetchLookupCurrentList(t *testing.T) {
 	db,_ := NewFr24(nil)
-	if resp,err := db.LookupCurrentList(sfo.KBoxSFO120K); err != nil {
+	if resp,err := db.LookupCurrentList(sfo.KBoxSnarfingCatchment); err != nil {
 		t.Errorf("Lookuplist error:%v", err)
 	} else {
 		if len(resp) == 0 {
@@ -155,7 +155,7 @@ func TestFetchLookupCurrentList(t *testing.T) {
 
 func TestFetchLookupCurrentDetails(t *testing.T) {
 	db,_ := NewFr24(nil)
-	if resp,err := db.LookupCurrentList(sfo.KBoxSFO120K); err != nil {
+	if resp,err := db.LookupCurrentList(sfo.KBoxSnarfingCatchment); err != nil {
 		t.Errorf("Lookuplist error:%v", err)
 	} else if len(resp) == 0 {
 		t.Errorf("Lookuplist no error, but empty?")
@@ -178,7 +178,7 @@ func TestFetchLookupCurrentDetails(t *testing.T) {
 func TestFetchLookupPlaybackTrack(t *testing.T) {
 	db,_ := NewFr24(nil)
 
-	if resp,err := db.LookupCurrentList(sfo.KBoxSFO120K); err != nil {
+	if resp,err := db.LookupCurrentList(sfo.KBoxSnarfingCatchment); err != nil {
 		t.Errorf("Lookuplist error:%v", err)
 	} else {
 		id := resp[0].Flight.Identity.ForeignKeys["fr24"]

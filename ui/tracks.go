@@ -1,8 +1,11 @@
 package ui
 
 import(
+	"encoding/json"
+	"html/template"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 	
 	"google.golang.org/appengine"
@@ -11,7 +14,7 @@ import(
 
 	// "github.com/skypies/adsb"
 	"github.com/skypies/geo/sfo"
-	// "github.com/skypies/util/widget"
+	"github.com/skypies/util/widget"
 	fdb "github.com/skypies/flightdb2"
 	"github.com/skypies/flightdb2/fgae"
 	"github.com/skypies/flightdb2/fr24"
@@ -21,8 +24,10 @@ import(
 
 func init() {
 	http.HandleFunc("/fdb/map", MapHandler)
+	http.HandleFunc("/fdb/debug", debugHandler)
 	http.HandleFunc("/fdb/tracks", trackHandler)
 	http.HandleFunc("/fdb/trackset", tracksetHandler)
+	//http.HandleFunc("/fdb/vector", vectorHandler)
 }
 
 // {{{ maybeAddFr24Track
@@ -60,6 +65,50 @@ func MaybeAddFr24Track(c context.Context, f *fdb.Flight) string {
 
 // }}}
 
+// {{{ debugHandler
+
+func debugHandler(w http.ResponseWriter, r *http.Request) {
+	c := appengine.NewContext(r)
+
+	str := ""
+	
+	idspecs,err := FormValueIdSpecs(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	//str += fmt.Sprintf("** Idspecs:-\n%#v\n\n", idspecs)
+	
+	db := fgae.FlightDB{C:c}
+	for _,idspec := range idspecs {
+		str += fmt.Sprintf("*** %s\n", idspec)
+		f,err := db.LookupMostRecent(db.NewQuery().ByIdSpec(idspec))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		} else if f == nil {
+			http.Error(w, fmt.Sprintf("idspec %s not found", idspec), http.StatusInternalServerError)
+			return
+		}
+		str += fmt.Sprintf("    %s\n", f.IdSpec())
+		str += fmt.Sprintf("    %s\n", f)
+
+		t := f.AnyTrack()
+		str += fmt.Sprintf("---- Anytrack: %s\n", t)
+
+		for k,v := range f.Tracks {
+			str += fmt.Sprintf("\n** [%-6.6s] %s\n", k, v)
+			//for n,tp := range *v {str += fmt.Sprintf("    * [%3d] %s\n", n, tp)}
+		}
+
+		str += fmt.Sprintf("--- DebugLog:-\n%s\n", f.DebugLog)
+	}
+
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte(fmt.Sprintf("OK\n\n%s", str)))
+}
+
+// }}}
 // {{{ trackHandler
 
 func trackHandler(w http.ResponseWriter, r *http.Request) {
@@ -88,7 +137,7 @@ func trackHandler(w http.ResponseWriter, r *http.Request) {
 		if af := airframes.Get(f.IcaoId); af != nil { f.Airframe = *af }
 		flights = append(flights, f)
 	}
-
+	
 	OutputTracksOnAMap(w, r, flights)
 }
 
@@ -99,6 +148,99 @@ func trackHandler(w http.ResponseWriter, r *http.Request) {
 //  &colorby=procedure   (what we tagged them as)
 
 func tracksetHandler(w http.ResponseWriter, r *http.Request) {
+	//colorscheme := FormValueColorScheme(r)
+	idspecs,err := FormValueIdSpecs(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	idstrings := []string{}
+	for _,idspec := range idspecs {
+		idstrings = append(idstrings, idspec.String())
+	}
+	
+	OutputMapLinesOnAStreamingMap(w, r, idstrings)
+}
+
+// }}}
+// {{{ MapHandler
+
+func MapHandler(w http.ResponseWriter, r *http.Request) {
+	points  := []MapPoint{}
+	lines   := []MapLine{}
+	circles := []MapCircle{}
+	
+	var params = map[string]interface{}{
+		"Legend": "purple={SERFR2,BRIXX1,WWAVS1}; cyan={BIGSUR2}",
+		"Points": MapPointsToJSVar(points),
+		"Lines": MapLinesToJSVar(lines),
+		"Circles": MapCirclesToJSVar(circles),
+		"MapsAPIKey": "",//kGoogleMapsAPIKey,
+		"Center": sfo.KFixes["EDDYY"], //sfo.KLatlongSFO,
+		"Zoom": 9,
+	}
+
+	if err := templates.ExecuteTemplate(w, "fdb2-tracks", params); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// }}}
+// {{{ vectorHandler
+
+// ?idspec=F12123@144001232[,...]
+// &json=1
+
+func vectorHandler(w http.ResponseWriter, r *http.Request) {
+	c := appengine.NewContext(r)
+	db := fgae.FlightDB{C:c}
+	
+	//colorscheme := FormValueColorScheme(r)
+	idspecs,err := FormValueIdSpecs(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if r.FormValue("json") == "" {
+		http.Error(w, "vectorHandler is json only at the moment", http.StatusInternalServerError)
+		return
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	//w.Write([]byte("["))
+	for _,idspec := range idspecs {
+		f,err := db.LookupMostRecent(db.NewQuery().ByIdSpec(idspec))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		} else if f == nil {
+			http.Error(w, fmt.Sprintf("idspec %s not found", idspec), http.StatusInternalServerError)
+			return
+		}
+
+		trackName,_ := f.PreferredTrack(widget.FormValueCommaSepStrings(r, "trackspec"))
+		
+		lines := FlightToMapLines(f, trackName)
+		jsonBytes,err := json.Marshal(lines)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Write(jsonBytes)
+	}
+
+	//w.Write([]byte("]"))
+}
+
+// }}}
+
+// {{{ oldtracksetHandler
+
+// ?idspec=F12123@144001232[,...]
+//  &colorby=procedure   (what we tagged them as)
+
+func oldtracksetHandler(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
 	db := fgae.FlightDB{C:c}
 	
@@ -130,29 +272,7 @@ func tracksetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // }}}
-// {{{ MapHandler
 
-func MapHandler(w http.ResponseWriter, r *http.Request) {
-	points  := []MapPoint{}
-	lines   := []MapLine{}
-	circles := []MapCircle{}
-	
-	var params = map[string]interface{}{
-		"Legend": "hello",
-		"Points": MapPointsToJSVar(points),
-		"Lines": MapLinesToJSVar(lines),
-		"Circles": MapCirclesToJSVar(circles),
-		"MapsAPIKey": "",//kGoogleMapsAPIKey,
-		"Center": sfo.KFixes["EPICK"], //sfo.KLatlongSFO,
-		"Zoom": 9,
-	}
-
-	if err := templates.ExecuteTemplate(w, "fdb2-tracks", params); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-// }}}
 
 // {{{ getReport
 
@@ -171,12 +291,9 @@ func getReport(r *http.Request) (*report.Report, error) {
 func renderReportFurniture(rep *report.Report) *MapShapes {
 	ms := NewMapShapes()
 
-
-	
 	for _,mr := range rep.Options.ListMapRenderers() {
 		for _,line := range mr.ToLines() {
-			x := line
-			ms.AddLine(MapLine{Line:&x, Color:"#080808"})
+			ms.AddLine(MapLine{Start:line.From, End:line.To, Color:"#080808"})
 		}
 		for _,circle := range mr.ToCircles() {
 			x := circle
@@ -189,7 +306,7 @@ func renderReportFurniture(rep *report.Report) *MapShapes {
 
 // }}}
 
-// {{{ OutputTrackOnAMap
+// {{{ OutputTracksOnAMap
 
 // ?idspec=F12123@144001232[,...]
 //  colorby=rcvr
@@ -259,6 +376,7 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 			for reg,_ := range rep.ListGeoRestrictors() {
 				bannerText += fmt.Sprintf(" * GeoRestriction: %s\n", reg)
 			}
+			bannerText += "\n--- report.Log:-\n" + rep.Log
 		}
 		w.Write([]byte(fmt.Sprintf("OK\n\n%s", bannerText)))
 		return
@@ -273,10 +391,10 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 			if color == "blue" { color = "yellow" } else { color = "blue" }
 		}
 
-	} else {
+	} else if len(flights) == 1 {
 		f := flights[0]
 		// Pick most recent instance, and colorize all visible tracks.
-		for _,trackType := range []string{"ADSB", "fr24", "FA:TA", "FA:TZ"} {
+		for _,trackType := range []string{"ADSB", "MLAT", "fr24", "FA:TA", "FA:TZ", "FOIA"} {
 			if len(r.FormValue("track")) > 1 && r.FormValue("track") != trackType { continue }
 			if _,exists := f.Tracks[trackType]; !exists { continue }
 			ms.Points = append(ms.Points, TrackToMapPoints(f.Tracks[trackType], "", bannerText, coloring)...)
@@ -285,7 +403,8 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 		// &boxes=1
 		if r.FormValue("boxes") != "" {
 			for name,color := range map[string]string{
-				"ADSB":"#888811","fr24":"#11aa11","FA:TA":"#1111aa","FA:TZ":"#1111aa",
+				"ADSB":"#888811","MLAT":"#8888ff",
+				"fr24":"#11aa11","FA:TA":"#1111aa","FA:TZ":"#1111aa","FOIA":"#664433",
 			} {
 				if len(r.FormValue("boxes")) > 1 && r.FormValue("boxes") != name { continue }
 				if t,exists := f.Tracks[name]; exists==true {
@@ -296,8 +415,8 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 			}
 		}
 	}
-	
-	legend := fmt.Sprintf("%s %v", flights[0].IdentString(), flights[0].TagList())
+
+	legend := flights[0].Legend()
 	if len(flights)>1 { legend += fmt.Sprintf(" (%d instances)", len(flights)) }
 	
 	var params = map[string]interface{}{
@@ -325,7 +444,7 @@ func OutputTracksAsLinesOnAMap(w http.ResponseWriter, r *http.Request, flights [
 	lines   := []MapLine{}
 
 	for _,f := range flights {
-		flightLines := FlightToMapLines(f)
+		flightLines := FlightToMapLines(f, "")
 		lines = append(lines, flightLines...)
 	}
 
@@ -368,18 +487,86 @@ func OutputMapLinesOnAMap(w http.ResponseWriter, r *http.Request, inputLines []M
 
 // }}}
 
+// {{{ IdSpecsToJSVar
+
+// Should be a simple list, really
+func IdSpecsToJSVar(idspecs []string) template.JS {
+	str := "{\n"
+	for i,id := range idspecs {
+		str += fmt.Sprintf("    %d: {idspec:%q},\n", i, id)
+	}
+	return template.JS(str + "  }\n")		
+}
+
+// }}}
+// {{{ OutputMapLinesOnAStreamingMap
+
+// ?idspec==XX,YY,...
+// &colorby=procedure   (what we tagged them as)
+
+func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspecs []string) {
+	ms := NewMapShapes()
+	//ms.Lines = append(ms.Lines, inputLines...)
+	
+	opacity := 0.6
+	trackspec := ""
+	legend := fmt.Sprintf("%d flights", len(idspecs))
+	if rep,err := getReport(r); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if rep != nil {
+		ms.Add(renderReportFurniture(rep))
+		opacity = rep.MapLineOpacity
+		trackspec = strings.Join(rep.ListPreferredDataSources(), ",")
+		legend += fmt.Sprintf(": %s", rep.Start.Format("2006/01/02"))
+		if len(rep.Tags)>0 { legend += fmt.Sprintf(", tag%v", rep.Tags) }
+		if len(rep.HackWaypoints)>0 { legend += fmt.Sprintf(", wp%v", rep.HackWaypoints) }
+	}
+
+	var params = map[string]interface{}{
+		"Legend": legend,
+		"Points": MapPointsToJSVar(ms.Points),
+		"Lines": MapLinesToJSVar(ms.Lines),
+		"Circles": MapCirclesToJSVar(ms.Circles),
+		"IdSpecs": IdSpecsToJSVar(idspecs),
+		"TrackSpec": trackspec,
+		
+		// Would be nice to do something better for rendering hints, before they grow without bound
+		"MapLineOpacity": opacity,
+		"WhiteOverlay": true,
+
+		"MapsAPIKey": "",//kGoogleMapsAPIKey,
+		"Center": sfo.KFixes["EDDYY"], //sfo.KLatlongSFO,
+		"Zoom": 10,
+	}
+	if err := templates.ExecuteTemplate(w, "fdb3-tracks", params); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// }}}
+
 // {{{ FlightToMapLines
 
-func FlightToMapLines(f *fdb.Flight) []MapLine{
+func FlightToMapLines(f *fdb.Flight, trackName string) []MapLine{
 	lines   := []MapLine{}
 
+	if trackName == "" { trackName = "fr24"}
+	
 	sampleRate := time.Second * 5
-	flightLines := f.AnyTrack().AsLinesSampledEvery(sampleRate)
+	_,track := f.PreferredTrack([]string{trackName})
+	flightLines := track.AsLinesSampledEvery(sampleRate)
+
+	// Default coloring scheme; by track type
+	color := "#223399"
+	colorMap := map[string]string{"ADSB":"#dd6610","fr24":"#08aa08","FA":"#0808aa"}
+	if k,exists := colorMap[trackName]; exists { color = k }
 	
 	for i,_ := range flightLines {
-		color := "#dd6610"
+		// color := colors[i%2]  // candystripe the lines
 		mapLine := MapLine{
-			Line: &flightLines[i],
+			Start: flightLines[i].From,
+			End: flightLines[i].To,
 			Color: color,
 			Opacity: 0.6,
 		}

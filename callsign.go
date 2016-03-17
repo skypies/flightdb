@@ -23,6 +23,8 @@ import(
  ????????   - was A85D50 (a Virgin America A320, flying as VX938 !!)
  ''         - sometimes a MSG,1 will contain an empty string for the callsign
 
+6. Data from TRACON frequently has a suffix latter attached to the callsign
+
 */
 
 
@@ -43,13 +45,14 @@ type Callsign struct {
 	CallsignType
 	Registration  string
 	IcaoPrefix    string
+	ATCSuffix     string // should be one char, really
 	Number        int64
 }
 
 func (c Callsign)String() string {
 	switch c.CallsignType {
 	case IcaoFlightNumber:
-		return fmt.Sprintf("%s%d", c.IcaoPrefix, c.Number) // Strips leading zeroes
+		return fmt.Sprintf("%s%d", c.IcaoPrefix, c.Number) // Strips leading zeroes and ATC suffix
 	default:
 		return c.Raw
 	}
@@ -85,10 +88,11 @@ func NewCallsign(callsign string) (ret Callsign) {
 		return
 	}
 	
-	icao := regexp.MustCompile("^([A-Z]{3})([0-9]{1,4})$").FindStringSubmatch(callsign)
-	if icao != nil && len(icao)==3 {
+	icao := regexp.MustCompile("^([A-Z]{3})([0-9]{1,4})([A-Z]?)$").FindStringSubmatch(callsign)
+	if icao != nil && len(icao)==4 {
 		ret.Number,_ = strconv.ParseInt(icao[2], 10, 64) // no errors here :)
 		ret.IcaoPrefix = icao[1]
+		ret.ATCSuffix = icao[3]
 		ret.CallsignType = IcaoFlightNumber
 		return
 	}

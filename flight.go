@@ -5,6 +5,7 @@ import(
 	"sort"
 	"time"
 	"github.com/skypies/geo/altitude"
+	"github.com/skypies/geo/sfo"
 	"github.com/skypies/flightdb2/metar"
 	"github.com/skypies/util/date"
 )
@@ -14,11 +15,20 @@ type Flight struct {
 	Airframe // embedded
 	Tracks map[string]*Track
 	Tags map[string]int
+	Waypoints map[string]time.Time
 	
 	// Internal fields
 	datastoreKey string
 	lastUpdate   time.Time
 	DebugLog     string
+}
+
+func BlankFlight() Flight {
+	return Flight{
+		Tracks: map[string]*Track{},
+		Tags: map[string]int{},
+		Waypoints: map[string]time.Time{},
+	}
 }
 
 // USE THIS ONE AT ALL TIMES
@@ -36,6 +46,15 @@ func (f Flight)String() string {
 	}
 	return str
 }
+
+func (f Flight)Legend() string {
+	s,_ := f.Times()
+	l := fmt.Sprintf("<b>%s</b>, %s<br/>Tags=<b>%v</b> Tracks=%v<br/>Route=<b>%v</b>",
+		f.IdentityString(), date.InPdt(s).Format("2006/01/02 15:03 MST"),
+		f.TagList(), f.ListTracks(), f.WaypointList())
+	return l
+}
+
 
 // This happens at the flight level, as we shuffle data between identity & airframe
 func (f *Flight)ParseCallsign() CallsignType {
@@ -80,6 +99,33 @@ func (f Flight)TagList() []string {
 	return ret
 }
 
+func (f *Flight)SetWaypoint(wp string, t time.Time) {
+	f.Waypoints[wp] = t
+}
+func (f *Flight)HasWaypoint(wp string) bool {
+	_,exists := f.Waypoints[wp]
+	return exists
+}
+
+// Yay, sorting funtime here again !
+type WaypointAndTime struct {
+	WP string
+	time.Time
+}
+type WaypointAndTimeList []WaypointAndTime
+func (a WaypointAndTimeList) Len() int           { return len(a) }
+func (a WaypointAndTimeList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a WaypointAndTimeList) Less(i, j int) bool { return a[i].Before(a[j].Time) }
+func (f Flight)WaypointList() []string {
+	wptl := []WaypointAndTime{}
+	for k,v := range f.Waypoints { wptl = append(wptl, WaypointAndTime{k,v}) }
+	sort.Sort(WaypointAndTimeList(wptl))
+	wp := []string{}
+	for _,wpt := range wptl { wp = append(wp, wpt.WP) }
+	return wp
+}
+
+
 func (f Flight)HasTrack(name string) bool {
 	_,exists := f.Tracks[name]
 	return exists
@@ -91,7 +137,7 @@ func (f Flight)ListTracks() []string {
 	return ret
 }
 func (f Flight)AnyTrack() Track {
-	for _,name := range []string{"ADSB", "FA:TA", "FA:TZ", "fr24"} {
+	for _,name := range []string{"ADSB", "MLAT", "FA:TA", "FA:TZ", "fr24", "FOIA"} {
 		if f.HasTrack(name) { return *f.Tracks[name] }
 	}
 
@@ -123,9 +169,10 @@ func (f Flight)MidTime() time.Time {
 	return s.Add(dur)
 }
 
-func (f Flight)IdSpec() string {
-	times := f.Timeslots(time.Minute * 30)  // ARGH
-	return fmt.Sprintf("%s@%d", f.Identity.IcaoId, times[0].Unix())
+func (f Flight)IdSpecString() string {
+	return f.IdSpec().String()
+	//	times := f.Timeslots(time.Minute * 30)  // ARGH
+//	return fmt.Sprintf("%s@%d", f.Identity.IcaoId, times[0].Unix())
 }
 
 
@@ -139,16 +186,53 @@ func (f *Flight)PruneTrackContents() {
 	}
 }
 
-func NewFlightFromADSBTrackFragment(frag *ADSBTrackFragment) *Flight {
-	f := Flight{
-		Identity: Identity{
-			IcaoId: string(frag.IcaoId),
-			Callsign: frag.Callsign,
-		},
-		Tracks: map[string]*Track{},
-		Tags: map[string]int{},
+// This is all so horrid.
+func (f *Flight)AnalyseWaypoints() {
+	for _,trackName := range f.ListTracks() {
+		for wp,t := range f.Tracks[trackName].MatchWaypoints(sfo.KFixes) {
+			f.SetWaypoint(wp,t)
+		}
 	}
-	f.Tracks["ADSB"] = &frag.Track
+}
+
+func (f *Flight)Analyse() (error, string) {
+	// proc,str,err := MatchProcedure(f.AnyTrack())
+
+	f.DebugLog += "-- Analyse\n"
+	
+	pc := NewCallsign(f.Callsign)
+	f.DebugLog += fmt.Sprintf("callsign: [%s] (%d)\n", f.Callsign, pc.CallsignType)
+	switch pc.CallsignType {
+	case BareFlightNumber:
+		fallthrough
+	case IcaoFlightNumber:
+		f.SetTag("AL")
+
+	default:
+		f.SetTag("GA")
+	}
+
+	if f.Origin != ""           { f.SetTag(fmt.Sprintf("%s:", f.Origin)) }
+	if f.Destination != ""      { f.SetTag(fmt.Sprintf(":%s", f.Destination)) }
+	//if f.Destination == "SFO" { f.SetTag("SFO") }
+
+	f.AnalyseWaypoints()
+	
+	return nil, ""
+}
+
+func NewFlightFromTrackFragment(frag *TrackFragment) *Flight {
+	f := BlankFlight()
+	f.Identity = Identity{
+		IcaoId: string(frag.IcaoId),
+		Callsign: frag.Callsign,
+	}
+
+	trackType := frag.DataSystem()
+	f.Tracks[trackType] = &frag.Track
+	f.DebugLog += "-- NewFlightFromTrackFragment "+trackType+"\n"
+	
+	f.Analyse() // Initial analysis of flight ID (AL vs GA etc)
 	
 	return &f
 }

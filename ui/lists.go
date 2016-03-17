@@ -6,13 +6,15 @@ import(
 	"google.golang.org/appengine"
 	//"google.golang.org/appengine/log"
 
+	"github.com/skypies/util/widget"
+
 	fdb "github.com/skypies/flightdb2"
 	"github.com/skypies/flightdb2/fgae"
 	//"github.com/skypies/flightdb2/ref"
 )
 
 func init() {
-	http.HandleFunc("/fdb/recent", listHandler)
+	http.HandleFunc("/fdb/list", listHandler)
 }
 
 // icaoid=A12345 - lookup recent flights on that airframe
@@ -20,7 +22,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
 	db := fgae.FlightDB{C:c}
 
-	tags := []string{}
+	tags := widget.FormValueCommaSepStrings(r, "tags")
 	flights := []*fdb.Flight{}
 	
 	//airframes := ref.NewAirframeCache(c)
@@ -42,6 +44,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	var params = map[string]interface{}{
+		"Tags": tags,
 		"Flights": flights,
 	}
 	if err := templates.ExecuteTemplate(w, "fdb-recentlist", params); err != nil {

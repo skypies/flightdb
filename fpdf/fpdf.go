@@ -13,6 +13,8 @@ import(
 
 // https://godoc.org/github.com/jung-kurt/gofpdf
 
+// http://fdb.serfr1.org/fdb/approach?idspec=SWA1724@1431581400 - FOIA comes up blank
+
 type ColorScheme int
 const(
 	ByGroundspeed ColorScheme = iota
@@ -274,6 +276,9 @@ func DrawWaypoints(pdf *gofpdf.Fpdf) {
 		{"EDDYY",  5850,  6150},
 		{"SWELS",  4550,  4850},
 		{"MENLO",  3850,  4150},
+
+		{"SKUNK", 11850, 12150},
+		{"BOLDR",  9850, 10150},
 	}
 
 	for _,wp := range wpFurn {

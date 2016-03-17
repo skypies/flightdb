@@ -115,29 +115,25 @@ func OutputApproachesAsPDF(w http.ResponseWriter, r *http.Request, flights []*fd
 
 	pdf := fpdf.NewApproachPdf(colorscheme)
 	fStrs := []string{}
-outerLoop:
+//outerLoop:
 	for _,f := range flights {
 		fStrs = append(fStrs, f.String())		
 
-		// Correct the altitudes
-		if f.HasTrack("ADSB") {
-			track := *f.Tracks["ADSB"]
-			for i,tp := range track {
-				lookup := metar.Lookup(tp.TimestampUTC)
+		_,track := f.PreferredTrack([]string{"ADSB", "FOIA"})
+		if track == nil { continue }
+		
+		for i,tp := range track {
+			if lookup := metar.Lookup(tp.TimestampUTC); lookup != nil && lookup.Raw != "" {
 				track[i].AnalysisAnnotation += fmt.Sprintf("* inHg: %v\n", lookup)
-				if lookup.Raw == "" {
-					track[i].AnalysisAnnotation += fmt.Sprintf("* BAD Metar, aborting\n")
-					continue outerLoop
-				}
-				
 				track[i].IndicatedAltitude = altitude.PressureAltitudeToIndicatedAltitude(
 					tp.Altitude, lookup.AltimeterSettingInHg)
-				track[i].AnalysisAnnotation += fmt.Sprintf("* pAlt: %.0f, iAlt: %.0f\n",
-					tp.Altitude, track[i].IndicatedAltitude)
+			} else {
+				// Hack, because we don't have historic METAR yet
+				track[i].IndicatedAltitude = tp.Altitude
 			}
 		}
 
-		fpdf.DrawTrack(pdf, f.AnyTrack(), colorscheme)
+		fpdf.DrawTrack(pdf, track, colorscheme)
 	}
 
 	if len(flights) == 1 {

@@ -64,13 +64,6 @@ func TestParseNOAA(t *testing.T) {
 	}
 }
 
-func TestFetchNOAA(t *testing.T) {
-	a,err := FetchFromNOAA(nil, "KSFO", time.Now().AddDate(0,0,-3), time.Now())
-	if err != nil || a == nil {
-		t.Errorf("fetch failed: %v", err)
-	}
-}
-
 func TestLookup(t *testing.T) {
 	reports,_ := ParseNOAA(rawNOAA)
 	a := AssembleNOAA(reports)
@@ -107,4 +100,14 @@ func TestLookup(t *testing.T) {
 	if r := a.Lookup(t4); r != nil {
 		t.Errorf("Lookup of %s succeeded", t4)
 	}
+}
+
+
+func TestFetchNOAA(t *testing.T) {
+	now := time.Now().AddDate(0,0,-2)
+	a,err := FetchFromNOAA(nil, "KSFO", now.AddDate(0,0,-1), now)
+	if err != nil || a == nil {
+		t.Errorf("fetch failed: %v", err)
+	}
+	fmt.Printf("%s\nWahay!\n", a)
 }

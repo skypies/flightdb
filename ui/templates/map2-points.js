@@ -11,6 +11,7 @@ function pointsOverlay() {
         var infostring = '<div><pre>' + points[i].info + '</pre></div>';
         var marker = new google.maps.Marker({
             position: points[i].pos,
+            zIndex: 100,
             map: map,
             title: points[i].id,
             icon: imgurl,
@@ -36,6 +37,7 @@ function pointsOverlay() {
             geodesic: true,
             strokeColor: color,
             strokeOpacity: opacity,
+            zIndex: 100,
             strokeWeight: 1
         });
         line.setMap(map)
@@ -51,6 +53,7 @@ function pointsOverlay() {
             //fillColor: '#0000FF',
             fillOpacity: 0,
             map: map,
+            zIndex: 100,
             center: circles[i].center,
             radius: circles[i].radiusmeters
         });

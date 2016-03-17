@@ -30,3 +30,22 @@ indexes:
   - name: Timeslots
   - name: LastUpdate
     direction: desc
+
+- kind: flight
+  properties:
+  - name: Ident
+  - name: Timeslots
+  - name: LastUpdate
+    direction: desc
+
+- kind: flight
+  properties:
+  - name: Tags
+  - name: Timeslots
+    direction: desc
+
+- kind: flight
+  properties:
+  - name: Waypoints
+  - name: Timeslots
+    direction: desc

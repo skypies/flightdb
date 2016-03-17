@@ -28,10 +28,10 @@ var(
 // A Track is a slice of Trackpoints. They are ordered in time, beginning to end.
 type Track []Trackpoint
 
-type byTimestampAscending Track
-func (a byTimestampAscending) Len() int           { return len(a) }
-func (a byTimestampAscending) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a byTimestampAscending) Less(i, j int) bool {
+type TrackByTimestampAscending Track
+func (a TrackByTimestampAscending) Len() int           { return len(a) }
+func (a TrackByTimestampAscending) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a TrackByTimestampAscending) Less(i, j int) bool {
 	return a[i].TimestampUTC.Before(a[j].TimestampUTC)
 }
 
@@ -125,7 +125,7 @@ func (t1 *Track)Merge(t2 *Track) {
 	for _,tp := range *t2 {
 		*t1 = append(*t1, tp)
 	}
-	sort.Sort(byTimestampAscending(*t1))
+	sort.Sort(TrackByTimestampAscending(*t1))
 }
 
 // }}}
@@ -282,6 +282,22 @@ func (t1 *Track)PlausibleExtension(t2 *Track) (bool, string) {
 		}
 */
 	}
+}
+
+// }}}
+// {{{ t.IndexAtTime
+
+// Returns -1 if not found
+func (t Track)IndexAtTime(tm time.Time) int {
+	if tm.Before(t.Start()) || tm.After(t.End()) { return -1 }
+
+	// Rewrite with something hierarchical plz
+	// Start loop on second point
+	for i:=1; i<len(t); i++ {
+		// If this point comes after our time, then the preceding point is our winner
+		if t[i].TimestampUTC.After(tm) { return i-1 }
+	}
+	return -1
 }
 
 // }}}

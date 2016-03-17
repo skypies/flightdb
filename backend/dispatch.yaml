@@ -7,6 +7,8 @@ dispatch:
 
 - url: "fdb.serfr1.org/"
   module: frontend
+- url: "fdb.serfr1.org/comp"
+  module: frontend
 
 - url: "fdb.serfr1.org/fdb/*"
   module: ui
@@ -19,8 +21,8 @@ dispatch:
 - url: "fdb.serfr1.org/reset"
   module: consolidator
 
-#- url: "fdb.serfr1.org/report/*"
-#  module: backend
+- url: "fdb.serfr1.org/report"
+  module: backend
 
 - url: "fdb.serfr1.org/batch/*"
   module: backend

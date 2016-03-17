@@ -8,3 +8,15 @@ To deploy all this ...
     $ appcfg.py update_indexes  backend/
     $ appcfg.py update_queues   backend/
     $ appcfg.py update_dispatch backend/
+
+
+MLAT stuff
+
+* ensure the addfrag stuff is robust
+* ensure it won't get out of db v2
+
+Puzzles
+
+1. http://fdb.serfr1.org/fdb/debug?idspec=A835D1@1457364600
+- why not tagged with EPICK ?
+- why not tagged with AL ?
