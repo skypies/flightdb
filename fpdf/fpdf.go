@@ -19,6 +19,7 @@ type ColorScheme int
 const(
 	ByGroundspeed ColorScheme = iota
 	ByDeltaGroundspeed
+	ByPlotKind
 )
 
 // {{{ var()
@@ -304,6 +305,7 @@ func DrawWaypoints(pdf *gofpdf.Fpdf) {
 }
 
 // }}}
+
 // {{{ DrawTrack
 
 func trackpointToApproachXY(tp fdb.Trackpoint) (float64, float64) {
@@ -387,6 +389,25 @@ func WriteFlight(output io.Writer, f fdb.Flight) error {
 
 	DrawTrack(pdf, f.AnyTrack(), ByGroundspeed)
 	return pdf.Output(output)
+}
+
+// }}}
+
+
+
+
+// {{{ MoveByUV, LineByUV - Move/Line in PDF space, relative to current position
+
+// These two functions operate within PDF coord space.
+// The arguments should be in the PDF's metric (which should be milimeters)
+// They act relative to the last position, so allow for offsets for text placement etc.
+func MoveByUV(f *gofpdf.Fpdf, u,v float64) {
+	currU,currV := f.GetXY()
+	f.MoveTo(currU+u, currV+v)
+}
+func LineByUV(f *gofpdf.Fpdf, u,v float64) {
+	currU,currV := f.GetXY()
+	f.LineTo(currU+u, currV+v)
 }
 
 // }}}

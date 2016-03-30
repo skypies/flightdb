@@ -12,10 +12,8 @@ import (
 type Trackpoint struct {
 	DataSource   string    // What kind of trackpoint is this; flightaware radar, local ADSB, etc
 
-/*
-	DataSystem   string    // ADSB, MLAT, Radar, ...
-	DataProvider string    // LocalReceiver, FOIA, FA, fr24, ...
-*/
+	//DataSystem   // embedded string
+	//DataProvider // embedded string
 
 	ReceiverName string    // For local ADSB
 
@@ -29,12 +27,21 @@ type Trackpoint struct {
 	VerticalRate float64   // In feet per minute (multiples of 64)
 	Squawk       string    // Generally, a string of four digits.
 
+	//// None of the fields below are stored in the database
+	
 	// These two are transient fields, populated during analysis, and displayed on the map view
 	AnalysisAnnotation string `datastore:"-" json:"-"`
 	AnalysisMapIcon    string `datastore:"-" json:"-"`
 
 	// These fields are derived
-	IndicatedAltitude float64 `datastore:"-" json:"-"` // Corrected for local air pressure
+	IndicatedAltitude         float64 `datastore:"-" json:"-"` // Corrected for local air pressure
+	DistanceTravelledKM       float64 `datastore:"-" json:"-"` // Totted up from point to point
+	GroundAccelerationKPS     float64 `datastore:"-" json:"-"` // In knots per second
+	VerticalSpeedFPM          float64 `datastore:"-" json:"-"` // Feet per minute (~== VerticalRate)
+	VerticalAccelerationFPMPS float64 `datastore:"-" json:"-"` // In (feet per minute) per second
+
+	// Populated just in first trackpoint, to hold notes for the whole track.
+	Notes                     string  `datastore:"-" json:"-"`
 }
 
 type InterpolatedTrackpoint struct {
@@ -48,10 +55,38 @@ type InterpolatedTrackpoint struct {
 	Perp       geo.LatlongLine
 }
 
-func (tp Trackpoint)String() string {
-	return fmt.Sprintf("[%s] %s %.0fft, %.0fkts, %.0ff/m, %.0fdeg", tp.TimestampUTC, tp.Latlong,
-		tp.Altitude, tp.GroundSpeed, tp.VerticalRate, tp.Heading)
+// {{{ tp.ShortString
+
+func (tp Trackpoint)ShortString() string {
+	str := fmt.Sprintf("[%s] %s %.0fft (%.0f), %.0fkts, %.0fdeg", tp.TimestampUTC, tp.Latlong,
+		tp.Altitude, tp.IndicatedAltitude, tp.GroundSpeed, tp.Heading)
+	if tp.DistanceTravelledKM > 0.0 {
+		str += fmt.Sprintf(" [path:%.3fKM]", tp.DistanceTravelledKM)
+	}
+	return str
 }
+
+// }}}
+// {{{ tp.String
+
+func (tp Trackpoint)String() string {
+	str := fmt.Sprintf("[%s] %s %.0fft, %.0fkts, %.0fdeg", tp.TimestampUTC, tp.Latlong,
+		tp.Altitude, tp.GroundSpeed, tp.Heading)
+
+	if tp.DistanceTravelledKM > 0.0 {
+		str += fmt.Sprintf("\n* Travelled Dist: %.3f KM\n"+
+			"* Vertical rates: computed: %.0f feet/min; received: %.0f feet/min\n"+
+			"* Acceleration: horiz: %.2f knots/sec, vert %.0f feetpermin/sec",
+			tp.DistanceTravelledKM,
+			tp.VerticalSpeedFPM, tp.VerticalRate,
+			tp.GroundAccelerationKPS, tp.VerticalAccelerationFPMPS)
+	}
+	
+	return str
+}
+
+// }}}
+// {{{ tp.ToJSString
 
 func (tp Trackpoint)ToJSString() string {
 	return fmt.Sprintf("source:%q, receiver:%q, pos:{lat:%.6f,lng:%.6f}, "+
@@ -60,20 +95,27 @@ func (tp Trackpoint)ToJSString() string {
 		tp.Altitude, tp.GroundSpeed, tp.Heading, tp.VerticalRate, tp.TimestampUTC)
 }
 
+// }}}
+// {{{ tp.LongSource
+
 func (tp Trackpoint)LongSource() string {
 	switch tp.DataSource {
 	case "":      return "(none specified)"
 	case "FA:TZ": return "FlightAware, Radar (TZ)"
 	case "FA:TA": return "FlightAware, ADS-B Mode-ES (TA)"
 	case "ADSB":  return "Private receiver, ADS-B Mode-ES ("+tp.ReceiverName+")"
+	case "MLAT":  return "MLAT ("+tp.ReceiverName+")"
 	}
 	return tp.DataSource
 }
 
-func (tp Trackpoint)GetDataSystem() string { return "ADSB" }
+// }}}
+
+// {{{ TrackpointFromADSB
 
 func TrackpointFromADSB(m *adsb.CompositeMsg) Trackpoint {
-	return Trackpoint{
+	tp := Trackpoint{
+		//DataSystem: "ADSB",
 		DataSource: "ADSB",
 		ReceiverName: m.ReceiverName,
 		TimestampUTC: m.GeneratedTimestampUTC,
@@ -84,8 +126,30 @@ func TrackpointFromADSB(m *adsb.CompositeMsg) Trackpoint {
 		VerticalRate: float64(m.VerticalRate),
 		Squawk: m.Squawk,
 	}
+
+	// Need to really clean all this up
+	if m.IsMLAT() {
+		tp.DataSource = "MLAT"
+	}
+
+	return tp
 }
 
+// }}}
+
+// {{{ tp.InterpolateTo
+
+func interpolateFloat64(from, to, ratio float64) float64 {
+	return from + (to-from)*ratio
+}
+
+func interpolateTime(from, to time.Time, ratio float64) time.Time {
+	d1 := to.Sub(from)
+	nanosToAdd := ratio * float64(d1.Nanoseconds())
+	d2 := time.Nanosecond * time.Duration(nanosToAdd)
+	d3 := time.Second * time.Duration(d2.Seconds()) // Round down to second precision
+	return from.Add(d3)
+}
 
 func (from Trackpoint)InterpolateTo(to Trackpoint, ratio float64) InterpolatedTrackpoint {
 	itp := InterpolatedTrackpoint{
@@ -104,15 +168,12 @@ func (from Trackpoint)InterpolateTo(to Trackpoint, ratio float64) InterpolatedTr
 	return itp
 }
 
-func interpolateFloat64(from, to, ratio float64) float64 {
-	return from + (to-from)*ratio
-}
+// }}}
 
+// {{{ -------------------------={ E N D }=----------------------------------
 
-func interpolateTime(from, to time.Time, ratio float64) time.Time {
-	d1 := to.Sub(from)
-	nanosToAdd := ratio * float64(d1.Nanoseconds())
-	d2 := time.Nanosecond * time.Duration(nanosToAdd)
-	d3 := time.Second * time.Duration(d2.Seconds()) // Round down to second precision
-	return from.Add(d3)
-}
+// Local variables:
+// folded-file: t
+// end:
+
+// }}}

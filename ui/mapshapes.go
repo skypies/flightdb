@@ -124,8 +124,6 @@ func MapLinesToJSVar(lines []MapLine) template.JS {
 	return template.JS(str + "  }\n")		
 }
 
-
-
 func LatlongTimeBoxToMapLines(tb geo.LatlongTimeBox, color string) []MapLine {
 	maplines := []MapLine{}
 	for _,line := range tb.LatlongBox.ToLines() {
@@ -144,9 +142,10 @@ const(
 	ByCandyStripe // a mix of ADSBreceiver & instance
 )
 
-func TrackToMapPoints(t *fdb.Track, icon, text string, coloring ColoringStrategy) []MapPoint {
+func TrackToMapPoints(t *fdb.Track, icon, banner string, coloring ColoringStrategy) []MapPoint {
 	sourceColors := map[string]string{
 		"ADSB":  "yellow",
+		"MLAT":  "red",
 		"fr24":  "green",
 		"FA:TA": "blue",
 		"FA:TZ": "blue",
@@ -188,10 +187,12 @@ func TrackToMapPoints(t *fdb.Track, icon, text string, coloring ColoringStrategy
 				if c,exists := sourceColors[tp.DataSource]; exists { color = c }
 			}
 		}
+
+		pointText := fmt.Sprintf("Point %d/%d\n%s", i, len(*t), banner)
 		
 		points = append(points, MapPoint{
 			TP: &tp, Icon:color,
-			Text:fmt.Sprintf("Point %d/%d\n%s", i, len(*t), text),
+			Text: pointText,
 		})
 	}
 	return points

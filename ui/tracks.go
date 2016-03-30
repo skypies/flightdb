@@ -91,17 +91,22 @@ func debugHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		str += fmt.Sprintf("    %s\n", f.IdSpec())
-		str += fmt.Sprintf("    %s\n", f)
+		str += fmt.Sprintf("    %s\n", f.FullString())
+		str += fmt.Sprintf("    %s\n\n", f)
 
 		t := f.AnyTrack()
 		str += fmt.Sprintf("---- Anytrack: %s\n", t)
 
 		for k,v := range f.Tracks {
-			str += fmt.Sprintf("\n** [%-6.6s] %s\n", k, v)
-			//for n,tp := range *v {str += fmt.Sprintf("    * [%3d] %s\n", n, tp)}
+			str += fmt.Sprintf("  -- [%-7.7s] %s\n", k, v)
+			if r.FormValue("v") != "" {
+				for n,tp := range *v {
+					str += fmt.Sprintf("    - [%3d] %s\n", n, tp)
+				}
+			}
 		}
 
-		str += fmt.Sprintf("--- DebugLog:-\n%s\n", f.DebugLog)
+		str += fmt.Sprintf("\n--- DebugLog:-\n%s\n", f.DebugLog)
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
@@ -313,6 +318,7 @@ func renderReportFurniture(rep *report.Report) *MapShapes {
 //  fr24=1
 //  debug=1
 //  boxes=1 boxes=fr24  (see boxes for just that track)
+//  sample=4  (sample the ADSB track every 4 seconds)
 //  track=fr24  (see dots for just that track)
 
 func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.Flight) {
@@ -397,6 +403,14 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 		for _,trackType := range []string{"ADSB", "MLAT", "fr24", "FA:TA", "FA:TZ", "FOIA"} {
 			if len(r.FormValue("track")) > 1 && r.FormValue("track") != trackType { continue }
 			if _,exists := f.Tracks[trackType]; !exists { continue }
+
+			if trackType == "ADSB" {
+				if secs := widget.FormValueInt64(r, "sample"); secs > 0 {
+					newTrack := f.Tracks[trackType].SampleEvery(time.Second * time.Duration(secs), false)
+					f.Tracks[trackType] = &newTrack
+				}
+			}
+			f.Tracks[trackType].PostProcess()  // Move upstream
 			ms.Points = append(ms.Points, TrackToMapPoints(f.Tracks[trackType], "", bannerText, coloring)...)
 		}
 

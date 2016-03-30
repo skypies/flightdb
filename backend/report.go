@@ -31,13 +31,15 @@ func ButtonPOST(anchor, action string, idspecs []string) string {
 }
 
 func reportHandler(w http.ResponseWriter, r *http.Request) {
+	c,_ := context.WithTimeout(appengine.NewContext(r), 10 * time.Minute)
+
 	if r.FormValue("rep") == "" {
 		var params = map[string]interface{}{
 			"Yesterday": date.NowInPdt().AddDate(0,0,-1),
 			"Reports": report.ListReports(),
 			"FormUrl": "/report",
 			"Waypoints": sfo.ListWaypoints(),
-			"Title": "Reports (DB v2)",
+			"Title": fmt.Sprintf("Reports (DB v2)"),
 		}
 		if err := templates.ExecuteTemplate(w, "report3-form", params); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -45,8 +47,6 @@ func reportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	c,_ := context.WithTimeout(appengine.NewContext(r), 10 * time.Minute)
-
 	db := fgae.FlightDB{C:c}
 	//airframes := ref.NewAirframeCache(c)
 

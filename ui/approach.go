@@ -9,7 +9,7 @@ import(
 	"google.golang.org/appengine/urlfetch"
 	//"golang.org/x/net/context"
 
-	"github.com/skypies/geo/altitude"
+	"github.com/skypies/geo/sfo"
 	"github.com/skypies/util/widget"
 
 	fdb "github.com/skypies/flightdb2"
@@ -21,7 +21,7 @@ import(
 
 func init() {
 	http.HandleFunc("/fdb/approach", approachHandler)
-	http.HandleFunc("/fdb/approachset", approachHandler) // deprecate this URL
+	http.HandleFunc("/fdb/descent",  descentHandler)
 }
 
 // {{{ FormValueColorScheme
@@ -29,6 +29,7 @@ func init() {
 func FormValueColorScheme(r *http.Request) fpdf.ColorScheme {
 	switch r.FormValue("colorby") {
 	case "delta": return fpdf.ByDeltaGroundspeed
+	case "plot": return fpdf.ByPlotKind
 	default: return fpdf.ByGroundspeed
 	}
 }
@@ -85,6 +86,46 @@ func approachHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // }}}
+// {{{ descentHandler
+
+// ?idspec=XX,YY,...  (or ?idspec=XX&idspec=YYY&...)
+//  &sample=N        (sample the track every N seconds)
+//  &alt=30000       (max altitude for graph)
+//  &length=80       (max distance from origin; in nautical miles)
+//  &dist=from       (for distance axis, use dist from airport; by default, uses dist along path)
+//  &colorby=delta   (delta groundspeed, instead of groundspeed)
+
+func descentHandler(w http.ResponseWriter, r *http.Request) {
+	c := appengine.NewContext(r)
+	db := fgae.FlightDB{C:c}
+	
+	// This whole Airframe cache thing should be automatic, and upstream from here.
+	airframes := ref.NewAirframeCache(c)
+
+	idspecs,err := FormValueIdSpecs(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	flights := []*fdb.Flight{}
+	for _,idspec := range idspecs {
+		f,err := db.LookupMostRecent(db.NewQuery().ByIdSpec(idspec))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		} else if f == nil {
+			http.Error(w, fmt.Sprintf("idspec %s not found", idspec), http.StatusInternalServerError)
+			return
+		}
+		if af := airframes.Get(f.IcaoId); af != nil { f.Airframe = *af }
+		flights = append(flights, f)
+	}
+
+	OutputDescentAsPDF(w,r,*(flights[0]))
+}
+
+// }}}
 
 // {{{ OutputApproachesAsPDF
 
@@ -107,7 +148,7 @@ func OutputApproachesAsPDF(w http.ResponseWriter, r *http.Request, flights []*fd
 	}
 	
 	c := appengine.NewContext(r)
-	metar,err := metar.FetchFromNOAA(urlfetch.Client(c), "KSFO",s.AddDate(0,0,-1), e.AddDate(0,0,1))
+	metars,err := metar.FetchFromNOAA(urlfetch.Client(c), "KSFO",s.AddDate(0,0,-1), e.AddDate(0,0,1))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -119,20 +160,13 @@ func OutputApproachesAsPDF(w http.ResponseWriter, r *http.Request, flights []*fd
 	for _,f := range flights {
 		fStrs = append(fStrs, f.String())		
 
-		_,track := f.PreferredTrack([]string{"ADSB", "FOIA"})
+		trackType,track := f.PreferredTrack([]string{"ADSB", "FOIA"})
 		if track == nil { continue }
-		
-		for i,tp := range track {
-			if lookup := metar.Lookup(tp.TimestampUTC); lookup != nil && lookup.Raw != "" {
-				track[i].AnalysisAnnotation += fmt.Sprintf("* inHg: %v\n", lookup)
-				track[i].IndicatedAltitude = altitude.PressureAltitudeToIndicatedAltitude(
-					tp.Altitude, lookup.AltimeterSettingInHg)
-			} else {
-				// Hack, because we don't have historic METAR yet
-				track[i].IndicatedAltitude = tp.Altitude
-			}
-		}
 
+		if trackType == "ADSB" {
+			track.AdjustAltitudes(metars)
+		}
+		
 		fpdf.DrawTrack(pdf, track, colorscheme)
 	}
 
@@ -142,6 +176,76 @@ func OutputApproachesAsPDF(w http.ResponseWriter, r *http.Request, flights []*fd
 	
 	w.Header().Set("Content-Type", "application/pdf")
 	if err := pdf.Output(w); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// }}}
+// {{{ OutputDescentAsPDF
+
+func OutputDescentAsPDF(w http.ResponseWriter, r *http.Request, f fdb.Flight) {
+	colorscheme := FormValueColorScheme(r)
+	colorscheme = fpdf.ByPlotKind
+
+	trackType,track := f.PreferredTrack([]string{"ADSB", "FOIA", "fr24"})
+	if track == nil {
+			http.Error(w, "no acceptable track found", http.StatusInternalServerError)
+			return
+	}
+	if secs := widget.FormValueInt64(r, "sample"); secs > 0 {
+		track = track.SampleEvery(time.Second * time.Duration(secs), false)
+	}
+	track.PostProcess()
+
+	if trackType != "FOIA" { // FOIA track altitudes are already pressure-corrected
+		c := appengine.NewContext(r)
+	
+		// Default to the time range of the flights
+		s,e,_ := widget.FormValueDateRange(r)
+		if time.Since(e) > time.Hour*24*365 {
+			s,e = f.Times()
+			s = s.Add(-24*time.Hour)
+			e = s.Add(24*time.Hour)
+		}
+
+		m,err := metar.FetchFromNOAA(urlfetch.Client(c), "KSFO",s.AddDate(0,0,-1), e.AddDate(0,0,1))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		track.AdjustAltitudes(m)
+	}
+
+	lengthNM := 80
+	if length := widget.FormValueInt64(r, "length"); length > 0 {
+		lengthNM = int(length)
+	}
+	altitudeMax := 30000
+	if alt := widget.FormValueInt64(r, "alt"); alt > 0 {
+		altitudeMax = int(alt)
+	}
+	
+	dp := fpdf.DescentPdf{
+		ColorScheme: colorscheme,
+		OriginPoint: sfo.KLatlongSFO,
+		OriginLabel: trackType,
+		AltitudeMax: float64(altitudeMax),
+		LengthNM:    float64(lengthNM),
+	}
+	dp.Init()
+	dp.DrawFrames()
+	dp.DrawCaption(fmt.Sprintf("Flight: %s\nTrack: %s\n", f.FullString(), track.String()))
+	//dp.DrawColorSchemeKey()
+
+	if r.FormValue("dist") == "from" {
+		dp.DrawTrackAsDistanceFromOrigin(track)
+	} else {
+		dp.DrawTrackAsDistanceAlongPath(track)
+	}
+
+	w.Header().Set("Content-Type", "application/pdf")
+	if err := dp.Output(w); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

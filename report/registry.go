@@ -62,7 +62,7 @@ func SetupReport(r *http.Request) (Report, error) {
 	//log.Errorf(appengine.NewContext(r), "Oho: %#v", opt)
 	
 	rep.setupReportingContext(appengine.NewContext(r))
-
+	
 	return rep, nil
 }
 

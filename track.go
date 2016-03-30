@@ -11,7 +11,9 @@ import(
 	"time"
 
 	"github.com/skypies/geo"
+	"github.com/skypies/geo/altitude"
 	"github.com/skypies/util/date"
+	"github.com/skypies/flightdb2/metar"
 )
 
 var(
@@ -43,10 +45,15 @@ func (t Track)StartEndBoundingBox() geo.LatlongBox {
 	// This isn't the actual bounding box for the track; it assumes mostly linear flight.
 	return t[0].BoxTo(t[len(t)-1].Latlong)
 }
+func (t Track)Notes() string {
+	if len(t) == 0 { return "" }
+	return t[0].Notes
+}
 
 // {{{ t.[Short]String
 
 func (t Track)String() string {
+	if len(t) == 0 { return "(empty track)" }
 	str := fmt.Sprintf("Track: %4d points, start=%s", len(t),
 		t[0].TimestampUTC.Format("2006.01.02 15:04:05"))
 	if len(t) > 1 {
@@ -57,10 +64,11 @@ func (t Track)String() string {
 		str += fmt.Sprintf(", src=%s", s.DataSource)
 		if s.ReceiverName != "" { str += "/" + s.ReceiverName }
 	}
-/*	str += "\n"
-	for i,tp := range t {
-		str += fmt.Sprintf("  [%2d] %s\n", i, tp)
-	}*/
+
+	if t.Notes() != "" {
+		str += " " + t.Notes()
+	}
+
 	return str
 }
 
@@ -115,6 +123,52 @@ func (t *Track)Base64Decode(str string) error {
 func (t Track)LongSource() string {
 	if len(t) == 0 { return "(no trackpoints)" }
 	return t[0].LongSource()
+}
+
+// }}}
+
+// {{{ t.PostProcess
+
+// Derive a bunch of data fields from the raw data.
+// NOTE - the vertical data gets too jerky with ADSB, because altitude change appears more like
+// an occasional step function when the datapoints are too close. You should use t.SampleEvery()
+// to space things out a bit before using those fields.
+func (t Track)PostProcess() {
+	// Skip the first point
+	for i:=1; i<len(t); i++ {
+		// No heading info in FlightAware tracks
+		//if t[0].DataSource == "FA" {
+		//	t[i-1].Heading = t[i-1].BearingTowards(t[i].Latlong)
+		//}
+
+		// VerticalRate data exists, but only for locally received data
+
+		// Compute elapsed distance along path, and acceleration rates
+		dur  := t[i].TimestampUTC.Sub(t[i-1].TimestampUTC)
+		dist := t[i].DistKM(t[i-1].Latlong)
+
+		t[i].DistanceTravelledKM = t[i-1].DistanceTravelledKM + dist
+		t[i].GroundAccelerationKPS = (t[i].GroundSpeed - t[i-1].GroundSpeed) / dur.Seconds()
+		t[i].VerticalSpeedFPM = (t[i].Altitude - t[i-1].Altitude) / dur.Minutes()		
+		t[i].VerticalAccelerationFPMPS = (
+			t[i].VerticalSpeedFPM - t[i-1].VerticalSpeedFPM) / dur.Seconds()		
+	}
+}
+
+// }}}
+// {{{ t.AdjustAltitudes
+
+func (t Track)AdjustAltitudes(metars *metar.Archive) {
+	for i,tp := range t {
+		if lookup := metars.Lookup(tp.TimestampUTC); lookup != nil && lookup.Raw != "" {
+			t[i].AnalysisAnnotation += fmt.Sprintf("* inHg: %v\n", lookup)
+			t[i].IndicatedAltitude = altitude.PressureAltitudeToIndicatedAltitude(
+				tp.Altitude, lookup.AltimeterSettingInHg)
+		} else {
+			// Hack, because we don't have historic METAR yet
+			t[i].IndicatedAltitude = tp.Altitude
+		}
+	}
 }
 
 // }}}
@@ -329,6 +383,10 @@ func (t Track)SampleEvery(d time.Duration, interpolate bool) Track {
 			// Do nothing, skip to next
 		}
 	}
+
+	if len(new)>0 {
+		new[0].Notes = fmt.Sprintf("(sampled every %s from %d points)", d, len(t))
+	}
 	
 	return new
 }
@@ -493,20 +551,6 @@ func (t Track)ClosestTo(ref geo.Latlong) (int) {
 // }}}
 
 // {{{ OLD
-
-// PostProcess does some tidyup on the data
-/*
-func (t Track)PostProcess() Track {
-	if len(t) == 0 { return t}
-	if t[0].DataSource == "FA:TZ" || t[0].DataSource == "FA:TA" {
-		// FLightAware tracks have no heading; compute a rough one based on point-by-point comparison.
-		for i:=0; i<len(t)-1; i++ {
-			t[i].Heading = t[i].BearingTowards(t[i+1].Latlong)
-		}
-	}
-	return t
-}
-*/
 
 /*
 func (t Track)DurationAloft() (time.Duration, error) {

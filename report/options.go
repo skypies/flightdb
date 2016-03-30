@@ -22,20 +22,24 @@ type Options struct {
 	Name               string
 	Start, End         time.Time
 	Tags             []string
-  TrackDataSource    string
 
-	Procedures       []string
+	Procedures       []string  // Obsolete
 	Waypoints        []string  // ARGH
 	HackWaypoints    []string  // ARGH
 	
+	// Geo restriction 1: Box.
 	Center             geo.Latlong
 	RadiusKM           float64  // For defining areas of interest around waypoints
 	SideKM             float64  // For defining areas of interest around waypoints
 
-	// Window. Represent this a bit better.
+	// Geo-restriction 2: Window. Represent this a bit better.
 	WindowTo, WindowFrom geo.Latlong	
 	WindowMin, WindowMax float64
 
+	// Data specification
+	CanSeeFOIA         bool    // This is locked down to a few users. Upgrade to full ACL model?
+	TrackDataSource    string  // TODO: replace with a cleverer track-specification thing
+	
 	// Options applicable to various reports
 	ReferencePoint     geo.Latlong // Some reports do things in relation to a fixed point
 	RefDistanceKM      float64     // ... and maybe within {dist} of {refpoint}
@@ -65,10 +69,10 @@ func FormValueReportOptions(r *http.Request) (Options, error) {
 	s,e,err := widget.FormValueDateRange(r)	
 	if err != nil { return Options{}, err }
 
-	cutoff,_ := time.Parse("2006.01.02", "2015.08.01")
-	if s.Before(cutoff) || e.Before(cutoff) {
-		return Options{}, fmt.Errorf("earliest date for reports is '%s'", cutoff)
-	}
+//	cutoff,_ := time.Parse("2006.01.02", "2015.08.01")
+//	if s.Before(cutoff) || e.Before(cutoff) {
+//		return Options{}, fmt.Errorf("earliest date for reports is '%s'", cutoff)
+//	}
 	
 	opt := Options{
 		Name: r.FormValue("rep"),
@@ -235,3 +239,4 @@ func (r *Report)ToCGIArgs() string {
 	
 	return str
 }
+

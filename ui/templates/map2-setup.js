@@ -115,13 +115,17 @@ var waypoints = {
     "WETOR": {pos:{lat: 37.4847194, lng: -122.0571417}},
 
     // Things for SILCN3
-    "X_RSH": {pos:{lat: 36.868582, lng: -121.691934}},
     "VLLEY": {pos:{lat: 36.5091667, lng:-121.4402778}},
     "GUUYY": {pos:{lat: 36.7394444, lng:-121.5411111}},
     "SSEBB": {pos:{lat: 36.9788889, lng:-121.6425000}},
     "GSTEE": {pos:{lat: 37.0708333, lng:-121.6716667}},
-    "KLIDE": {pos:{lat: 37.1641667, lng:-121.7130556}}
+    "KLIDE": {pos:{lat: 37.1641667, lng:-121.7130556}},
+    "BAXBE": {pos:{lat: 36.7730556, lng:-121.6263889}},
+    "APLLE": {pos:{lat: 37.0338889, lng:-121.8050000}},
 
+    // Personal entries
+    "X_RSH": {pos:{lat: 36.868582,  lng:-121.691934}},
+    "X_BLH": {pos:{lat: 37.2199471, lng:-122.0425108}}
 }
 
 function pathsOverlay() {

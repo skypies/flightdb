@@ -212,6 +212,8 @@ func (f *Flight)Analyse() (error, string) {
 		f.SetTag("GA")
 	}
 
+	if f.HasTrack("MLAT") { f.SetTag("MLAT") }
+	
 	if f.Origin != ""           { f.SetTag(fmt.Sprintf("%s:", f.Origin)) }
 	if f.Destination != ""      { f.SetTag(fmt.Sprintf(":%s", f.Destination)) }
 	//if f.Destination == "SFO" { f.SetTag("SFO") }
@@ -228,9 +230,9 @@ func NewFlightFromTrackFragment(frag *TrackFragment) *Flight {
 		Callsign: frag.Callsign,
 	}
 
-	trackType := frag.DataSystem()
-	f.Tracks[trackType] = &frag.Track
-	f.DebugLog += "-- NewFlightFromTrackFragment "+trackType+"\n"
+	trackKey := frag.TrackName()
+	f.Tracks[trackKey] = &frag.Track
+	f.DebugLog += "-- NewFlightFromTrackFragment ("+trackKey+")\n"
 	
 	f.Analyse() // Initial analysis of flight ID (AL vs GA etc)
 	

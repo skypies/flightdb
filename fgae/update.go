@@ -73,7 +73,7 @@ func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 	f,err := db.LookupMostRecent(db.NewQuery().ByIcaoId(frag.IcaoId))
 	if err != nil { return err }
 
-	prefix := fmt.Sprintf("[%s/%s]%s", frag.IcaoId, frag.Callsign, frag.DataSystem())
+	prefix := fmt.Sprintf("[%s/%s]%s", frag.IcaoId, frag.Callsign, frag.DataSystem)
 	
 	if f == nil {
 		f = fdb.NewFlightFromTrackFragment(frag)
@@ -83,31 +83,37 @@ func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 	} else {
 		db.Debugf("* %s found %s", prefix, f)
 
-		trackType := frag.DataSystem() // MLAT or ADSB
+		trackKey := frag.TrackName() // ADSB, or MLAT
 		
-		if track,exists := f.Tracks[trackType]; !exists {
+		if track,exists := f.Tracks[trackKey]; !exists {
 			f.DebugLog += "-- AddFrag "+prefix+": first frag on pre-existing flight\n"
 			db.Infof("* %s no pre-existing track; adding right in", prefix)
-			f.Tracks[trackType] = &frag.Track
+			f.Tracks[trackKey] = &frag.Track
 
 		} else if plausible,debug := track.PlausibleExtension(&frag.Track); plausible==true {
-			f.DebugLog += fmt.Sprintf("-- AddFrag "+prefix+": extending (adding %d to %d points)\n",
-				len(frag.Track), len(*track))
+			f.DebugLog += fmt.Sprintf("-- AddFrag %s: extending (adding %d to %d points)\n",
+				prefix, len(frag.Track), len(*track))
 			db.Debugf("* %s extending track ... debug:\n%s", prefix, debug)
-			db.Debugf("** pre : %s", f.Tracks[trackType])
-			f.Tracks[trackType].Merge(&frag.Track)
-			db.Debugf("** post: %s", f.Tracks[trackType])
+
+			// For MLAT data, callsigns can take a while to show up in the stream
+			if f.Identity.Callsign == "" && frag.Callsign != "" {
+				f.DebugLog += fmt.Sprintf(" - prev callsign was nil; adding it in now\n")
+				f.Identity.Callsign = frag.Callsign
+			}
+
+			db.Debugf("** pre : %s", f.Tracks[trackKey])
+			f.Tracks[trackKey].Merge(&frag.Track)
+			db.Debugf("** post: %s", f.Tracks[trackKey])
 
 		}	else {
 			f = fdb.NewFlightFromTrackFragment(frag)
 			f.DebugLog += "-- AddFrag "+prefix+": was not plausible, so new flight\n"
 			db.Infof("* %s not a plausible addition; starting afresh ... debug\n%s", prefix, debug)
-			f.DebugLog = debug
+			f.DebugLog += debug+"\n"
 		}
 	}
 
 	// Consult the airframe cache, and perhaps add some metadata, if not already present
-	// This doesn't appear to be working :(
 	if f.Airframe.Registration == "" {
 		airframes := ref.NewAirframeCache(db.C)
 		if af := airframes.Get(f.IcaoId); af != nil {
@@ -115,7 +121,7 @@ func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 			f.Airframe = *af
 		}
 	}
-
+	
 	// Incrementally identify waypoints, frag by frag
 	for wp,t := range frag.Track.MatchWaypoints(sfo.KFixes) {
 		f.DebugLog += "-- AddFrag "+prefix+": found waypoint "+wp+"\n"
@@ -123,7 +129,6 @@ func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 	}
 	
 	return db.PersistFlight(f)
-	//return nil
 }
 
 // Say we've pulled some identity information from somewhere; if it matches something,

@@ -29,7 +29,7 @@ func (r *Report)Links(f *fdb.Flight) string {
 		// addFrag("v1",   v1url)
 		addFrag("map",  v1host + "/fdb/track2?idspec="   +k+"&"+reportArgs)
 		addFrag("vec",  v1host + "/fdb/trackset2?idspec="+k+"&"+reportArgs)
-		addFrag("side", v1host + "/fdb/approach2?idspec="+k+"&"+dateArgs)
+		addFrag("side", v1host + "/fdb/descent2?idspec="+k+"&"+dateArgs+"&sample=15")
 	} else {
 		addFrag("v2",            "/fdb/tracks?idspec="+f.IdSpecString()+"&"+reportArgs)
 	}

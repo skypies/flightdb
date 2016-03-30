@@ -12,11 +12,17 @@ To deploy all this ...
 
 MLAT stuff
 
+1. Push out DataSystem and DataProvider: trackpoint, track, flight.
+2. DataSourceString(), for display
+3. remove/replace all callsites for DataSource
+
 * ensure the addfrag stuff is robust
 * ensure it won't get out of db v2
+
+
+
 
 Puzzles
 
 1. http://fdb.serfr1.org/fdb/debug?idspec=A835D1@1457364600
-- why not tagged with EPICK ?
-- why not tagged with AL ?
+- why not tagged with AL ? (callsign not properly populating identity ?
