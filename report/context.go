@@ -22,6 +22,7 @@ var(
 	ACLFOIA = []string{
 		"adam@worrall.cc",
 		"raymonde.guindon@gmail.com",
+		"rguindon@alumni.stanford.edu",
 		"meekGee@gmail.com",
 	}
 )
