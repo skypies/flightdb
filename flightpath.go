@@ -55,6 +55,29 @@ func (f Flight)AtWaypoint(wpName string) (string, int) {
 }
 
 
+func (f *Flight)HasOriginMatch(origins map[string]int) bool {
+	_,exists := origins[f.Origin]
+	return exists
+}
+
+func (f *Flight)HasDestinationMatch(dests map[string]int) bool {
+	_,exists := dests[f.Destination]
+	return exists
+}
+
+// Find a better home for this config
+var (
+	OceanicAirports = map[string]int{
+		"LIH":1, "OGG":1, "HNL":1, "KOA":1, "NRT":1, "HND":1, "KIX":1, "PVG":1, "PEK":1, "CAN":1,
+		"CTU":1, "WUH":1, "HKG":1, "TPE":1, "ICN":1, "MNL":1, "NHL":1, "SYD":1, "VRD":1, "AKL":1,
+	}
+	SouthwestAirports = map[string]int{
+		"PHX":1, "TUS":1, "SBP":1, "LAX":1, "LGB":1, "BUR":1, "ONT":1, "SNA":1, "DCA":1,
+		"SBA":1, "PSP":1, "SAN":1,
+	}
+)
+
+
 // Routines that take a track, and try to figure out which waypoints & procedures it might be
 /*	
 func MatchProcedure(t fdb.Track) (*geo.Procedure, string, error) {

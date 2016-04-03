@@ -196,8 +196,6 @@ func (f *Flight)AnalyseWaypoints() {
 }
 
 func (f *Flight)Analyse() (error, string) {
-	// proc,str,err := MatchProcedure(f.AnyTrack())
-
 	f.DebugLog += "-- Analyse\n"
 	
 	pc := NewCallsign(f.Callsign)
@@ -216,8 +214,13 @@ func (f *Flight)Analyse() (error, string) {
 	
 	if f.Origin != ""           { f.SetTag(fmt.Sprintf("%s:", f.Origin)) }
 	if f.Destination != ""      { f.SetTag(fmt.Sprintf(":%s", f.Destination)) }
-	//if f.Destination == "SFO" { f.SetTag("SFO") }
 
+	// This stuff should get all table driven at some point ...
+	if f.HasOriginMatch     (OceanicAirports)   { f.SetTag("OCEANIC:") }
+	if f.HasDestinationMatch(OceanicAirports)   { f.SetTag(":OCEANIC") }
+	if f.HasOriginMatch     (SouthwestAirports) { f.SetTag("SW:") }
+	if f.HasDestinationMatch(SouthwestAirports) { f.SetTag(":SW") }
+	
 	f.AnalyseWaypoints()
 	
 	return nil, ""

@@ -25,6 +25,7 @@ import(
 func init() {
 	http.HandleFunc("/fdb/map", MapHandler)
 	http.HandleFunc("/fdb/debug", debugHandler)
+
 	http.HandleFunc("/fdb/tracks", trackHandler)
 	http.HandleFunc("/fdb/trackset", tracksetHandler)
 	//http.HandleFunc("/fdb/vector", vectorHandler)

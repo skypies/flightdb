@@ -28,15 +28,18 @@ func (r *Report)Links(f *fdb.Flight) string {
 		//v1url := v1host + "/fdb/lookup?map=1&rep=" + r.Name + "&id=" + k
 		// addFrag("v1",   v1url)
 		addFrag("map",  v1host + "/fdb/track2?idspec="   +k+"&"+reportArgs)
-		addFrag("vec",  v1host + "/fdb/trackset2?idspec="+k+"&"+reportArgs)
+		addFrag("vec",  v1host + "/fdb/trackset3?idspec="+k+"&"+reportArgs)
 		addFrag("side", v1host + "/fdb/descent2?idspec="+k+"&"+dateArgs+"&sample=15")
-	} else {
-		addFrag("v2",            "/fdb/tracks?idspec="+f.IdSpecString()+"&"+reportArgs)
-	}
 
-	if f.HasTrack("ADSB") {
-		fdbhost := "https://ui-dot-serfr0-fdb.appspot.com"
-		addFrag("NewDB", fdbhost + f.TrackUrl()+"&"+reportArgs)
+		if f.HasTrack("ADSB") || f.HasTrack("MLAT") {
+			fdbhost := "https://ui-dot-serfr0-fdb.appspot.com"
+			addFrag("NewDB", fdbhost + f.TrackUrl()+"&"+reportArgs)
+		}
+
+	} else {
+		addFrag("map",     "/fdb/tracks?idspec="+f.IdSpecString()+"&"+reportArgs)
+		addFrag("vec",     "/fdb/trackset?idspec="+f.IdSpecString()+"&"+reportArgs)
+		addFrag("side",    "/fdb/descent?idspec="+f.IdSpecString()+"&"+dateArgs+"&sample=15")
 	}
 	
 	return "[" + strings.Join(frags, ",") + "]"

@@ -15,8 +15,8 @@ function streamVectors() {
                 if (!opacity) { opacity = 1.0 }
                 {{if .MapLineOpacity}}opacity = {{.MapLineOpacity}}{{end}}
                 var coords = []
-                coords.push(val.s)
-                coords.push(val.e)
+                coords.push({lat:val.s.Lat, lng:val.s.Long})
+                coords.push({lat:val.e.Lat, lng:val.e.Long})
 
                 var line = new google.maps.Polyline({
                     path: coords,

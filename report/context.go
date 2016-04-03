@@ -19,7 +19,11 @@ type ReportingContext struct {
 }
 
 var(
-	ACLFOIA = []string{"adam@worrall.cc"} // Hardcoded for now
+	ACLFOIA = []string{
+		"adam@worrall.cc",
+		"raymonde.guindon@gmail.com",
+		"meekGee@gmail.com",
+	}
 )
 
 func (r *Report)setupReportingContext(ctx context.Context) error {
@@ -30,12 +34,13 @@ func (r *Report)setupReportingContext(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
 	r.ReportingContext.Archive = *metar
-	r.ReportingContext.UserEmail = user.Current(ctx).String()
-
+	
+	if user := user.Current(ctx); user != nil {
+		r.ReportingContext.UserEmail = user.String()
+	}
+	
 	r.AddACLs()
-
 	if err := r.EnforceACLs(); err != nil {
 		return err
 	}

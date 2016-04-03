@@ -19,10 +19,15 @@ MLAT stuff
 * ensure the addfrag stuff is robust
 * ensure it won't get out of db v2
 
+lat/lng
+* disable GetV2 stuff
+* - deploy complaints/app
 
+* update geo/latlong.go json tags
+* - deploy flightdb2/ui
+* verify http://fdb.serfr1.org/fdb/json?idspec=A7C940@1459540587
 
+* reenable GetV2 stuff complaints/app/fdb.go - re-enable the GetV2 stuff (if false)
+* - deploy complaints/app
 
-Puzzles
-
-1. http://fdb.serfr1.org/fdb/debug?idspec=A835D1@1457364600
-- why not tagged with AL ? (callsign not properly populating identity ?
+* 

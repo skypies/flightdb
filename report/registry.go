@@ -61,7 +61,9 @@ func SetupReport(r *http.Request) (Report, error) {
 
 	//log.Errorf(appengine.NewContext(r), "Oho: %#v", opt)
 	
-	rep.setupReportingContext(appengine.NewContext(r))
+	if err := rep.setupReportingContext(appengine.NewContext(r)); err != nil {
+		return Report{}, err
+	}
 	
 	return rep, nil
 }

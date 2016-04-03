@@ -4,11 +4,15 @@ package main
  * you want a full PDT day, you need to load the day you want, and the
  * day that follows it.
 
-20140514   (Wed Mar 9, 08:30)
-20140515   (Wed Mar 9, 08:50)
+---- All over again, with RG data
 
-20150513   (Wed Mar 9, 09:20)
-// 20150514 
+20140514   (Thu Mar 31, 17:00)
+20140515   (Thu Mar 31, 17:03)
+
+20150513   (Thu Mar 31, 16:48)
+20150514   (Thu Mar 31, 16:57)
+
+Dates available:  2014/05/14, 2015/05/13
 
  */
 
@@ -34,8 +38,8 @@ import(
 )
 
 func init() {
-	//http.HandleFunc("/foia/load", foiaHandler)
-	//http.HandleFunc("/foia/rm", rmHandler)
+	http.HandleFunc("/foia/load", foiaHandler)
+	http.HandleFunc("/foia/rm", rmHandler)
 }
 
 func getCSVReader(ctx context.Context, bucketName, fileName string) (*csv.Reader, error) {
@@ -98,7 +102,7 @@ func rowToTrackpoint(row []string) fdb.Trackpoint {
 	t,_ := time.Parse("20060102 15:04:05 MST", row[11] + " " + row[12] + " UTC")
 	
 	tp := fdb.Trackpoint{
-		DataSource:    "FAA-FOIA",
+		DataSource:    "RG-FOIA",
 		TimestampUTC:  t,
 		Latlong:       geo.Latlong{Lat:lat, Long:long},
 		Altitude:      alt * 100.0,
@@ -121,7 +125,7 @@ func addFlight(ctx context.Context, rows [][]string, debug string) (string, erro
 	
 	f := rowToFlight(rows[0])
 	f.Tracks["FOIA"] = &t
-	f.Tags["FOIA"] = 1
+	f.SetTag("FOIA")
 
 	f.Analyse()
 	f.DebugLog += debug
@@ -133,18 +137,23 @@ func addFlight(ctx context.Context, rows [][]string, debug string) (string, erro
 		if err := db.PersistFlight(&f); err != nil {
 			return "", err
 		}
-		str += fmt.Sprintf("* %s %v %v\n", f.Callsign, f.TagList, f.WaypointList)
+		str += fmt.Sprintf("* %s %v %v\n", f.Callsign, f.TagList(), f.WaypointList())
 	}
 	
 	return str,nil
 }
 
-func doStorageJunk(ctx context.Context) (string, error) {
-	bucketName := "faa-foia"
+// PA naming: faa-foia  FOIA-2015-006790/Offload_track_table  /Offload_track_20150104.txt.gz
+// RG naming: rg-foia   2014                                  /txt.Offload_track_IFR_20140104.gz
+func doStorageJunk(ctx context.Context, date string) (string, error) {
+	bucketName := "rg-foia"
 
+	
 	//dir := "FOIA-2014-excerpted/track"
-	dir := "FOIA-2015-006790/Offload_track_table"
-	date := "20150514"
+	//dir := "FOIA-2015-006790/Offload_track_table"
+	//date := "20150514"
+	dir := "2014"
+	//date := "20150513"
 
 	tStart := time.Now()
 	log.Infof(ctx, "FOIAUPLOAD starting %s (%s)", date, dir)
@@ -155,7 +164,7 @@ func doStorageJunk(ctx context.Context) (string, error) {
 	bucket := client.Bucket(bucketName)
 	q := &storage.Query{
 		//Delimiter: "/",
-		Prefix: dir + "/Offload_track_"+date,
+		Prefix: dir + "/Offload_track_IFR_"+date,
 		MaxResults: 200,
 	}
 
@@ -214,8 +223,10 @@ func doStorageJunk(ctx context.Context) (string, error) {
 			}
 			nFlights++
 		}
+		str += fmt.Sprintf("-- File read, %d rows\n", i)
 	}
 
+	str += fmt.Sprintf("-- %s all done, %d flights, tool %s\n", date, nFlights, time.Since(tStart))
 	log.Infof(ctx, "FOIAUPLOAD finished %s (%d flights added, took %s)\n%s",
 		date, nFlights, time.Since(tStart), str)
 	
@@ -229,10 +240,16 @@ func foiaHandler(w http.ResponseWriter, r *http.Request) {
 	//c,_ := context.WithTimeout(appengine.NewContext(r), 9*time.Minute)
 	// db := FlightDB{C:c}
 
-	str,err := doStorageJunk(c)
+	date := r.FormValue("date")
+	if date == "" {
+		http.Error(w, "need 'date=20141231' arg", http.StatusInternalServerError)
+		return
+	}
+	
+	str,err := doStorageJunk(c, date)
 	if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	
 	w.Header().Set("Content-Type", "text/plain")
