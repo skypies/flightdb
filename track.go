@@ -160,12 +160,18 @@ func (t Track)PostProcess() {
 
 func (t Track)AdjustAltitudes(metars *metar.Archive) {
 	for i,tp := range t {
-		if lookup := metars.Lookup(tp.TimestampUTC); lookup != nil && lookup.Raw != "" {
-			t[i].AnalysisAnnotation += fmt.Sprintf("* inHg: %v\n", lookup)
-			t[i].IndicatedAltitude = altitude.PressureAltitudeToIndicatedAltitude(
-				tp.Altitude, lookup.AltimeterSettingInHg)
+		if metars != nil {
+			if lookup := metars.Lookup(tp.TimestampUTC); lookup != nil && lookup.Raw != "" {
+				t[i].AnalysisAnnotation += fmt.Sprintf("* altitude correction: inHg %v\n", lookup)
+				t[i].IndicatedAltitude = altitude.PressureAltitudeToIndicatedAltitude(
+					tp.Altitude, lookup.AltimeterSettingInHg)
+			} else {
+				// Hack, because we don't have historic METAR yet
+				t[i].AnalysisAnnotation += fmt.Sprintf("* altitude correction: no historic METAR\n")
+				t[i].IndicatedAltitude = tp.Altitude
+			}
 		} else {
-			// Hack, because we don't have historic METAR yet
+			t[i].AnalysisAnnotation += fmt.Sprintf("* altitude correction: not reqeusted (no METAR)\n")
 			t[i].IndicatedAltitude = tp.Altitude
 		}
 	}

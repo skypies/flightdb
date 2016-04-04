@@ -28,7 +28,7 @@ func (r *Report)Links(f *fdb.Flight) string {
 		//v1url := v1host + "/fdb/lookup?map=1&rep=" + r.Name + "&id=" + k
 		// addFrag("v1",   v1url)
 		addFrag("map",  v1host + "/fdb/track2?idspec="   +k+"&"+reportArgs)
-		addFrag("vec",  v1host + "/fdb/trackset3?idspec="+k+"&"+reportArgs)
+		addFrag("vec",  v1host + "/fdb/trackset2?idspec="+k+"&"+reportArgs)
 		addFrag("side", v1host + "/fdb/descent2?idspec="+k+"&"+dateArgs+"&sample=15")
 
 		if f.HasTrack("ADSB") || f.HasTrack("MLAT") {

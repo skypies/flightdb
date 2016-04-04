@@ -28,7 +28,7 @@ func init() {
 
 	http.HandleFunc("/fdb/tracks", trackHandler)
 	http.HandleFunc("/fdb/trackset", tracksetHandler)
-	//http.HandleFunc("/fdb/vector", vectorHandler)
+	http.HandleFunc("/fdb/vector", vectorHandler)  // Returns an idpsec as vector lines in JSON
 }
 
 // {{{ maybeAddFr24Track
@@ -165,7 +165,7 @@ func tracksetHandler(w http.ResponseWriter, r *http.Request) {
 		idstrings = append(idstrings, idspec.String())
 	}
 	
-	OutputMapLinesOnAStreamingMap(w, r, idstrings)
+	OutputMapLinesOnAStreamingMap(w, r, idstrings, "/fdb/vector")
 }
 
 // }}}
@@ -201,84 +201,35 @@ func vectorHandler(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
 	db := fgae.FlightDB{C:c}
 	
-	//colorscheme := FormValueColorScheme(r)
-	idspecs,err := FormValueIdSpecs(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	var idspec fdb.IdSpec
+	if idspecs,err := FormValueIdSpecs(r); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
+	}	else if len(idspecs) != 1 {
+		http.Error(w, "wanted just one idspec arg", http.StatusBadRequest)
+		return
+	} else {
+		idspec = idspecs[0]
 	}
 
 	if r.FormValue("json") == "" {
-		http.Error(w, "vectorHandler is json only at the moment", http.StatusInternalServerError)
+		http.Error(w, "vectorHandler is json only at the moment", http.StatusBadRequest)
 		return
 	}
-	
-	w.Header().Set("Content-Type", "application/json")
-	//w.Write([]byte("["))
-	for _,idspec := range idspecs {
-		f,err := db.LookupMostRecent(db.NewQuery().ByIdSpec(idspec))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		} else if f == nil {
-			http.Error(w, fmt.Sprintf("idspec %s not found", idspec), http.StatusInternalServerError)
-			return
-		}
 
-		trackName,_ := f.PreferredTrack(widget.FormValueCommaSepStrings(r, "trackspec"))
-		
-		lines := FlightToMapLines(f, trackName)
-		jsonBytes,err := json.Marshal(lines)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Write(jsonBytes)
-	}
-
-	//w.Write([]byte("]"))
-}
-
-// }}}
-
-// {{{ oldtracksetHandler
-
-// ?idspec=F12123@144001232[,...]
-//  &colorby=procedure   (what we tagged them as)
-
-func oldtracksetHandler(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
-	db := fgae.FlightDB{C:c}
-	
-	// This whole Airframe cache thing should be automatic, and upstream from here.
-	airframes := ref.NewAirframeCache(c)
-
-	//colorscheme := FormValueColorScheme(r)
-	idspecs,err := FormValueIdSpecs(r)
+	f,err := db.LookupMostRecent(db.NewQuery().ByIdSpec(idspec))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
-	
-	flights := []*fdb.Flight{}
-	for _,idspec := range idspecs {
-		f,err := db.LookupMostRecent(db.NewQuery().ByIdSpec(idspec))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		} else if f == nil {
-			http.Error(w, fmt.Sprintf("idspec %s not found", idspec), http.StatusInternalServerError)
-			return
-		}
-		if af := airframes.Get(f.IcaoId); af != nil { f.Airframe = *af }
-		flights = append(flights,f)
+	} else if f == nil {
+		http.Error(w, fmt.Sprintf("idspec %s not found", idspec), http.StatusBadRequest)
+		return
 	}
 
-	OutputTracksAsLinesOnAMap(w,r,flights)
+	OutputFlightAsVectorJSON(w, r, f)
 }
 
 // }}}
-
 
 // {{{ getReport
 
@@ -501,6 +452,24 @@ func OutputMapLinesOnAMap(w http.ResponseWriter, r *http.Request, inputLines []M
 }
 
 // }}}
+// {{{ OutputFlightAsVectorJSON
+
+func OutputFlightAsVectorJSON(w http.ResponseWriter, r *http.Request, f *fdb.Flight) {
+	//colorscheme := FormValueColorScheme(r)
+	
+	trackName,_ := f.PreferredTrack(widget.FormValueCommaSepStrings(r, "trackspec"))
+		
+	w.Header().Set("Content-Type", "application/json")
+	lines := FlightToMapLines(f, trackName)
+	jsonBytes,err := json.Marshal(lines)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Write(jsonBytes)
+}
+
+// }}}
 
 // {{{ IdSpecsToJSVar
 
@@ -517,11 +486,10 @@ func IdSpecsToJSVar(idspecs []string) template.JS {
 // {{{ OutputMapLinesOnAStreamingMap
 
 // ?idspec==XX,YY,...
-// &colorby=procedure   (what we tagged them as)
+// &colorby=procedure   (what we tagged them as - not implemented ?)
 
-func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspecs []string) {
+func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspecs []string, vectorURLPath string) {
 	ms := NewMapShapes()
-	//ms.Lines = append(ms.Lines, inputLines...)
 	
 	opacity := 0.6
 	trackspec := ""
@@ -544,6 +512,7 @@ func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspe
 		"Lines": MapLinesToJSVar(ms.Lines),
 		"Circles": MapCirclesToJSVar(ms.Circles),
 		"IdSpecs": IdSpecsToJSVar(idspecs),
+		"VectorURLPath": vectorURLPath,  // retire this when DBv1/v2ui.go and friends are gone
 		"TrackSpec": trackspec,
 		
 		// Would be nice to do something better for rendering hints, before they grow without bound

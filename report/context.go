@@ -62,7 +62,7 @@ func (r *Report)AddACLs() {
 func (r *Report)EnforceACLs() error {
 	cutoff,_ := time.Parse("2006.01.02", "2015.10.01")
 	if r.Start.Before(cutoff) && !r.Options.CanSeeFOIA {
-		return fmt.Errorf("User not in FOIA ACL")
+		return fmt.Errorf(fmt.Sprintf("User '%s' not in FOIA ACL", r.UserEmail))
 	}
 	return nil
 }

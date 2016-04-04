@@ -27,6 +27,7 @@ type DescentPdf struct {
 	*gofpdf.Fpdf // Embedded pointer
 
 	Debug        string
+	ShowDebug    bool
 }
 
 // {{{ dp.Init
@@ -146,7 +147,11 @@ func (g DescentPdf)DrawFrames() {
 // {{{ dp.DrawCaption
 
 func (g DescentPdf)DrawCaption(title string) {
-	//title += "--\n" + g.Debug
+
+	if g.ShowDebug {
+		title += "--DEBUG--\n" + g.Debug
+	}
+
 	g.SetTextColor(0,0,0)
 	g.MoveTo(10, 10)
 	g.MultiCell(0, 4, title, "", "", false)
@@ -221,6 +226,8 @@ func (g *DescentPdf)DrawTrackAsDistanceFromOrigin(t fdb.Track) {
 		if g.ColorScheme == ByPlotKind { rgb = []int{0,250,0} }
 		return tp.DistNM(g.OriginPoint), tp.IndicatedAltitude, rgb
 	}
+
+	g.Debug += fmt.Sprintf("DrawTrackAsDistanceFromOrigin\n")
 	
 	g.DrawTrackWithDistFunc(t, trackpointToXY, g.ColorScheme)
 }
@@ -234,11 +241,12 @@ func (g *DescentPdf)DrawTrackAsDistanceFromOrigin(t fdb.Track) {
 func (g *DescentPdf)DrawTrackAsDistanceAlongPath(t fdb.Track) {
 	// We want to render this working backwards from the end, so descents can line up together.
 	// That means we're interested in each point's distance travelled in relation to the end point.
+	g.Debug += fmt.Sprintf("DrawTrackAsDistanceAlongPath\n")
 	iClosest := t.ClosestTo(g.OriginPoint)
 	if iClosest < 0 { return }
 	endpointKM := t[iClosest].DistanceTravelledKM
 
-	g.Debug += fmt.Sprintf("endKM=%.2f\n", endpointKM)
+	g.Debug += fmt.Sprintf("* endKM=%.2f\n", endpointKM)
 	
 	trackpointToXY := func(tp fdb.Trackpoint) (float64, float64, []int) {
 		distToGoKM := endpointKM - tp.DistanceTravelledKM
@@ -246,6 +254,8 @@ func (g *DescentPdf)DrawTrackAsDistanceAlongPath(t fdb.Track) {
 
 		rgb := []int{0,0,0}
 		if g.ColorScheme == ByPlotKind { rgb = []int{250,0,0} }
+
+		//g.Debug += fmt.Sprintf("%s\n", tp)
 		
 		return distToGoNM, tp.IndicatedAltitude, rgb
 	}

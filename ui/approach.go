@@ -188,7 +188,7 @@ func OutputDescentAsPDF(w http.ResponseWriter, r *http.Request, f fdb.Flight) {
 	colorscheme := FormValueColorScheme(r)
 	colorscheme = fpdf.ByPlotKind
 
-	trackType,track := f.PreferredTrack([]string{"ADSB", "FOIA", "fr24"})
+	trackType,track := f.PreferredTrack([]string{"ADSB", "MLAT", "FOIA", "fr24"})
 	if track == nil {
 			http.Error(w, "no acceptable track found", http.StatusInternalServerError)
 			return
@@ -198,7 +198,9 @@ func OutputDescentAsPDF(w http.ResponseWriter, r *http.Request, f fdb.Flight) {
 	}
 	track.PostProcess()
 
-	if trackType != "FOIA" { // FOIA track altitudes are already pressure-corrected
+	if trackType == "FOIA" {
+		track.AdjustAltitudes(nil) // FOIA track altitudes are already pressure-corrected
+	} else {
 		c := appengine.NewContext(r)
 	
 		// Default to the time range of the flights
@@ -232,17 +234,19 @@ func OutputDescentAsPDF(w http.ResponseWriter, r *http.Request, f fdb.Flight) {
 		OriginLabel: trackType,
 		AltitudeMax: float64(altitudeMax),
 		LengthNM:    float64(lengthNM),
+		ShowDebug:  (r.FormValue("debug") != ""),
 	}
 	dp.Init()
 	dp.DrawFrames()
-	dp.DrawCaption(fmt.Sprintf("Flight: %s\nTrack: %s\n", f.FullString(), track.String()))
-	//dp.DrawColorSchemeKey()
 
 	if r.FormValue("dist") == "from" {
 		dp.DrawTrackAsDistanceFromOrigin(track)
 	} else {
 		dp.DrawTrackAsDistanceAlongPath(track)
 	}
+
+	dp.DrawCaption(fmt.Sprintf("Flight: %s\nTrack: %s\n", f.FullString(), track.String()))
+	//dp.DrawColorSchemeKey()
 
 	w.Header().Set("Content-Type", "application/pdf")
 	if err := dp.Output(w); err != nil {
