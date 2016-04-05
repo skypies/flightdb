@@ -3,6 +3,7 @@ package ui
 import(
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 	
 	"google.golang.org/appengine"
@@ -23,32 +24,6 @@ func init() {
 	http.HandleFunc("/fdb/approach", approachHandler)
 	http.HandleFunc("/fdb/descent",  descentHandler)
 }
-
-// {{{ FormValueColorScheme
-
-func FormValueColorScheme(r *http.Request) fpdf.ColorScheme {
-	switch r.FormValue("colorby") {
-	case "delta": return fpdf.ByDeltaGroundspeed
-	case "plot": return fpdf.ByPlotKind
-	default: return fpdf.ByGroundspeed
-	}
-}
-
-// }}}
-// {{{ FormValueIdSpecs
-
-// Presumes a form field 'idspec', as per identity.go
-func FormValueIdSpecs(r *http.Request) ([]fdb.IdSpec, error) {
-	ret := []fdb.IdSpec{}
-	for _,str := range widget.FormValueCommaSepStrings(r, "idspec") {
-		id,err := fdb.NewIdSpec(str)
-		if err != nil { return nil, err }
-		ret = append(ret, id)
-	}
-	return ret, nil
-}
-
-// }}}
 
 // {{{ approachHandler
 
@@ -104,25 +79,35 @@ func descentHandler(w http.ResponseWriter, r *http.Request) {
 
 	idspecs,err := FormValueIdSpecs(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	flights := []*fdb.Flight{}
+	dp := DescentPDFInit(w, r)
+
+	if len(idspecs) > 10 {
+		dp.LineThickness = 0.1
+		dp.LineOpacity = 0.25
+	}
+	
 	for _,idspec := range idspecs {
 		f,err := db.LookupMostRecent(db.NewQuery().ByIdSpec(idspec))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		} else if f == nil {
-			http.Error(w, fmt.Sprintf("idspec %s not found", idspec), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("idspec %s not found", idspec), http.StatusBadRequest)
 			return
 		}
 		if af := airframes.Get(f.IcaoId); af != nil { f.Airframe = *af }
-		flights = append(flights, f)
+
+		if err := DescentPDFAddFlight(r, dp, f); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
-	OutputDescentAsPDF(w,r,*(flights[0]))
+	DescentPDFFinalize(w,r,dp)
 }
 
 // }}}
@@ -182,41 +167,16 @@ func OutputApproachesAsPDF(w http.ResponseWriter, r *http.Request, flights []*fd
 }
 
 // }}}
-// {{{ OutputDescentAsPDF
+// {{{ OutputDescentsAsPDF
 
-func OutputDescentAsPDF(w http.ResponseWriter, r *http.Request, f fdb.Flight) {
+func OutputDescentsAsPDF(w http.ResponseWriter, r *http.Request, flights []*fdb.Flight) {
+	
 	colorscheme := FormValueColorScheme(r)
 	colorscheme = fpdf.ByPlotKind
 
-	trackType,track := f.PreferredTrack([]string{"ADSB", "MLAT", "FOIA", "fr24"})
-	if track == nil {
-			http.Error(w, "no acceptable track found", http.StatusInternalServerError)
-			return
-	}
-	if secs := widget.FormValueInt64(r, "sample"); secs > 0 {
-		track = track.SampleEvery(time.Second * time.Duration(secs), false)
-	}
-	track.PostProcess()
-
-	if trackType == "FOIA" {
-		track.AdjustAltitudes(nil) // FOIA track altitudes are already pressure-corrected
-	} else {
-		c := appengine.NewContext(r)
-	
-		// Default to the time range of the flights
-		s,e,_ := widget.FormValueDateRange(r)
-		if time.Since(e) > time.Hour*24*365 {
-			s,e = f.Times()
-			s = s.Add(-24*time.Hour)
-			e = s.Add(24*time.Hour)
-		}
-
-		m,err := metar.FetchFromNOAA(urlfetch.Client(c), "KSFO",s.AddDate(0,0,-1), e.AddDate(0,0,1))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		track.AdjustAltitudes(m)
+	if len(flights) == 0 {
+		http.Error(w, "zero flights in args", http.StatusBadRequest)
+		return
 	}
 
 	lengthNM := 80
@@ -227,25 +187,35 @@ func OutputDescentAsPDF(w http.ResponseWriter, r *http.Request, f fdb.Flight) {
 	if alt := widget.FormValueInt64(r, "alt"); alt > 0 {
 		altitudeMax = int(alt)
 	}
-	
+
 	dp := fpdf.DescentPdf{
 		ColorScheme: colorscheme,
 		OriginPoint: sfo.KLatlongSFO,
-		OriginLabel: trackType,
+		//OriginLabel: trackType,
 		AltitudeMax: float64(altitudeMax),
 		LengthNM:    float64(lengthNM),
 		ShowDebug:  (r.FormValue("debug") != ""),
 	}
+
 	dp.Init()
 	dp.DrawFrames()
 
-	if r.FormValue("dist") == "from" {
-		dp.DrawTrackAsDistanceFromOrigin(track)
-	} else {
-		dp.DrawTrackAsDistanceAlongPath(track)
-	}
+	for _,f := range flights {	
+		if t,err := flightToDescentTrack(r, f); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 
-	dp.DrawCaption(fmt.Sprintf("Flight: %s\nTrack: %s\n", f.FullString(), track.String()))
+		} else {
+			if r.FormValue("dist") == "from" {
+				dp.DrawTrackAsDistanceFromOrigin(t)
+			} else {
+				dp.DrawTrackAsDistanceAlongPath(t)
+			}
+		}
+	}
+	dp.SetTextColor(80,80,80)
+	dp.DrawCaption()
+
 	//dp.DrawColorSchemeKey()
 
 	w.Header().Set("Content-Type", "application/pdf")
@@ -253,6 +223,115 @@ func OutputDescentAsPDF(w http.ResponseWriter, r *http.Request, f fdb.Flight) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+// }}}
+
+// {{{ DescentPDFInit
+
+func DescentPDFInit(w http.ResponseWriter, r *http.Request) *fpdf.DescentPdf {
+	colorscheme := FormValueColorScheme(r)
+	colorscheme = fpdf.ByPlotKind
+
+	lengthNM := 80
+	if length := widget.FormValueInt64(r, "length"); length > 0 {
+		lengthNM = int(length)
+	}
+	altitudeMax := 30000
+	if alt := widget.FormValueInt64(r, "alt"); alt > 0 {
+		altitudeMax = int(alt)
+	}
+
+	dp := fpdf.DescentPdf{
+		ColorScheme: colorscheme,
+		OriginPoint: sfo.KLatlongSFO,
+		//OriginLabel: trackType,
+		AltitudeMax: float64(altitudeMax),
+		LengthNM:    float64(lengthNM),
+		ShowDebug:  (r.FormValue("debug") != ""),
+	}
+
+	dp.Init()
+	dp.DrawFrames()
+
+	return &dp
+}
+
+// }}}
+// {{{ DescentPDFAddFlight
+
+func DescentPDFAddFlight(r *http.Request, dp *fpdf.DescentPdf, f *fdb.Flight) error {
+	if t,err := flightToDescentTrack(r, f); err != nil {
+		return err
+	} else {
+		if r.FormValue("dist") == "from" {
+			dp.DrawTrackAsDistanceFromOrigin(t)
+		} else {
+			dp.DrawTrackAsDistanceAlongPath(t)
+		}
+
+		if strings.Count(dp.Caption, "\n") < 5 {
+			dp.Caption += fmt.Sprintf("%s %s\n", f.IdentString(), t.MediumString())
+		}
+	}
+
+	return nil
+}
+
+// }}}
+// {{{ DescentPDFFinalize
+
+func DescentPDFFinalize(w http.ResponseWriter, r *http.Request, dp *fpdf.DescentPdf) {
+	dp.DrawCaption()
+
+	w.Header().Set("Content-Type", "application/pdf")
+	if err := dp.Output(w); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// }}}
+
+// {{{ flightToDescentTrack
+
+// Resamples the track; does full post-processing; attempts altitude correction
+// Extracts a bunch of args from the request (sample, DateRange widget)
+
+func flightToDescentTrack(r *http.Request, f *fdb.Flight) (fdb.Track, error) {
+	trackKeyName,track := f.PreferredTrack([]string{"ADSB", "MLAT", "FOIA", "FA", "fr24"})
+	if track == nil {
+		return nil, fmt.Errorf("no track found (saw %q)", f.ListTracks())
+	}
+
+	if secs := widget.FormValueInt64(r, "sample"); secs > 0 {
+		track = track.SampleEvery(time.Second * time.Duration(secs), false)
+	}
+
+	track.PostProcess()
+
+	if trackKeyName == "FOIA" {
+		track.AdjustAltitudes(nil) // FOIA track altitudes are already pressure-corrected
+
+	} else {
+		c := appengine.NewContext(r)
+
+		// Default to the time range of the flights
+		s,e,_ := widget.FormValueDateRange(r)
+		if time.Since(e) > time.Hour*24*365 {
+			s,e = f.Times()
+			s = s.Add(-24*time.Hour)
+			e = s.Add(24*time.Hour)
+		}
+
+		m,err := metar.FetchFromNOAA(urlfetch.Client(c), "KSFO",s.AddDate(0,0,-1), e.AddDate(0,0,1))
+		if err != nil {
+			return nil, err
+		}
+		track.AdjustAltitudes(m)
+	}
+
+	return track, nil
 }
 
 // }}}

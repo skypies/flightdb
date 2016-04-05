@@ -50,7 +50,7 @@ func (t Track)Notes() string {
 	return t[0].Notes
 }
 
-// {{{ t.[Short]String
+// {{{ t.{Short|Medium|}String
 
 func (t Track)String() string {
 	if len(t) == 0 { return "(empty track)" }
@@ -63,6 +63,21 @@ func (t Track)String() string {
 			s.Dist(e.Latlong), s.BearingTowards(e.Latlong))
 		str += fmt.Sprintf(", src=%s", s.DataSource)
 		if s.ReceiverName != "" { str += "/" + s.ReceiverName }
+	}
+
+	if t.Notes() != "" {
+		str += " " + t.Notes()
+	}
+
+	return str
+}
+
+func (t Track)MediumString() string {
+	if len(t) == 0 { return "(empty track)" }
+	str := fmt.Sprintf("%4d pts, start=%s", len(t),
+		t[0].TimestampUTC.Format("2006.01.02 15:04"))
+	if len(t) > 1 {
+		str += fmt.Sprintf(", src=%s", t[0].DataSource)
 	}
 
 	if t.Notes() != "" {
@@ -159,12 +174,15 @@ func (t Track)PostProcess() {
 // {{{ t.AdjustAltitudes
 
 func (t Track)AdjustAltitudes(metars *metar.Archive) {
+	nAdjusted := 0
+
 	for i,tp := range t {
 		if metars != nil {
 			if lookup := metars.Lookup(tp.TimestampUTC); lookup != nil && lookup.Raw != "" {
 				t[i].AnalysisAnnotation += fmt.Sprintf("* altitude correction: inHg %v\n", lookup)
 				t[i].IndicatedAltitude = altitude.PressureAltitudeToIndicatedAltitude(
 					tp.Altitude, lookup.AltimeterSettingInHg)
+				nAdjusted++
 			} else {
 				// Hack, because we don't have historic METAR yet
 				t[i].AnalysisAnnotation += fmt.Sprintf("* altitude correction: no historic METAR\n")
@@ -174,6 +192,10 @@ func (t Track)AdjustAltitudes(metars *metar.Archive) {
 			t[i].AnalysisAnnotation += fmt.Sprintf("* altitude correction: not reqeusted (no METAR)\n")
 			t[i].IndicatedAltitude = tp.Altitude
 		}
+	}
+
+	if nAdjusted>0 {
+		t[0].Notes += fmt.Sprintf("(%d altitude corrections)", nAdjusted)
 	}
 }
 

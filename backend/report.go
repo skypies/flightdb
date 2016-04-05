@@ -30,6 +30,14 @@ func ButtonPOST(anchor, action string, idspecs []string) string {
 	return posty
 }
 
+func maybeButtonPOST(idspecs []string, title string, url string) string {
+	if len(idspecs) == 0 { return "" }
+	return ButtonPOST(
+		fmt.Sprintf("%d %s", len(idspecs), title),
+		fmt.Sprintf("%s", url),
+		idspecs)
+}
+
 func reportHandler(w http.ResponseWriter, r *http.Request) {
 	c,_ := context.WithTimeout(appengine.NewContext(r), 10 * time.Minute)
 
@@ -124,6 +132,11 @@ func reportHandler(w http.ResponseWriter, r *http.Request) {
 		len(idspecsRejectByReport)),
 		fmt.Sprintf("/fdb/trackset?%s", rep.ToCGIArgs()), idspecsRejectByReport)
 
+	url := fmt.Sprintf("/fdb/descent?sample=15&%s", rep.ToCGIArgs())
+	postButtons += maybeButtonPOST(idspecsAccepted, "Matchs as DescentGraph", url)
+	postButtons += maybeButtonPOST(idspecsRejectByRestrict, "Restriction Rejects as DescentGraph",url)
+	postButtons += maybeButtonPOST(idspecsRejectByReport, "Report Rejects DescentGraph", url)
+	
 	if rep.Name == "sfoclassb" {
 		postButtons += ButtonPOST(fmt.Sprintf("%d matches as ClassBApproaches", len(idspecsAccepted)),
 			fmt.Sprintf("/fdb/approach?%s", rep.ToCGIArgs()), idspecsAccepted)

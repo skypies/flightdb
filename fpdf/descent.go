@@ -24,8 +24,12 @@ type DescentPdf struct {
 	LengthNM     float64
 	ColorScheme  // embedded
 
+	LineThickness  float64
+	LineOpacity    float64 // 0.0==transparent, 1.0==opaque
+	
 	*gofpdf.Fpdf // Embedded pointer
 
+	Caption      string
 	Debug        string
 	ShowDebug    bool
 }
@@ -37,6 +41,9 @@ func (g *DescentPdf)Init() {
 	g.AddPage()
 	g.SetFont("Arial", "", 10)	
 
+	if g.LineThickness == 0.0 { g.LineThickness = 0.25 }
+	if g.LineOpacity == 0.0   { g.LineOpacity = 1.0 }
+	
 	g.Grids = map[string]*BaseGrid{}
 
 	u,v := 22.0,35.0 // The top-left origin, in PDF space; increment as we go down the page
@@ -146,13 +153,14 @@ func (g DescentPdf)DrawFrames() {
 // }}}
 // {{{ dp.DrawCaption
 
-func (g DescentPdf)DrawCaption(title string) {
-
+func (g DescentPdf)DrawCaption() {
+	title := g.Caption
+	
 	if g.ShowDebug {
 		title += "--DEBUG--\n" + g.Debug
 	}
 
-	g.SetTextColor(0,0,0)
+	g.SetTextColor(0xb0, 0xb0, 0xf0)
 	g.MoveTo(10, 10)
 	g.MultiCell(0, 4, title, "", "", false)
 	g.DrawPath("D")
@@ -175,7 +183,6 @@ type DistanceFunc func(tp fdb.Trackpoint) (float64, float64, []int)
 
 func (g *DescentPdf)DrawTrackWithDistFunc(t fdb.Track, f DistanceFunc, colorscheme ColorScheme) {
 	g.SetDrawColor(0xff, 0x00, 0x00)
-	g.SetLineWidth(0.25)
 	
 	if len(t) == 0 { return }
 	
@@ -183,7 +190,8 @@ func (g *DescentPdf)DrawTrackWithDistFunc(t fdb.Track, f DistanceFunc, colorsche
 		x1,alt1,_ := f(t[i])
 		x2,alt2,rgb := f(t[i+1])
 		
-		g.SetLineWidth(0.25)		
+		g.SetLineWidth(g.LineThickness)
+		g.SetAlpha(g.LineOpacity, "")
 		g.SetDrawColor(rgb[0], rgb[1], rgb[2])
 
 		if grid,exists := g.Grids["altitude"]; exists {
