@@ -38,7 +38,7 @@ func (r *Report)setupReportingContext(ctx context.Context) error {
 	r.ReportingContext.Archive = *metar
 	
 	if user := user.Current(ctx); user != nil {
-		r.ReportingContext.UserEmail = user.String()
+		r.ReportingContext.UserEmail = user.Email
 	}
 	
 	r.AddACLs()
