@@ -23,11 +23,16 @@ func ListReporter(r *Report, f *fdb.Flight, intersections []fdb.TrackIntersectio
 	s,e := f.Times()
 	dur := e.Sub(s)
 
+	waypoints := strings.Join(f.WaypointList(), ",")
+	if len(waypoints) > 35 {
+		waypoints = waypoints[:35] + "..."
+	}
+	
 	htmlrow := []string{
 		r.Links(f),
 		"<code>" + f.FullString() + "</code>",
 		fmt.Sprintf("[<small>%s</small>]", strings.Join(f.TagList(), ",")),
-		fmt.Sprintf("{<small>%s</small>}", strings.Join(f.WaypointList(), ",")),
+		fmt.Sprintf("{<small>%s</small>}", waypoints),
 		fmt.Sprintf("+%s", dur),
 	}
 

@@ -122,39 +122,35 @@ func reportHandler(w http.ResponseWriter, r *http.Request) {
 	idspecsInReport := idspecsAccepted
 	idspecsInReport = append(idspecsInReport, idspecsRejectByReport...)	
 	
-	postButtons := ButtonPOST(fmt.Sprintf("%d matches as a VectorMap", len(idspecsAccepted)),
-		fmt.Sprintf("/fdb/trackset?%s", rep.ToCGIArgs()), idspecsAccepted)
+	postButtons := ""
 
-	postButtons += ButtonPOST(fmt.Sprintf("%d restriction rejects as a VectorMap",
-		len(idspecsRejectByRestrict)),
-		fmt.Sprintf("/fdb/trackset?%s", rep.ToCGIArgs()), idspecsRejectByRestrict)
-	postButtons += ButtonPOST(fmt.Sprintf("%d report rejects as a VectorMap",
-		len(idspecsRejectByReport)),
-		fmt.Sprintf("/fdb/trackset?%s", rep.ToCGIArgs()), idspecsRejectByReport)
+	url := fmt.Sprintf("/fdb/trackset?%s", rep.ToCGIArgs())
+	postButtons += maybeButtonPOST(idspecsRejectByRestrict, "Restriction Rejects as VectorMap",url)
+	postButtons += maybeButtonPOST(idspecsRejectByReport, "Report Rejects as VectorMap", url)
 
-	url := fmt.Sprintf("/fdb/descent?sample=15&%s", rep.ToCGIArgs())
-	postButtons += maybeButtonPOST(idspecsAccepted, "Matchs as DescentGraph", url)
+  url = fmt.Sprintf("/fdb/descent?%s", rep.ToCGIArgs())
 	postButtons += maybeButtonPOST(idspecsRejectByRestrict, "Restriction Rejects as DescentGraph",url)
-	postButtons += maybeButtonPOST(idspecsRejectByReport, "Report Rejects DescentGraph", url)
+	postButtons += maybeButtonPOST(idspecsRejectByReport, "Report Rejects as DescentGraph", url)
 	
 	if rep.Name == "sfoclassb" {
-		postButtons += ButtonPOST(fmt.Sprintf("%d matches as ClassBApproaches", len(idspecsAccepted)),
-			fmt.Sprintf("/fdb/approach?%s", rep.ToCGIArgs()), idspecsAccepted)
-		postButtons += ButtonPOST(fmt.Sprintf("%d report rejects as ClassBApproaches",
-			len(idspecsRejectByReport)),
-			fmt.Sprintf("/fdb/approach?%s", rep.ToCGIArgs()), idspecsRejectByReport)
-
-		postButtons += ButtonPOST(fmt.Sprintf("%d accept/reject as ClassBApproaches",
-			len(idspecsInReport)),
-			fmt.Sprintf("/fdb/approach?%s", rep.ToCGIArgs()), idspecsInReport)
+		url = fmt.Sprintf("/fdb/approach?%s", rep.ToCGIArgs())
+		postButtons += maybeButtonPOST(idspecsAccepted, "Matches as ClassB",url)
+		postButtons += maybeButtonPOST(idspecsRejectByRestrict, "Restriction Rejects as ClassB",url)
+		postButtons += maybeButtonPOST(idspecsRejectByReport, "Report Rejects as ClassB", url)
+		postButtons += maybeButtonPOST(idspecsInReport, "Accept/Reject as ClassB", url)
 	}
 
+	// The only way to get embedded CGI args without them getting escaped is to submit a whole tag
+	vizFormURL := "/fdb/visualize?"+rep.ToCGIArgs()
+	vizFormTag := "<form action=\""+vizFormURL+"\" method=\"post\" target=\"_blank\">"
+	
 	var params = map[string]interface{}{
 		"R": rep,
 		"Metadata": rep.MetadataTable(),
 		"PostButtons": template.HTML(postButtons),
 		"IdSpecs": template.HTML(strings.Join(idspecsAccepted,",")),
 		"Title": "Reports (DB v2)",
+		"VisualizationFormTag": template.HTML(vizFormTag),
 	}
 	if err := templates.ExecuteTemplate(w, "report3-results", params); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

@@ -5,6 +5,7 @@ package report
 // They are all parsed of the http.request, including the report name.
 
 import(
+	"html/template"
 	"fmt"
 	"math"
 	"net/http"
@@ -206,6 +207,9 @@ func (o Options)String() string {
 func LatlongToCGIArgs(stem string, pos geo.Latlong) string {
 	return fmt.Sprintf("%slat=%.5f&%slong=%.5f", stem, pos.Lat, stem, pos.Long)
 }
+
+// for html/template, which chokes 
+func (r Report)CGIArgs() template.HTML { return template.HTML(r.ToCGIArgs()) }
 
 // A bare minimum of args, to embed in track links, so tracks can render with report tooltips
 // and maps can see the geometry used

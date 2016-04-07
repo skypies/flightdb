@@ -3,6 +3,10 @@
 <html>
   {{template "header"}}
   <body>
+
+    <script type="text/javascript">
+      {{template "js-checkboxes"}}
+    </script>
     
     <div class="allstack">
       <h1>Report {{.R.Name}}: {{.R.Start.Format "Mon 2006/01/02"}} - {{.R.End.Format "Mon 2006/01/02"}}, 
@@ -20,12 +24,25 @@
       <p>{{.PostButtons}}</p>
 
       <div class="box">
+        {{.VisualizationFormTag}}
         <table>
+          <tr><td colspan="4">
+              <b>Checkboxes</b>:[
+              <button type="button" onClick="clearNamedCheckboxes('idspec')">clear</button>,
+              <button type="button" onClick="setNamedCheckboxes('idspec')">set</button>,
+              <button type="button" onClick="toggleNamedCheckboxes('idspec')">toggle</button>]
+
+              <b>Visualize selected as</b>:[
+             <button type="submit" name="viewtype" value="vector" class="btn-link">VectorMap</button>,
+              <button type="submit" name="viewtype" value="descent" class="btn-link">DescentGraph</button><!--, 
+              <button type="submit" name="viewtype" value="track" class="btn-link">TrackPoints</button>-->].
+        </td></tr>
         {{range .R.RowsHTML}}
         <tr>
           {{range . }}<td>{{.}}</td>{{end}}
         </tr>{{end}}
         </table>
+        </form>
       </div>
 
       <div style="text-align:left">

@@ -23,7 +23,10 @@ func (r *Report)Links(f *fdb.Flight) string {
 	dateArgs := widget.DateRangeToCGIArgs(s.Add(-24*time.Hour),e.Add(24*time.Hour))
 	reportArgs := r.ToCGIArgs()
 
+	bestIdSpec := f.IdSpecString()
+	
 	if k,exists := f.ForeignKeys["v1"]; exists {
+		bestIdSpec = k
 		v1host := "https://stop.jetnoise.net"
 		//v1url := v1host + "/fdb/lookup?map=1&rep=" + r.Name + "&id=" + k
 		// addFrag("v1",   v1url)
@@ -33,7 +36,7 @@ func (r *Report)Links(f *fdb.Flight) string {
 
 		if f.HasTrack("ADSB") || f.HasTrack("MLAT") {
 			fdbhost := "https://ui-dot-serfr0-fdb.appspot.com"
-			addFrag("NewDB", fdbhost + f.TrackUrl()+"&"+reportArgs)
+			addFrag("DBv2", fdbhost + f.TrackUrl()+"&"+reportArgs)
 		}
 
 	} else {
@@ -41,8 +44,10 @@ func (r *Report)Links(f *fdb.Flight) string {
 		addFrag("vec",     "/fdb/trackset?idspec="+f.IdSpecString()+"&"+reportArgs)
 		addFrag("side",    "/fdb/descent?idspec="+f.IdSpecString()+"&"+dateArgs+"&sample=15")
 	}
+
+	tickbox := "<input type=\"checkbox\" name=\"idspec\" checked=\"yes\" value=\""+bestIdSpec+"\"/>"
 	
-	return "[" + strings.Join(frags, ",") + "]"
+	return tickbox + " [" + strings.Join(frags, ",") + "]"
 }
 
 func (r *Report)GetFirstIntersectingTrackpoint(t []fdb.TrackIntersection) *fdb.Trackpoint {

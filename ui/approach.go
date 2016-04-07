@@ -304,10 +304,9 @@ func flightToDescentTrack(r *http.Request, f *fdb.Flight) (fdb.Track, error) {
 		return nil, fmt.Errorf("no track found (saw %q)", f.ListTracks())
 	}
 
-	if secs := widget.FormValueInt64(r, "sample"); secs > 0 {
-		track = track.SampleEvery(time.Second * time.Duration(secs), false)
-	}
-
+	secs := widget.FormValueInt64(r, "sample")
+	if secs == 0 { secs = 15 }
+	track = track.SampleEvery(time.Second * time.Duration(secs), false)
 	track.PostProcess()
 
 	if trackKeyName == "FOIA" {

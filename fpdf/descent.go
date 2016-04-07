@@ -160,7 +160,7 @@ func (g DescentPdf)DrawCaption() {
 		title += "--DEBUG--\n" + g.Debug
 	}
 
-	g.SetTextColor(0xb0, 0xb0, 0xf0)
+	g.SetTextColor(0x80, 0x80, 0xe0)
 	g.MoveTo(10, 10)
 	g.MultiCell(0, 4, title, "", "", false)
 	g.DrawPath("D")
