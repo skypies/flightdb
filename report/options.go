@@ -244,3 +244,24 @@ func (r *Report)ToCGIArgs() string {
 	return str
 }
 
+func (o Options)DescriptionText() string {
+	str := ""
+	if o.Name != ".list" { str += o.Name+": " }
+
+	s, e := o.Start.Format("2006/01/02"), o.End.Format("2006/01/02")
+	str += s
+	if s != e { str += "-"+e }
+
+	if len(o.Tags)>0 { str += fmt.Sprintf(", tags=%v", o.Tags) }
+	if len(o.HackWaypoints)>0 { str += fmt.Sprintf(", waypoints=%v", o.HackWaypoints) }
+
+	if len(o.Waypoints) > 0 {
+		str += fmt.Sprintf(", %s@%.1fKM applied", o.Waypoints[0], o.SideKM)
+	}
+	if !o.Center.IsNil() {
+		str += fmt.Sprintf(", arbitrary geo-box (%.5f,%.5f) applied", o.Center.Lat, o.Center.Long)
+	}
+	if !o.WindowFrom.IsNil() { str += ", geo-window applied" }
+
+	return str
+}

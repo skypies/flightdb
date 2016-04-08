@@ -9,9 +9,10 @@
     </script>
     
     <div class="allstack">
-      <h1>Report {{.R.Name}}: {{.R.Start.Format "Mon 2006/01/02"}} - {{.R.End.Format "Mon 2006/01/02"}}, 
-        {{len .R.RowsHTML}} flights</h1><br/>
+      <h1>Report results: {{len .R.RowsHTML}} flights</h1><br/>
 
+      <p>Report: <b>{{.R.DescriptionText}}</b></p>
+      
       <div class="box">
         <table>
           {{range .Metadata}}<tr>
@@ -26,7 +27,7 @@
       <div class="box">
         {{.VisualizationFormTag}}
         <table>
-          <tr><td colspan="4">
+          <tr><td colspan="8">
               <b>Checkboxes</b>:[
               <button type="button" onClick="clearNamedCheckboxes('idspec')">clear</button>,
               <button type="button" onClick="setNamedCheckboxes('idspec')">set</button>,

@@ -8,7 +8,7 @@ import(
 
 func init() {
 	HandleReport(".list", ListReporter, "List flights meeting restrictions")
-	TrackSpec(".list", []string{"fr24", "ADSB", "MLAT", "FA", "FOIA"}) // prefer fr24, 'cos oceans
+	TrackSpec(".list", []string{"fr24", "ADSB", "MLAT", "FA", "FOIA",})
 }
 
 var(

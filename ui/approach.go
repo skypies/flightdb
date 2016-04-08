@@ -83,7 +83,7 @@ func descentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dp := DescentPDFInit(w, r)
+	dp := DescentPDFInit(w, r, len(idspecs))
 
 	if len(idspecs) > 10 {
 		dp.LineThickness = 0.1
@@ -229,7 +229,7 @@ func OutputDescentsAsPDF(w http.ResponseWriter, r *http.Request, flights []*fdb.
 
 // {{{ DescentPDFInit
 
-func DescentPDFInit(w http.ResponseWriter, r *http.Request) *fpdf.DescentPdf {
+func DescentPDFInit(w http.ResponseWriter, r *http.Request, numFlights int) *fpdf.DescentPdf {
 	colorscheme := FormValueColorScheme(r)
 	colorscheme = fpdf.ByPlotKind
 
@@ -254,6 +254,10 @@ func DescentPDFInit(w http.ResponseWriter, r *http.Request) *fpdf.DescentPdf {
 	dp.Init()
 	dp.DrawFrames()
 
+	if rep,err := getReport(r); err==nil && rep!=nil {
+		dp.Caption += fmt.Sprintf("%d flights, %s\n", numFlights, rep.DescriptionText())
+	}
+	
 	return &dp
 }
 

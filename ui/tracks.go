@@ -501,9 +501,7 @@ func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspe
 		ms.Add(renderReportFurniture(rep))
 		opacity = rep.MapLineOpacity
 		trackspec = strings.Join(rep.ListPreferredDataSources(), ",")
-		legend += fmt.Sprintf(": %s", rep.Start.Format("2006/01/02"))
-		if len(rep.Tags)>0 { legend += fmt.Sprintf(", tag%v", rep.Tags) }
-		if len(rep.HackWaypoints)>0 { legend += fmt.Sprintf(", wp%v", rep.HackWaypoints) }
+		legend += ", "+rep.DescriptionText()
 	}
 
 	var params = map[string]interface{}{

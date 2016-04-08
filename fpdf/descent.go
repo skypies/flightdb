@@ -160,7 +160,7 @@ func (g DescentPdf)DrawCaption() {
 		title += "--DEBUG--\n" + g.Debug
 	}
 
-	g.SetTextColor(0x80, 0x80, 0xe0)
+	g.SetTextColor(0x50, 0x70, 0xc0)
 	g.MoveTo(10, 10)
 	g.MultiCell(0, 4, title, "", "", false)
 	g.DrawPath("D")
@@ -183,7 +183,8 @@ type DistanceFunc func(tp fdb.Trackpoint) (float64, float64, []int)
 
 func (g *DescentPdf)DrawTrackWithDistFunc(t fdb.Track, f DistanceFunc, colorscheme ColorScheme) {
 	g.SetDrawColor(0xff, 0x00, 0x00)
-	
+	g.SetAlpha(g.LineOpacity, "")
+
 	if len(t) == 0 { return }
 	
 	for i,_ := range t[1:] {
@@ -191,7 +192,6 @@ func (g *DescentPdf)DrawTrackWithDistFunc(t fdb.Track, f DistanceFunc, colorsche
 		x2,alt2,rgb := f(t[i+1])
 		
 		g.SetLineWidth(g.LineThickness)
-		g.SetAlpha(g.LineOpacity, "")
 		g.SetDrawColor(rgb[0], rgb[1], rgb[2])
 
 		if grid,exists := g.Grids["altitude"]; exists {
@@ -218,6 +218,7 @@ func (g *DescentPdf)DrawTrackWithDistFunc(t fdb.Track, f DistanceFunc, colorsche
 	}
 
 	g.DrawPath("D")	
+	g.SetAlpha(1.0, "")
 }
 
 // }}}
