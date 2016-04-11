@@ -80,6 +80,9 @@ func InstantiateReport(name string) (Report,error) {
 		r.Func = entry.ReportFunc
 		r.SummarizeFunc = entry.SummarizeFunc
 		r.TrackSpec = entry.TrackSpec
+		if r.TrackSpec == nil {
+			r.TrackSpec = []string{}
+		}
 	}
 	return r, nil
 }
