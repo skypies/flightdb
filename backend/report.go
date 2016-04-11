@@ -119,6 +119,11 @@ func reportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if rep.ResultsFormat == "csv" {
+		rep.OutputAsCSV(w)
+		return
+	}
+
 	idspecsInReport := idspecsAccepted
 	idspecsInReport = append(idspecsInReport, idspecsRejectByReport...)	
 	

@@ -8,11 +8,14 @@ package main
 
 20140514   (Thu Mar 31, 17:00)
 20140515   (Thu Mar 31, 17:03)
+20140516   (Mon Apr 11, 08:40)
 
 20150513   (Thu Mar 31, 16:48)
 20150514   (Thu Mar 31, 16:57)
 
-Dates available:  2014/05/14, 2015/05/13
+Dates available:  2014/05/14, 2014/05/15, 2015/05/13
+
+http://backend-dot-serfr0-fdb.appspot.com/foia/load?date=20140516
 
  */
 
@@ -39,7 +42,7 @@ import(
 
 func init() {
 	http.HandleFunc("/foia/load", foiaHandler)
-	http.HandleFunc("/foia/rm", rmHandler)
+	//http.HandleFunc("/foia/rm", rmHandler)
 }
 
 func getCSVReader(ctx context.Context, bucketName, fileName string) (*csv.Reader, error) {
@@ -148,7 +151,7 @@ func addFlight(ctx context.Context, rows [][]string, debug string) (string, erro
 func doStorageJunk(ctx context.Context, date string) (string, error) {
 	bucketName := "rg-foia"
 
-	
+	// ARGH, fixme nicely
 	//dir := "FOIA-2014-excerpted/track"
 	//dir := "FOIA-2015-006790/Offload_track_table"
 	//date := "20150514"
