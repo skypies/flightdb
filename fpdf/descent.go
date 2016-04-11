@@ -255,10 +255,13 @@ func (g *DescentPdf)DrawTrackAsDistanceAlongPath(t fdb.Track) {
 	if iClosest < 0 { return }
 	endpointKM := t[iClosest].DistanceTravelledKM
 
-	g.Debug += fmt.Sprintf("* endKM=%.2f\n", endpointKM)
+	// If the closest point isn't all that close, assume linear flight from it to the origin
+	offsetKM := t[iClosest].DistKM(g.OriginPoint)
+
+	g.Debug += fmt.Sprintf("* endKM=%.2f, offsetKM=%.2f, index=%d\n", endpointKM, offsetKM, iClosest)
 	
 	trackpointToXY := func(tp fdb.Trackpoint) (float64, float64, []int) {
-		distToGoKM := endpointKM - tp.DistanceTravelledKM
+		distToGoKM := endpointKM - tp.DistanceTravelledKM + offsetKM
 		distToGoNM := distToGoKM * geo.KNauticalMilePerKM
 
 		rgb := []int{0,0,0}
