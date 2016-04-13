@@ -256,10 +256,11 @@ func (o Options)DescriptionText() string {
 	if len(o.HackWaypoints)>0 { str += fmt.Sprintf(", waypoints=%v", o.HackWaypoints) }
 
 	if len(o.Waypoints) > 0 {
-		str += fmt.Sprintf(", %s@%.1fKM applied", o.Waypoints[0], o.SideKM)
+		str += fmt.Sprintf(", box %s@%.1fKM applied", o.Waypoints[0], o.SideKM)
 	}
 	if !o.Center.IsNil() {
-		str += fmt.Sprintf(", arbitrary geo-box (%.5f,%.5f) applied", o.Center.Lat, o.Center.Long)
+		str += fmt.Sprintf(", box (%.5f,%.5f)@%.1fKM applied",
+			o.Center.Lat, o.Center.Long, o.SideKM)
 	}
 	if !o.WindowFrom.IsNil() { str += ", geo-window applied" }
 

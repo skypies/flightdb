@@ -40,6 +40,11 @@ func ListReporter(r *Report, f *fdb.Flight, intersections []fdb.TrackIntersectio
 		f.IdentString(), f.IataFlight(), f.Origin, f.Destination, strings.Join(f.TagList(), " "),
 	}
 
+	// Generate market distribution for matches
+	if f.Origin == "SFO" || f.Destination == "SFO" {
+		r.I[fmt.Sprintf("[F] %s:%s", f.Origin, f.Destination)]++
+	}
+	
 	bucketsAdded := false
 	addTrackpointIntersection := func(tp fdb.Trackpoint) {
 		textrow = append(textrow, []string{
