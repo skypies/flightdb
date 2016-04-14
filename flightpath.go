@@ -75,6 +75,9 @@ var (
 		"PHX":1, "TUS":1, "SBP":1, "LAX":1, "LGB":1, "BUR":1, "ONT":1, "SNA":1, "DCA":1,
 		"SBA":1, "PSP":1, "SAN":1,
 	}
+	NorCalAirports = map[string]int{
+		"SFO":1, "SJC":1, "OAK":1,
+	}
 )
 
 

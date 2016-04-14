@@ -487,6 +487,7 @@ func IdSpecsToJSVar(idspecs []string) template.JS {
 
 // ?idspec==XX,YY,...
 // &colorby=procedure   (what we tagged them as - not implemented ?)
+// &nofurniture=1       (to suppress furniture)
 
 func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspecs []string, vectorURLPath string) {
 	ms := NewMapShapes()
@@ -498,7 +499,9 @@ func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspe
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	} else if rep != nil {
-		ms.Add(renderReportFurniture(rep))
+		if r.FormValue("nofurniture") == "" {
+			ms.Add(renderReportFurniture(rep))
+		}
 		opacity = rep.MapLineOpacity
 		trackspec = strings.Join(rep.ListPreferredDataSources(), ",")
 		legend += ", "+rep.DescriptionText()

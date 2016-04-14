@@ -220,6 +220,8 @@ func (f *Flight)Analyse() (error, string) {
 	if f.HasDestinationMatch(OceanicAirports)   { f.SetTag(":OCEANIC") }
 	if f.HasOriginMatch     (SouthwestAirports) { f.SetTag("SW:") }
 	if f.HasDestinationMatch(SouthwestAirports) { f.SetTag(":SW") }
+	if f.HasOriginMatch     (NorCalAirports)    { f.SetTag("NORCAL:") }
+	if f.HasDestinationMatch(NorCalAirports)    { f.SetTag(":NORCAL") }
 	
 	f.AnalyseWaypoints()
 	
