@@ -3,6 +3,10 @@ package report
 import(
 	"fmt"
 	"strings"
+
+	"github.com/skypies/util/date"
+	
+
 	fdb "github.com/skypies/flightdb2"
 )
 
@@ -47,11 +51,12 @@ func ListReporter(r *Report, f *fdb.Flight, intersections []fdb.TrackIntersectio
 	
 	bucketsAdded := false
 	addTrackpointIntersection := func(tp fdb.Trackpoint) {
+		tpInPT := date.InPdt(tp.TimestampUTC)
 		textrow = append(textrow, []string{
-			tp.TimestampUTC.Format("2006"),
-			tp.TimestampUTC.Format("01"),
-			tp.TimestampUTC.Format("02"),
-			tp.TimestampUTC.Format("15:04:05"),
+			tpInPT.Format("2006"),
+			tpInPT.Format("01"),
+			tpInPT.Format("02"),
+			tpInPT.Format("15:04:05"),
 			fmt.Sprintf("%.0f", tp.Altitude),
 			fmt.Sprintf("%.0f", tp.GroundSpeed),
 		}...)
