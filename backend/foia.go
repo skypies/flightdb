@@ -15,6 +15,15 @@ package main
 
 Dates available:  2014/05/14, 2014/05/15, 2015/05/13
 
+20151207   (Fri Apr 15, 09:38) - 2072 flights
+20151208   (Fri Apr 15, 09:41) - 2050 flights
+20151209   (Fri Apr 15, 09:44) - 2161 flights
+20151210   (Fri Apr 15, 09:47) - 2071 flights
+20151211   (Fri Apr 15, 09:51) - 2210 flights
+20151212   (Fri Apr 15, 09:56) - 1902 flights
+20151213   (Fri Apr 15, 09:59) - 1492 flights
+20151214   (Fri Apr 15, 10:01) - 2111 flights
+
 http://backend-dot-serfr0-fdb.appspot.com/foia/load?date=20140516
 
  */
@@ -155,7 +164,7 @@ func doStorageJunk(ctx context.Context, date string) (string, error) {
 	//dir := "FOIA-2014-excerpted/track"
 	//dir := "FOIA-2015-006790/Offload_track_table"
 	//date := "20150514"
-	dir := "2014"
+	dir := "2015"
 	//date := "20150513"
 
 	tStart := time.Now()
@@ -229,7 +238,7 @@ func doStorageJunk(ctx context.Context, date string) (string, error) {
 		str += fmt.Sprintf("-- File read, %d rows\n", i)
 	}
 
-	str += fmt.Sprintf("-- %s all done, %d flights, tool %s\n", date, nFlights, time.Since(tStart))
+	str += fmt.Sprintf("-- %s all done, %d flights, took %s\n", date, nFlights, time.Since(tStart))
 	log.Infof(ctx, "FOIAUPLOAD finished %s (%d flights added, took %s)\n%s",
 		date, nFlights, time.Since(tStart), str)
 	
