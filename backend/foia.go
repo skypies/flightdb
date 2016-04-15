@@ -6,15 +6,42 @@ package main
 
 ---- All over again, with RG data
 
+http://backend-dot-serfr0-fdb.appspot.com/foia/load?date=20140516
+
+Dates available:  2014/05/10-18, 2015/05/09-16, 2015/11/14-20, 2015/12/05-13
+
+20140510   (Fri Apr 15, 13:56)
+20140511   (Fri Apr 15, 13:58)
+20140512   (Fri Apr 15, 13:59)
+20140513   (Fri Apr 15, 14:01)
 20140514   (Thu Mar 31, 17:00)
 20140515   (Thu Mar 31, 17:03)
 20140516   (Mon Apr 11, 08:40)
+20140517   (Fri Apr 15, 14:02)
+20140518   (Fri Apr 15, 14:04)
+20140519   (Fri Apr 15, 14:05)
 
+20150509   (Fri Apr 15, 13:36) 
+20150510   (Fri Apr 15, 13:38) 
+20150511   (Fri Apr 15, 13:39) 
+20150512   (Fri Apr 15, 13:$1) 
 20150513   (Thu Mar 31, 16:48)
 20150514   (Thu Mar 31, 16:57)
+20150515   (Fri Apr 15, 13:43) 
+20150516   (Fri Apr 15, 13:44) 
+20150517   (Fri Apr 15, 13:45) 
 
-Dates available:  2014/05/14, 2014/05/15, 2015/05/13
+20151114   (Fri Apr 15, 12:34) - 1975 flights
+20151115   (Fri Apr 15, 12:36) - 1715 flights
+20151116   (Fri Apr 15, 12:39) - 2106 flights
+20151117   (Fri Apr 15, 12:41) - 2151 flights
+20151118   (Fri Apr 15, 12:43) - 2131 flights
+20151119   (Fri Apr 15, 12:55) 
+20151120   (Fri Apr 15, 12:58) 
+20151121   (Fri Apr 15, 13:00) 
 
+20151205   (Fri Apr 15, 12:31) - 1916 flights
+20151206   (Fri Apr 15, 12:33) - 1620 flights
 20151207   (Fri Apr 15, 09:38) - 2072 flights
 20151208   (Fri Apr 15, 09:41) - 2050 flights
 20151209   (Fri Apr 15, 09:44) - 2161 flights
@@ -24,8 +51,6 @@ Dates available:  2014/05/14, 2014/05/15, 2015/05/13
 20151213   (Fri Apr 15, 09:59) - 1492 flights
 20151214   (Fri Apr 15, 10:01) - 2111 flights
 
-http://backend-dot-serfr0-fdb.appspot.com/foia/load?date=20140516
-
  */
 
 import(
@@ -34,6 +59,7 @@ import(
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"sort"
 	"strconv"
 	"time"
@@ -158,14 +184,13 @@ func addFlight(ctx context.Context, rows [][]string, debug string) (string, erro
 // PA naming: faa-foia  FOIA-2015-006790/Offload_track_table  /Offload_track_20150104.txt.gz
 // RG naming: rg-foia   2014                                  /txt.Offload_track_IFR_20140104.gz
 func doStorageJunk(ctx context.Context, date string) (string, error) {
-	bucketName := "rg-foia"
+	frags := regexp.MustCompile("^(\\d{4})").FindStringSubmatch(date)
+	if len(frags) == 0 {
+		return "", fmt.Errorf("date '%s' did not match YYYYMMDD", date)
+	}
 
-	// ARGH, fixme nicely
-	//dir := "FOIA-2014-excerpted/track"
-	//dir := "FOIA-2015-006790/Offload_track_table"
-	//date := "20150514"
-	dir := "2015"
-	//date := "20150513"
+	dir := frags[0]
+	bucketName := "rg-foia"
 
 	tStart := time.Now()
 	log.Infof(ctx, "FOIAUPLOAD starting %s (%s)", date, dir)
