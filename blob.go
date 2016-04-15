@@ -3,8 +3,11 @@ package flightdb2
 import(
 	"bytes"
 	"encoding/gob"
+	"sort"
 	"time"
 )
+
+const KWaypointTagPrefix = "^"
 
 // An indexed flight blob is the thing we persist into datastore (or other blobstores)
 type IndexedFlightBlob struct {
@@ -16,7 +19,18 @@ type IndexedFlightBlob struct {
 	Timeslots        []time.Time
 	Tags             []string
 
+	// DO NOT POPULATE
 	Waypoints        []string //`datastore:",noindex"`
+}
+
+// Real tags, and things we want to search on
+func (f *Flight)IndexTagList() []string {
+	tags := f.TagList()
+	for _,wp := range f.WaypointList() {
+		tags = append(tags, KWaypointTagPrefix + wp)
+	}
+	sort.Strings(tags)
+	return tags
 }
 
 func (f *Flight)ToBlob(d time.Duration) (*IndexedFlightBlob, error) {
@@ -24,14 +38,14 @@ func (f *Flight)ToBlob(d time.Duration) (*IndexedFlightBlob, error) {
 	if err := gob.NewEncoder(&buf).Encode(f); err != nil {
 		return nil,err
 	}
-
+	
 	return &IndexedFlightBlob{
 		Blob: buf.Bytes(),
 		Icao24: f.IcaoId,
 		Ident: f.Callsign,
 		Timeslots: f.Timeslots(d),
-		Tags: f.TagList(),
-		Waypoints: f.WaypointList(),
+		Tags: f.IndexTagList(),
+		// Waypoints: f.WaypointList(),
 		LastUpdate: time.Now(),
 	}, nil
 }

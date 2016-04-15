@@ -35,8 +35,8 @@ func BatchHandler(w http.ResponseWriter, r *http.Request) {
 	
 	str += fmt.Sprintf("Hello - we found %d keys\n", len(keys))
 
-	for _,k := range keys {
-		//str += " k = "+k.Encode() + "\n"
+	for i,k := range keys {
+		if i<10 { str += " /fdb/batch/instance?k="+k.Encode() + "\n" }
 	
 		t := taskqueue.NewPOSTTask("/fdb/batch/instance", map[string][]string{
 			"k": {k.Encode()},
@@ -45,6 +45,8 @@ func BatchHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		
+		// if i>10 { break }
 	}
 	
 	w.Header().Set("Content-Type", "text/plain")
@@ -80,9 +82,13 @@ func BatchInstanceHandler(w http.ResponseWriter, r *http.Request) {
 
 	str += fmt.Sprintf("* pulled up %s\n", f)
 
-	str += fmt.Sprintf("* Pre WP: %v", f.WaypointList())
+	str += fmt.Sprintf("* Pre WP: %v\n", f.WaypointList())
+	str += fmt.Sprintf("* Pre Tags: %v\n", f.TagList())
 	f.Analyse()
-	str += fmt.Sprintf("* Post WP: %v", f.WaypointList())
+	str += fmt.Sprintf("* Post WP: %v\n", f.WaypointList())
+	str += fmt.Sprintf("* Post Tags: %v\n", f.TagList())
+
+	str += fmt.Sprintf("\n*** URL: /fdb/tracks?idspec=%s\n", f.IdSpecString())
 	
 	if true {
 		db := FlightDB{C:c}

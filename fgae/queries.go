@@ -62,9 +62,10 @@ func (q *Query)ByTags(tags []string) *Query {
 	}
 	return q
 }
+// Collapse into tag searching
 func (q *Query)ByWaypoints(waypoints []string) *Query {
 	for _,wp := range waypoints {
-		q.Query = q.Query.Filter("Waypoints = ", wp)
+		q.Query = q.Query.Filter("Tags = ", fdb.KWaypointTagPrefix + wp)
 	}
 	return q
 }
