@@ -458,8 +458,13 @@ func OutputMapLinesOnAMap(w http.ResponseWriter, r *http.Request, inputLines []M
 
 func OutputFlightAsVectorJSON(w http.ResponseWriter, r *http.Request, f *fdb.Flight) {
 	//colorscheme := FormValueColorScheme(r)
-	
-	trackName,_ := f.PreferredTrack(widget.FormValueCommaSepStrings(r, "trackspec"))
+
+	// This is such a botch job
+	trackspecs := widget.FormValueCommaSepStrings(r, "trackspec")
+	if len(trackspecs) == 0 {
+		trackspecs = []string{"FOIA", "ADSB", "MLAT", "FA", "fr24"}
+	}
+	trackName,_ := f.PreferredTrack(trackspecs)
 		
 	w.Header().Set("Content-Type", "application/json")
 	lines := FlightToMapLines(f, trackName)
