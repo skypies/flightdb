@@ -82,18 +82,23 @@ func BatchInstanceHandler(w http.ResponseWriter, r *http.Request) {
 
 	str += fmt.Sprintf("* pulled up %s\n", f)
 
-	str += fmt.Sprintf("* Pre WP: %v\n", f.WaypointList())
+	str += fmt.Sprintf("\n* Pre WP: %v\n", f.WaypointList())
 	str += fmt.Sprintf("* Pre Tags: %v\n", f.TagList())
+	str += fmt.Sprintf("* Pre IndexingTags: %v\n", f.IndexTagList())
+
 	f.Analyse()
-	str += fmt.Sprintf("* Post WP: %v\n", f.WaypointList())
+
+	str += fmt.Sprintf("\n* Post WP: %v\n", f.WaypointList())
 	str += fmt.Sprintf("* Post Tags: %v\n", f.TagList())
+	str += fmt.Sprintf("* Post IndexingTags: %v\n", f.IndexTagList())
 
 	str += fmt.Sprintf("\n*** URL: /fdb/tracks?idspec=%s\n", f.IdSpecString())
 	
 	if true {
 		db := FlightDB{C:c}
 		if err := db.PersistFlight(f); err != nil {
-			str += fmt.Sprintf("* Failed, with: %v\n", err)
+			str += fmt.Sprintf("* Failed, with: %v\n", err)	
+			db.Errorf("%s", str)
 		}
 		db.Infof("%s", str)
 	}
