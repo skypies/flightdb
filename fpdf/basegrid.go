@@ -125,8 +125,8 @@ func (bg BaseGrid)Line(x1,y1,x2,y2 float64) {
 // {{{ bg.DrawGridlines
 
 func (bg BaseGrid)DrawGridlines() {
-	bg.SetLineWidth(0.05)
-	bg.SetDrawColor(0x60, 0x60, 0x60)
+	bg.SetLineWidth(0.03)
+	bg.SetDrawColor(0xe0, 0xe0, 0xe0)
 	bg.SetFont("Arial", "", 8)	
 
 	for x := bg.MinX; x <= bg.MaxX; x += bg.XGridlineEvery {

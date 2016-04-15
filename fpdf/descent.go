@@ -24,6 +24,11 @@ type DescentPdf struct {
 	LengthNM     float64
 	ColorScheme  // embedded
 
+	// What to show
+	GraphAltitude      bool
+	GraphGroundSpeed   bool
+	GraphVerticalSpeed bool
+	
 	LineThickness  float64
 	LineOpacity    float64 // 0.0==transparent, 1.0==opaque
 	
@@ -61,83 +66,72 @@ func (g *DescentPdf)Init() {
 			InvertX: true,  // Descend to origin, on the right
 		}
 	}
-	
-	ng := incompleteGrid()
-	g.Grids["altitude"] = ng
-	ng.LineColor = RedRGB
-	ng.H = 100
-	ng.MinY = g.AltitudeMin
-	ng.MaxY = g.AltitudeMax
-	ng.YGridlineEvery = 5000
-	ng.XTickFmt = "%.0fNM"
-	ng.YTickFmt = "%.0fft"
-	ng.XTickOtherSide = true
-	ng.YTickOtherSide = true
 
-	v += 110
-	
-	ng = incompleteGrid()
-	g.Grids["groundspeed"] = ng
-	ng.LineColor = RedRGB
-	ng.H = 50
-	ng.MinY = 0
-	ng.MaxY = 400
-	ng.YGridlineEvery = 100
-	ng.YTickFmt = "%.0f knots"
+	if g.GraphAltitude {
+		ng := incompleteGrid()
+		g.Grids["altitude"] = ng
+		ng.LineColor = RedRGB
+		ng.H = 100
+		ng.MinY = g.AltitudeMin
+		ng.MaxY = g.AltitudeMax
+		ng.YGridlineEvery = 5000
+		ng.XTickFmt = "%.0fNM"
+		ng.YTickFmt = "%.0fft"
+		ng.XTickOtherSide = true
+		ng.YTickOtherSide = true
 
-	// This is overlayed into the same grid as groundspeed
-	ng = incompleteGrid()
-	g.Grids["groundacceleration"] = ng
-	ng.LineColor = BlueRGB
-	ng.H = 50
-	ng.MinY = -6
-	ng.MaxY = 6
-	ng.YGridlineEvery = 3
-	ng.YTickFmt = "%.0f knots/sec"
-	ng.YTickOtherSide = true
-	ng.NoGridlines = true
+		v += 110
+	}
 	
-	v += 60
-	
-	ng = incompleteGrid()
-	g.Grids["verticalspeed"] = ng
-	ng.LineColor = RedRGB
-	ng.H = 50
-	ng.MinY = -2500
-	ng.MaxY =  2500
-	ng.YGridlineEvery = 1250
-	ng.YTickFmt = "%.0f feet/min"
+	if g.GraphGroundSpeed {
+		ng := incompleteGrid()
+		g.Grids["groundspeed"] = ng
+		ng.LineColor = RedRGB
+		ng.H = 50
+		ng.MinY = 0
+		ng.MaxY = 400
+		ng.YGridlineEvery = 100
+		ng.YTickFmt = "%.0f knots"
 
-	// This is overlayed into the same grid as verticalspeed
-	ng = incompleteGrid()
-	g.Grids["verticalacceleration"] = ng
-	ng.LineColor = BlueRGB
-	ng.H = 50
-	ng.MinY = -100
-	ng.MaxY =  100
-	ng.YGridlineEvery = 50
-	ng.YTickFmt = "%.0f fpm/sec"
-	ng.YTickOtherSide = true
-	ng.NoGridlines = true
+		// This is overlayed into the same grid as groundspeed
+		ng = incompleteGrid()
+		g.Grids["groundacceleration"] = ng
+		ng.LineColor = BlueRGB
+		ng.H = 50
+		ng.MinY = -6
+		ng.MaxY = 6
+		ng.YGridlineEvery = 3
+		ng.YTickFmt = "%.0f knots/sec"
+		ng.YTickOtherSide = true
+		ng.NoGridlines = true
+		
+		v += 60
+	}
 	
-/*
-	g.AltitudeGrid = BaseGrid{
-			Fpdf: g.Fpdf,
-			OffsetU: 10,
-			OffsetV: 10,
-			W: 245,
-			H: 100,
-			MinX: 0,
-			MaxX: g.LengthNM,
-			MinY: g.AltitudeMin,
-			MaxY: g.AltitudeMax,
-			XGridlineEvery: 10,
-			YGridlineEvery: 5000,
-			XTickFmt: "%.0fNM",
-			YTickFmt: "%.0fft",
-			InvertX: true,  // Descend to origin, on the right
-		}
-*/
+	if g.GraphVerticalSpeed {
+		ng := incompleteGrid()
+		g.Grids["verticalspeed"] = ng
+		ng.LineColor = RedRGB
+		ng.H = 50
+		ng.MinY = -2500
+		ng.MaxY =  2500
+		ng.YGridlineEvery = 1250
+		ng.YTickFmt = "%.0f feet/min"
+
+		// This is overlayed into the same grid as verticalspeed
+		ng = incompleteGrid()
+		g.Grids["verticalacceleration"] = ng
+		ng.LineColor = BlueRGB
+		ng.H = 50
+		ng.MinY = -100
+		ng.MaxY =  100
+		ng.YGridlineEvery = 50
+		ng.YTickFmt = "%.0f fpm/sec"
+		ng.YTickOtherSide = true
+		ng.NoGridlines = true
+
+		v += 60
+	}
 }
 
 // }}}
