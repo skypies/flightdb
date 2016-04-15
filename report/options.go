@@ -32,6 +32,9 @@ type Options struct {
 	Center             geo.Latlong
 	RadiusKM           float64  // For defining areas of interest around waypoints
 	SideKM             float64  // For defining areas of interest around waypoints
+	// Min/max altitudes. 0 == don't care
+	AltitudeMin        int64
+	AltitudeMax        int64
 
 	// Geo-restriction 2: Window. Represent this a bit better.
 	WindowTo, WindowFrom geo.Latlong	
@@ -86,7 +89,9 @@ func FormValueReportOptions(r *http.Request) (Options, error) {
 		Center: FormValueLatlong(r, "center"),
 		RadiusKM: widget.FormValueFloat64EatErrs(r, "radiuskm"),
 		SideKM: widget.FormValueFloat64EatErrs(r, "sidekm"),
-		
+		AltitudeMin: widget.FormValueInt64(r, "altitudemin"),
+		AltitudeMax: widget.FormValueInt64(r, "altitudemax"),
+
 		// Hmm.
 		WindowTo: FormValueLatlong(r, "winto"),
 		WindowFrom: FormValueLatlong(r, "winfrom"),
@@ -159,7 +164,9 @@ func (o Options)ListGeoRestrictors() []geo.GeoRestrictor {
 		if o.RadiusKM > 0 {
 			ret = append(ret, pos.Circle(o.RadiusKM))
 		} else if o.SideKM > 0 {
-			ret = append(ret, pos.Box(o.SideKM,o.SideKM))
+			box := pos.Box(o.SideKM,o.SideKM)
+			box.Floor, box.Ceil = o.AltitudeMin, o.AltitudeMax
+			ret = append(ret, box)
 		}
 	}
 
@@ -221,6 +228,8 @@ func (r *Report)ToCGIArgs() string {
 
 	if !r.Center.IsNil() { str += "&" + LatlongToCGIArgs("center", r.Center) }
 	if !r.ReferencePoint.IsNil() { str += "&" + LatlongToCGIArgs("refpt", r.ReferencePoint) }
+	if r.AltitudeMin > 0 { str += fmt.Sprintf("&altitudemin=%d", r.AltitudeMin) }
+	if r.AltitudeMax > 0 { str += fmt.Sprintf("&altitudemax=%d", r.AltitudeMax) }
 
 	if r.RefDistanceKM > 0.0 { str += fmt.Sprintf("&refdistancekm=%.2f", r.RefDistanceKM) }
 	if r.RadiusKM > 0.0 { str += fmt.Sprintf("&radiuskm=%.2f", r.RadiusKM) }
@@ -255,12 +264,17 @@ func (o Options)DescriptionText() string {
 	if len(o.Tags)>0 { str += fmt.Sprintf(", tags=%v", o.Tags) }
 	if len(o.HackWaypoints)>0 { str += fmt.Sprintf(", waypoints=%v", o.HackWaypoints) }
 
+	altStr := ""
+	if o.AltitudeMin > 0 || o.AltitudeMax > 0 {
+		altStr = fmt.Sprintf("@[%d,%d]ft", o.AltitudeMin, o.AltitudeMax)
+	}
+
 	if len(o.Waypoints) > 0 {
-		str += fmt.Sprintf(", box %s@%.1fKM applied", o.Waypoints[0], o.SideKM)
+		str += fmt.Sprintf(", box %s@%.1fKM%s applied", o.Waypoints[0], o.SideKM, altStr)
 	}
 	if !o.Center.IsNil() {
-		str += fmt.Sprintf(", box (%.5f,%.5f)@%.1fKM applied",
-			o.Center.Lat, o.Center.Long, o.SideKM)
+		str += fmt.Sprintf(", box (%.5f,%.5f)@%.1fKM%s applied",
+			o.Center.Lat, o.Center.Long, o.SideKM, altStr)
 	}
 	if !o.WindowFrom.IsNil() { str += ", geo-window applied" }
 

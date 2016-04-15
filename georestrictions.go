@@ -150,6 +150,15 @@ func (t Track)SatisfiesGeoRestriction(gr geo.GeoRestrictor) (bool, TrackIntersec
 	}
 	t[iEntry].AnalysisAnnotation += fmt.Sprintf("* First point to satisfy\n")
 	t[iExit].AnalysisAnnotation += fmt.Sprintf("* Last point to satisfy\n")
+
+	if !gr.IntersectsAltitude(int64(t[iEntry].Altitude)) {
+		str += fmt.Sprintf("* Entry point failed altitude (was %f)", t[iEntry].Altitude)
+		return false, TrackIntersection{}, str
+	}
+	if !gr.IntersectsAltitude(int64(t[iExit].Altitude)) {
+		str += fmt.Sprintf("* Exit point failed altitude (was %f)", t[iExit].Altitude)
+		return false, TrackIntersection{}, str
+	}
 	
 	return true, TrackIntersection{Start:t[iEntry], End:t[iExit], I:iEntry, J:iExit}, str
 }
