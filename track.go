@@ -157,12 +157,19 @@ func (t Track)PostProcess() {
 		//}
 
 		// VerticalRate data exists, but only for locally received data
-
-		// Compute elapsed distance along path, and acceleration rates
+		
 		dur  := t[i].TimestampUTC.Sub(t[i-1].TimestampUTC)
-		dist := t[i].DistKM(t[i-1].Latlong)
+		distKM := t[i].DistKM(t[i-1].Latlong)
 
-		t[i].DistanceTravelledKM = t[i-1].DistanceTravelledKM + dist
+		if t[0].DataSource == "RG-FOIA" {
+			// FOIA data has no groundspeed data. Compute it.
+			// 1 knot == 1 NM/hour == 1.852 KM/hour
+			t[i].GroundSpeed = (distKM/dur.Hours()) / 1.852
+			if i == 1 { t[0].Notes += fmt.Sprintf("(groundspeeds derived from position data)") }
+		}
+			
+		// Compute elapsed distance along path, and acceleration rates
+		t[i].DistanceTravelledKM = t[i-1].DistanceTravelledKM + distKM
 		t[i].GroundAccelerationKPS = (t[i].GroundSpeed - t[i-1].GroundSpeed) / dur.Seconds()
 		t[i].VerticalSpeedFPM = (t[i].Altitude - t[i-1].Altitude) / dur.Minutes()		
 		t[i].VerticalAccelerationFPMPS = (
