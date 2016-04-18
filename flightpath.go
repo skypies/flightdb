@@ -3,6 +3,7 @@ package flightdb2
 import(
 	"time"
 	"github.com/skypies/geo"
+	"github.com/skypies/geo/sfo"
 )
 
 var(
@@ -25,15 +26,7 @@ func (t Track)MatchWaypoints(waypoints map[string]geo.Latlong) (map[string]time.
 			}
 		}
 	}
-		/*
-	for name,pos := range waypoints {
-		i := t.ClosestTo(pos)
-		dist := t[i].DistKM(pos)
-		if dist < KWaypointSnapKM {
-			ret[name] = t[i].TimestampUTC
-		}
-	}
-*/
+
 	return ret
 }
 
@@ -81,27 +74,32 @@ var (
 )
 
 
-// Routines that take a track, and try to figure out which waypoints & procedures it might be
-/*	
-func MatchProcedure(t fdb.Track) (*geo.Procedure, string, error) {
-
-	procedures := []geo.Procedure{ sfo.Serfr1 }
-	str := ""
-
-	boxes := t.AsContiguousBoxes()
+// SFO_S_A for southern arrivals:  :SFO && 30 km box around ANJEE, WWAVE, or their midpoint)
+// SFO_S_D for southern departures:  (SFO: ||OAK:) && 30 km (TBR) box around PPEGS
+func (f *Flight)TagCoarseFlightpathForSFO() {
+	box := geo.LatlongBox{}
+	tag := ""
 	
-	for _,proc := range procedures {
-		proc.Populate(sfo.KFixes)
-		lines := proc.ComparisonLines()
-
-		for _,l := range lines {
-			str += fmt.Sprintf("* I was looking at %s\n", l)
-		}
-		
-		return &proc, str, nil
+	if f.Destination == "SFO" {
+		box = sfo.KFixes["WWAVS"].Box(30,30)
+		tag = ":SFO_S"
+	} else if f.Origin == "SFO" || f.Origin == "OAK" {
+		box = sfo.KFixes["PPEGS"].Box(30,30)
+		tag = "SFO_S:"
+	} else {
+		return
 	}
-	_=boxes
-
-	return nil, str, nil
+	
+	for _,trackName := range f.ListTracks() {
+		t := f.Tracks[trackName]
+		lines := t.AsLinesSampledEvery(time.Second*1)
+	
+		for _,line := range lines {
+			if box.IntersectsLine(line) {
+				f.SetTag(tag)
+				return
+			}
+		}
+	}
 }
-*/
+

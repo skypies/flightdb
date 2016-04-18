@@ -52,6 +52,7 @@ func (f Flight)Legend() string {
 	l := fmt.Sprintf("<b>%s</b>, %s<br/>Tags=<b>%v</b> Tracks=%v<br/>Route=<b>%v</b>",
 		f.IdentityString(), date.InPdt(s).Format("2006/01/02 15:03 MST"),
 		f.TagList(), f.ListTracks(), f.WaypointList())
+	
 	return l
 }
 
@@ -224,6 +225,7 @@ func (f *Flight)Analyse() (error, string) {
 	if f.HasDestinationMatch(NorCalAirports)    { f.SetTag(":NORCAL") }
 	
 	f.AnalyseWaypoints()
+	f.TagCoarseFlightpathForSFO()  // SFO_S:, :SFO_S
 	
 	return nil, ""
 }

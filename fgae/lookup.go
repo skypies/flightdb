@@ -26,6 +26,10 @@ func (db FlightDB)getallByQuery(q *datastore.Query) ([]*fdb.Flight, error) {
 	return flights,nil
 }
 
+func (db FlightDB)LookupAllKeys(q *Query) ([]*datastore.Key, error) {
+	return q.Query.KeysOnly().GetAll(db.C, nil)
+}
+
 func (db FlightDB)LookupAll(q *Query) ([]*fdb.Flight, error) {
 	// TODO: I'm not sure we want to secretly add this Order() everywhere ...
 	return db.getallByQuery(q.Query.Order("-LastUpdate"))

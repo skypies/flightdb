@@ -61,7 +61,7 @@ func (r *Report)AddACLs() {
 // This is pretty junky. A better solution depends on a way to include/exclude track types.
 func (r *Report)EnforceACLs() error {
 	cutoff,_ := time.Parse("2006.01.02", "2015.10.01")
-	if r.Start.Before(cutoff) && !r.Options.CanSeeFOIA {
+	if false && r.Start.Before(cutoff) && !r.Options.CanSeeFOIA {
 		return fmt.Errorf(fmt.Sprintf("User '%s' not in FOIA ACL", r.UserEmail))
 	}
 	return nil

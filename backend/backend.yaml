@@ -15,4 +15,4 @@ handlers:
 # Find a way to make batch exempt ...
 - url: /.*
   script: _go_app
-  login: required
+#  login: required

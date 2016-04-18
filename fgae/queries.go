@@ -101,13 +101,11 @@ func (db FlightDB)QueryForRecentIcaoId(icaoid string, n int) *Query {
 	return q
 }
 
-// This one is broke
 func (db FlightDB)QueryForTimeRange(tags []string, s,e time.Time) *Query {
 	q := db.NewQuery().ByTags(tags).ByTimeRange(s,e)
 	//q.Query = q.Query.Order("-LastUpdate")  // No index
 	return q
 }
-
 
 func (db FlightDB)QueryForTimeRangeWaypoint(tags []string, waypoints []string, s,e time.Time) *Query {
 	q := db.NewQuery().ByTags(tags).ByWaypoints(waypoints).ByTimeRange(s,e)
