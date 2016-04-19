@@ -17,17 +17,13 @@ var (
 type DescentPdf struct {
 	Grids        map[string]*BaseGrid
 
+	ToShow       map[string]bool  // Which grids to render
 	AltitudeMin  float64
 	AltitudeMax  float64
 	OriginPoint  geo.Latlong
 	OriginLabel  string
 	LengthNM     float64
 	ColorScheme  // embedded
-
-	// What to show
-	GraphAltitude      bool
-	GraphGroundSpeed   bool
-	GraphVerticalSpeed bool
 	
 	LineThickness  float64
 	LineOpacity    float64 // 0.0==transparent, 1.0==opaque
@@ -67,7 +63,7 @@ func (g *DescentPdf)Init() {
 		}
 	}
 
-	if g.GraphAltitude {
+	if g.ToShow["altitude"] {
 		ng := incompleteGrid()
 		g.Grids["altitude"] = ng
 		ng.LineColor = RedRGB
@@ -83,7 +79,7 @@ func (g *DescentPdf)Init() {
 		v += 110
 	}
 	
-	if g.GraphGroundSpeed {
+	if g.ToShow["groundspeed"] {
 		ng := incompleteGrid()
 		g.Grids["groundspeed"] = ng
 		ng.LineColor = RedRGB
@@ -91,24 +87,26 @@ func (g *DescentPdf)Init() {
 		ng.MinY = 0
 		ng.MaxY = 400
 		ng.YGridlineEvery = 100
+		ng.YTickOtherSide = true
 		ng.YTickFmt = "%.0f knots"
 
 		// This is overlayed into the same grid as groundspeed
-		ng = incompleteGrid()
-		g.Grids["groundacceleration"] = ng
-		ng.LineColor = BlueRGB
-		ng.H = 50
-		ng.MinY = -6
-		ng.MaxY = 6
-		ng.YGridlineEvery = 3
-		ng.YTickFmt = "%.0f knots/sec"
-		ng.YTickOtherSide = true
-		ng.NoGridlines = true
-		
+		if g.ToShow["groundacceleration"] {
+			ng = incompleteGrid()
+			g.Grids["groundacceleration"] = ng
+			ng.LineColor = BlueRGB
+			ng.H = 50
+			ng.MinY = -6
+			ng.MaxY = 6
+			ng.YGridlineEvery = 3
+			ng.YTickFmt = "%.0f knots/sec"
+			ng.NoGridlines = true
+		}
+
 		v += 60
 	}
 	
-	if g.GraphVerticalSpeed {
+	if g.ToShow["verticalspeed"] {
 		ng := incompleteGrid()
 		g.Grids["verticalspeed"] = ng
 		ng.LineColor = RedRGB
@@ -116,19 +114,21 @@ func (g *DescentPdf)Init() {
 		ng.MinY = -2500
 		ng.MaxY =  2500
 		ng.YGridlineEvery = 1250
+		ng.YTickOtherSide = true
 		ng.YTickFmt = "%.0f feet/min"
 
 		// This is overlayed into the same grid as verticalspeed
-		ng = incompleteGrid()
-		g.Grids["verticalacceleration"] = ng
-		ng.LineColor = BlueRGB
-		ng.H = 50
-		ng.MinY = -100
-		ng.MaxY =  100
-		ng.YGridlineEvery = 50
-		ng.YTickFmt = "%.0f fpm/sec"
-		ng.YTickOtherSide = true
-		ng.NoGridlines = true
+		if g.ToShow["verticalacceleration"] {
+			ng = incompleteGrid()
+			g.Grids["verticalacceleration"] = ng
+			ng.LineColor = BlueRGB
+			ng.H = 50
+			ng.MinY = -100
+			ng.MaxY =  100
+			ng.YGridlineEvery = 50
+			ng.YTickFmt = "%.0f fpm/sec"
+			ng.NoGridlines = true
+		}
 
 		v += 60
 	}

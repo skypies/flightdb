@@ -248,12 +248,14 @@ func DescentPDFInit(w http.ResponseWriter, r *http.Request, numFlights int) *fpd
 		//OriginLabel: trackType,
 		AltitudeMax: float64(altitudeMax),
 		LengthNM:    float64(lengthNM),
-		GraphAltitude: true,
-		GraphGroundSpeed: true, //widget.FormValueCheckbox(r,"speeds"),
-		GraphVerticalSpeed: true, //widget.FormValueCheckbox(r,"speeds"),
+		ToShow:      map[string]bool{"altitude":true, "groundspeed":true, "verticalspeed":true},
 		ShowDebug:  (r.FormValue("debug") != ""),
 	}
 
+	if widget.FormValueCheckbox(r, "showaccelerations") {
+		dp.ToShow["groundacceleration"],dp.ToShow["verticalacceleration"] = true,true
+	}
+	
 	dp.Init()
 	dp.DrawFrames()
 

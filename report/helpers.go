@@ -32,7 +32,7 @@ func (r *Report)Links(f *fdb.Flight) string {
 		// addFrag("v1",   v1url)
 		addFrag("map",  v1host + "/fdb/track2?idspec="   +k+"&"+reportArgs)
 		addFrag("vec",  v1host + "/fdb/trackset2?idspec="+k+"&"+reportArgs)
-		addFrag("side", v1host + "/fdb/descent2?idspec="+k+"&"+dateArgs+"&sample=15")
+		addFrag("side", v1host + "/fdb/descent2?idspec="+k+"&"+dateArgs+"&length=100")
 
 		if f.HasTrack("ADSB") || f.HasTrack("MLAT") {
 			fdbhost := "https://ui-dot-serfr0-fdb.appspot.com"
@@ -42,7 +42,7 @@ func (r *Report)Links(f *fdb.Flight) string {
 	} else {
 		addFrag("map",     "/fdb/tracks?idspec="+f.IdSpecString()+"&"+reportArgs)
 		addFrag("vec",     "/fdb/trackset?idspec="+f.IdSpecString()+"&"+reportArgs)
-		addFrag("side",    "/fdb/descent?idspec="+f.IdSpecString()+"&"+dateArgs+"&sample=15")
+		addFrag("side",    "/fdb/descent?idspec="+f.IdSpecString()+"&"+dateArgs+"&length=100")
 	}
 
 	tickbox := "<input type=\"checkbox\" name=\"idspec\" checked=\"yes\" value=\""+bestIdSpec+"\"/>"
