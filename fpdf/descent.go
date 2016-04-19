@@ -85,7 +85,7 @@ func (g *DescentPdf)Init() {
 		ng.LineColor = RedRGB
 		ng.H = 50
 		ng.MinY = 0
-		ng.MaxY = 400
+		ng.MaxY = 500
 		ng.YGridlineEvery = 100
 		ng.YTickOtherSide = true
 		ng.YTickFmt = "%.0f knots"
