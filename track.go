@@ -50,7 +50,7 @@ func (t Track)Notes() string {
 	return t[0].Notes
 }
 
-// {{{ t.{Short|Medium|}String
+// {{{ t.String, t.{Short|Medium|Long}String
 
 func (t Track)String() string {
 	if len(t) == 0 { return "(empty track)" }
@@ -96,6 +96,14 @@ func (t Track)ShortString() string {
 		date.RoundDuration(e.TimestampUTC.Sub(s.TimestampUTC)),
 		s.Dist(e.Latlong));
 
+	return str
+}
+
+func (t Track)LongString() string {
+	str := t.MediumString() + "\n"
+	for i,tp := range t {
+		str += fmt.Sprintf("[%03d] %s\n", i, tp)
+	}
 	return str
 }
 
@@ -392,6 +400,58 @@ func (t Track)IndexAtTime(tm time.Time) int {
 		if t[i].TimestampUTC.After(tm) { return i-1 }
 	}
 	return -1
+}
+
+// }}}
+// {{{ t.WindowedAverageAt
+
+// Returns a synthetic trackpoint with values for {ground|vertical}{speed|acceleration} computed
+// from a sliding window, based on position/altitude/time data. The time window is centered on
+// trackpoint i.
+func (t Track)WindowedAverageAt(i int, window time.Duration) Trackpoint {
+	// Find the trackpoints closest to the edges of the window
+	u,v := i,i
+	for u>0 {
+		if t[i].TimestampUTC.Sub(t[u].TimestampUTC) > window/2 {
+			// u is now outside the window; move back in, and bail
+			if (u<i) { u++ }
+			break
+		}
+		u--
+	}
+
+	for v+1<len(t) {
+		if t[v].TimestampUTC.Sub(t[i].TimestampUTC) > window/2 {
+			// v is now outside the window; move back in, and bail
+			if (v>i) { v-- }
+			break
+		}
+		v++
+	}
+
+	// So we want to generate an average value based on the trackpoints [u,v], inclusive of u and v.
+	out := TrackpointFromAverage(t[u:v+1])
+	out.Notes = fmt.Sprintf("(WindowedAverageAt(i=%d,w=%s) u,v=[%d,%d])",i, window, u, v)
+
+	return out
+
+/* This approach doesn't actually do any averaging - if data is up/down spikey, then it
+   will end up picking up/up, up/down or down/down pairs, making output just as spikey.
+
+	// Work out how far inbetween U and V we should consider I to be at ...
+	dUV := t[v].TimestampUTC.Sub(t[u].TimestampUTC)
+	dUI := t[i].TimestampUTC.Sub(t[u].TimestampUTC)
+	ratio := float64(dUI) / float64(dUV)
+
+	if u == v { ratio = 0.0 } // So much nicer than NaN (but not naan)
+	
+	itp := t[u].InterpolateTo(t[v], ratio)
+
+	itp.Notes = fmt.Sprintf("WindowedAverageAt(i=%d,w=%s) u,v=[%d,%d], ratio=%.3f",
+		i, window, u, v, ratio)
+
+	return &itp
+*/	
 }
 
 // }}}

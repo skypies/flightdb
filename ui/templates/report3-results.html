@@ -28,16 +28,22 @@
         {{.VisualizationFormTag}}
         <table>
           <tr><td colspan="8">
+              <button type="submit" name="viewtype" value="vector" class="btn-link">VectorMap</button>,<!-- 
+              <button type="submit" name="viewtype" value="track" class="btn-link">TrackPoints</button>,-->
+              <button type="submit" name="viewtype" value="descent" class="btn-link">DescentGraph</button>
+              options: [<input type="text" name="length" size="3" value="100"/>NM by
+              <input type="text" name="alt" size="5" value="30000"/>ft;
+              showAccel:<input type="checkbox" name="showaccelerations"/>;
+              avgWin:<input size="4" type="text" name="averagingwindow" value="0s"/>
+              sampleRate:<input size="4" type="text" name="sample" value="15s"/>
+              ]
+          </td></tr>
+          <tr><td colspan="8">
               <b>Checkboxes</b>:[
               <button type="button" onClick="clearNamedCheckboxes('idspec')">clear</button>,
               <button type="button" onClick="setNamedCheckboxes('idspec')">set</button>,
               <button type="button" onClick="toggleNamedCheckboxes('idspec')">toggle</button>]
-
-              <b>Visualize selected as</b>:[
-             <button type="submit" name="viewtype" value="vector" class="btn-link">VectorMap</button>,<!-- 
-              <button type="submit" name="viewtype" value="track" class="btn-link">TrackPoints</button>,-->
-              <button type="submit" name="viewtype" value="descent" class="btn-link">DescentGraph</button>@<input type="text" name="length" size="3" value="80"/>NM,<input type="text" name="alt" size="5" value="30000"/>ft,accel:<input type="checkbox" name="showaccelerations"/>]
-        </td></tr>
+          </td></tr>
         {{range .R.RowsHTML}}
         <tr>
           {{range . }}<td>{{.}}</td>{{end}}

@@ -136,6 +136,43 @@ func TrackpointFromADSB(m *adsb.CompositeMsg) Trackpoint {
 }
 
 // }}}
+// {{{ TrackpointFromAverage
+
+func TrackpointFromAverage(in []Trackpoint) Trackpoint {
+	if len(in) == 0 { return Trackpoint{} }
+
+	out := in[0] // Initialize, to get all the non-numeric stuff (and timestamp of in[0])
+
+	for _,tp := range in {
+		out.Altitude     += tp.Altitude
+		out.GroundSpeed  += tp.GroundSpeed
+		out.Heading      += tp.Heading
+		out.VerticalRate += tp.VerticalRate
+
+		out.IndicatedAltitude         += tp.IndicatedAltitude
+		out.DistanceTravelledKM       += tp.DistanceTravelledKM
+		out.GroundAccelerationKPS     += tp.GroundAccelerationKPS
+		out.VerticalSpeedFPM          += tp.VerticalSpeedFPM
+		out.VerticalAccelerationFPMPS += tp.VerticalAccelerationFPMPS
+	}
+
+	out.Altitude     /= float64(len(in))
+	out.GroundSpeed  /= float64(len(in))
+	out.Heading      /= float64(len(in))
+	out.VerticalRate /= float64(len(in))
+
+	out.IndicatedAltitude         /= float64(len(in))
+	out.DistanceTravelledKM       /= float64(len(in))
+	out.GroundAccelerationKPS     /= float64(len(in))
+	out.VerticalSpeedFPM          /= float64(len(in))
+	out.VerticalAccelerationFPMPS /= float64(len(in))
+
+	out.Notes += fmt.Sprintf("(avg, from %d points)", len(in))
+	
+	return out
+}
+
+// }}}
 
 // {{{ tp.InterpolateTo
 
@@ -163,12 +200,19 @@ func (from Trackpoint)InterpolateTo(to Trackpoint, ratio float64) InterpolatedTr
 			Heading: geo.InterpolateHeading(from.Heading, to.Heading, ratio),
 			Latlong: from.Latlong.InterpolateTo(to.Latlong, ratio),
 			TimestampUTC: interpolateTime(from.TimestampUTC, to.TimestampUTC, ratio),
+
+			// Also interpolate the synthetic fields
+			DistanceTravelledKM: interpolateFloat64(from.DistanceTravelledKM, to.DistanceTravelledKM, ratio),
+			GroundAccelerationKPS: interpolateFloat64(from.GroundAccelerationKPS, to.GroundAccelerationKPS, ratio),
+			VerticalSpeedFPM: interpolateFloat64(from.VerticalSpeedFPM, to.VerticalSpeedFPM, ratio),
+			VerticalAccelerationFPMPS: interpolateFloat64(from.VerticalAccelerationFPMPS, to.VerticalAccelerationFPMPS, ratio),
 		},
 	}
 	return itp
 }
 
 // }}}
+
 
 // {{{ -------------------------={ E N D }=----------------------------------
 

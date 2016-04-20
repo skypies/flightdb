@@ -2,8 +2,12 @@
 
               <input type="radio" name="date" value="today"/>Today<br/>
               <input type="radio" name="date" value="yesterday"/>Yesterday<br/>
-              <input type="radio" name="date" value="range" checked="checked"/>Range:
 
+              <input type="radio" name="date" value="day" checked="checked"/>Single date:
+              <input type="text" size="10" name="day"
+                     value="{{.Yesterday.Format "2006/01/02"}}"/><br/>
+
+              <input type="radio" name="date" value="range"/>Range:
               <input type="text" size="10" name="range_from"
                      value="{{.Yesterday.Format "2006/01/02"}}"/> to
               <input type="text" size="10" name="range_to"

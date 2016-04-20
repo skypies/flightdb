@@ -2,6 +2,7 @@ package fpdf
 
 import(
 	"fmt"
+	"time"
 
 	"github.com/jung-kurt/gofpdf"
 	"github.com/skypies/geo"
@@ -15,19 +16,20 @@ var (
 )
 
 type DescentPdf struct {
-	Grids        map[string]*BaseGrid
+	ToShow          map[string]bool  // Which grids to render
 
-	ToShow       map[string]bool  // Which grids to render
-	AltitudeMin  float64
-	AltitudeMax  float64
-	OriginPoint  geo.Latlong
-	OriginLabel  string
-	LengthNM     float64
-	ColorScheme  // embedded
+	AltitudeMin     float64
+	AltitudeMax     float64
+	OriginPoint     geo.Latlong
+	OriginLabel     string
+	LengthNM        float64
+	AveragingWindow time.Duration
+	ColorScheme     // embedded
 	
-	LineThickness  float64
-	LineOpacity    float64 // 0.0==transparent, 1.0==opaque
+	LineThickness   float64
+	LineOpacity     float64 // 0.0==transparent, 1.0==opaque
 	
+	Grids        map[string]*BaseGrid
 	*gofpdf.Fpdf // Embedded pointer
 
 	Caption      string
@@ -148,7 +150,13 @@ func (g DescentPdf)DrawFrames() {
 // {{{ dp.DrawCaption
 
 func (g DescentPdf)DrawCaption() {
-	title := g.Caption
+	title := ""
+
+	if g.AveragingWindow > 0 {
+		title += fmt.Sprintf("* Averaging window: %s\n", g.AveragingWindow)
+	}
+
+	title += g.Caption
 	
 	if g.ShowDebug {
 		title += "--DEBUG--\n" + g.Debug
@@ -193,22 +201,29 @@ func (g *DescentPdf)DrawTrackWithDistFunc(t fdb.Track, f DistanceFunc, colorsche
 			grid.Line(x1,alt1, x2,alt2)
 		}
 
-		// We can re-use the dist values (x1,x2), and plot other functions on the trackpoints
-		if grid,exists := g.Grids["groundspeed"]; exists {
-			grid.Line(x1,t[i].GroundSpeed, x2,t[i+1].GroundSpeed)
-		}
-		if grid,exists := g.Grids["groundacceleration"]; exists {
-			grid.Line(x1,t[i].GroundAccelerationKPS, x2,t[i+1].GroundAccelerationKPS)
-		}
-		if grid,exists := g.Grids["verticalspeed"]; exists {
-			grid.Line(x1,t[i].VerticalSpeedFPM, x2,t[i+1].VerticalSpeedFPM)
-		}
-		if grid,exists := g.Grids["verticalacceleration"]; exists {
-			grid.Line(x1,t[i].VerticalAccelerationFPMPS, x2,t[i+1].VerticalAccelerationFPMPS)
+		tpA,tpB := t[i],t[i+1]
+		
+		if g.AveragingWindow > 0 {
+			tpA = t.WindowedAverageAt(i, g.AveragingWindow)
+			tpB = t.WindowedAverageAt(i+1, g.AveragingWindow)
 		}
 
-		g.Debug += fmt.Sprintf("%3d: %.1f, %.1f\n", i, t[i].VerticalSpeedFPM,
-			t[i].VerticalAccelerationFPMPS)
+		// We can re-use the dist values (x1,x2), and plot other functions on the trackpoints
+		if grid,exists := g.Grids["groundspeed"]; exists {
+			grid.Line(x1,tpA.GroundSpeed, x2,tpB.GroundSpeed)
+		}
+		if grid,exists := g.Grids["groundacceleration"]; exists {
+			grid.Line(x1,tpA.GroundAccelerationKPS, x2,tpB.GroundAccelerationKPS)
+		}
+		if grid,exists := g.Grids["verticalspeed"]; exists {
+			grid.Line(x1,tpA.VerticalSpeedFPM, x2,tpB.VerticalSpeedFPM)
+		}
+		if grid,exists := g.Grids["verticalacceleration"]; exists {
+			grid.Line(x1,tpA.VerticalAccelerationFPMPS, x2,tpB.VerticalAccelerationFPMPS)
+		}
+
+		g.Debug += fmt.Sprintf("%3d: %.1f, %.1f\n", i, tpA.VerticalSpeedFPM,
+			tpA.VerticalAccelerationFPMPS)
 	}
 
 	g.DrawPath("D")	

@@ -5,7 +5,9 @@ package flightdb2
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"testing"
+	"time"
 )
 
 var(
@@ -136,4 +138,37 @@ func TestPlausibleExtension(t *testing.T) {
 	testTracks(t, t3a,t3b, false, "From the past")
 	testTracks(t, t6a,t6b, true,  "Misordered, overlapping") // Should have a space overlap ?
 	testTracks(t, t7a,t7b, false,  "Took too long to cover gap")
+}
+
+
+type WinAvgTest struct {
+	I   int
+	Dur string
+	GroundSpeed float64
+}
+
+func TestWindowedAverageAt(t *testing.T) {
+	tr := loadTrack(tN)
+
+	testcases := []WinAvgTest{
+		{ 0, "0.0001s", 433},  // Too small; u==v==0
+		{12, "0.0001s", 435},  // Too small; u==v==6
+
+		{ 1, "6s",      433.1603}, // u=0,v=3 - doesn't fall off beginning
+		{36, "6s",      440.4974}, // u=32,v=37 - doesn't fall off end
+
+		{18, "20s",     436.4713}, // u=7,v=31 - big avg
+
+		{34, "2.07s",   440.0}, // u=33,v=34 (i==v)
+		{35, "1.90s",   440.0}, // u=35,v=37 (i==u)
+	}
+
+	for i,testcase := range testcases {
+		dur,_ := time.ParseDuration(testcase.Dur)
+		itp := tr.WindowedAverageAt(testcase.I, dur)
+		if math.Abs(itp.GroundSpeed-testcase.GroundSpeed) > 0.0001 {
+			fmt.Printf("----\n%s\n%s\n--\n%s\n%s\n%s\n", tr,tr.LongString(),tr[testcase.I],itp,itp.Notes)
+			t.Errorf("WinAvg test %d: got %f, wanted %f\n", i, itp.GroundSpeed, testcase.GroundSpeed)
+		}
+	}
 }

@@ -27,8 +27,8 @@ func init() {
 
 // {{{ approachHandler
 
-// ?idspec=XX,YY,...  (or ?idspec=XX&idspec=YYY&...)
-// &colorby=delta   (delta groundspeed, instead of groundspeed)
+// ?idspec=XX,YY,...    (or ?idspec=XX&idspec=YYY&...)
+//  &colorby=delta      (delta groundspeed, instead of groundspeed)
 
 func approachHandler(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
@@ -63,12 +63,13 @@ func approachHandler(w http.ResponseWriter, r *http.Request) {
 // }}}
 // {{{ descentHandler
 
-// ?idspec=XX,YY,...  (or ?idspec=XX&idspec=YYY&...)
-//  &sample=N        (sample the track every N seconds)
-//  &alt=30000       (max altitude for graph)
-//  &length=80       (max distance from origin; in nautical miles)
-//  &dist=from       (for distance axis, use dist from airport; by default, uses dist along path)
-//  &colorby=delta   (delta groundspeed, instead of groundspeed)
+// ?idspec=XX,YY,...    (or ?idspec=XX&idspec=YYY&...)
+//  &sample=N           (sample the track every N seconds)
+//  &averagingwindow=2m (duration to average over)
+//  &alt=30000          (max altitude for graph)
+//  &length=80          (max distance from origin; in nautical miles)
+//  &dist=from          (for distance axis, use dist from airport; by default, uses dist along path)
+//  &colorby=delta      (delta groundspeed, instead of groundspeed)
 
 func descentHandler(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
@@ -167,65 +168,6 @@ func OutputApproachesAsPDF(w http.ResponseWriter, r *http.Request, flights []*fd
 }
 
 // }}}
-// {{{ OutputDescentsAsPDF
-
-func OutputDescentsAsPDF(w http.ResponseWriter, r *http.Request, flights []*fdb.Flight) {
-	
-	colorscheme := FormValueColorScheme(r)
-	colorscheme = fpdf.ByPlotKind
-
-	if len(flights) == 0 {
-		http.Error(w, "zero flights in args", http.StatusBadRequest)
-		return
-	}
-
-	lengthNM := 80
-	if length := widget.FormValueInt64(r, "length"); length > 0 {
-		lengthNM = int(length)
-	}
-	altitudeMax := 30000
-	if alt := widget.FormValueInt64(r, "alt"); alt > 0 {
-		altitudeMax = int(alt)
-	}
-
-	dp := fpdf.DescentPdf{
-		ColorScheme: colorscheme,
-		OriginPoint: sfo.KLatlongSFO,
-		//OriginLabel: trackType,
-		AltitudeMax: float64(altitudeMax),
-		LengthNM:    float64(lengthNM),
-		ShowDebug:  (r.FormValue("debug") != ""),
-	}
-
-	dp.Init()
-	dp.DrawFrames()
-
-	for _,f := range flights {	
-		if t,err := flightToDescentTrack(r, f); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-
-		} else {
-			if r.FormValue("dist") == "from" {
-				dp.DrawTrackAsDistanceFromOrigin(t)
-			} else {
-				dp.DrawTrackAsDistanceAlongPath(t)
-			}
-		}
-	}
-	dp.SetTextColor(80,80,80)
-	dp.DrawCaption()
-
-	//dp.DrawColorSchemeKey()
-
-	w.Header().Set("Content-Type", "application/pdf")
-	if err := dp.Output(w); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-// }}}
 
 // {{{ DescentPDFInit
 
@@ -250,12 +192,13 @@ func DescentPDFInit(w http.ResponseWriter, r *http.Request, numFlights int) *fpd
 		LengthNM:    float64(lengthNM),
 		ToShow:      map[string]bool{"altitude":true, "groundspeed":true, "verticalspeed":true},
 		ShowDebug:  (r.FormValue("debug") != ""),
+		AveragingWindow: widget.FormValueDuration(r, "averagingwindow"),
 	}
 
 	if widget.FormValueCheckbox(r, "showaccelerations") {
 		dp.ToShow["groundacceleration"],dp.ToShow["verticalacceleration"] = true,true
 	}
-	
+
 	dp.Init()
 	dp.DrawFrames()
 
@@ -313,9 +256,9 @@ func flightToDescentTrack(r *http.Request, f *fdb.Flight) (fdb.Track, error) {
 		return nil, fmt.Errorf("no track found (saw %q)", f.ListTracks())
 	}
 
-	secs := widget.FormValueInt64(r, "sample")
-	if secs == 0 { secs = 15 }
-	track = track.SampleEvery(time.Second * time.Duration(secs), false)
+	sampleRate := widget.FormValueDuration(r, "sample")
+	if sampleRate == 0 { sampleRate = 15 * time.Second }
+	track = track.SampleEvery(sampleRate, false)
 	track.PostProcess()
 
 	if trackKeyName == "FOIA" {
