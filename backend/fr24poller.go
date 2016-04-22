@@ -12,6 +12,7 @@ import(
 
 	"github.com/skypies/geo/sfo"
 	fdb "github.com/skypies/flightdb2"
+	"github.com/skypies/flightdb2/fgae"
 	"github.com/skypies/flightdb2/fr24"
 	"github.com/skypies/flightdb2/ref"
 )
@@ -105,7 +106,7 @@ func saveFIFOSet(c context.Context, s fdb.FIFOSet) error {
 func fr24PollHandler(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
 	fr,_ := fr24.NewFr24(urlfetch.Client(c))
-	// db := fgae.FlightDB{C:c}
+	db := fgae.FlightDB{C:c}
 
 	flights,err := fr.LookupCurrentList(sfo.KLatlongSFO.Box(160,160))
 	if err != nil {
@@ -119,26 +120,61 @@ func fr24PollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Are any of these new ? use {callsign,reg} as the unique ID (unique within NN hours, anyhow)
+	// Are any of these new ? use {callsign,reg} as the unique ID (unique within 2 hours, anyhow)
 	set := fdb.FIFOSet{}
 	if err := loadFIFOSet(c,&set); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	new := set.FindNew(flights)
+	str += fmt.Sprintf("\n----{ %d flights, %d new }----\n", len(flights), len(new))
+
+	// Look up the things we've just noticed, and update where needed
+	tstamp := time.Now().Add(-5 * time.Minute)
+	for _,fs := range new {		
+		if fs.IcaoId == "" {
+			continue
+		}
+
+		idspec := fdb.IdSpec{IcaoId:fs.IcaoId, Time:tstamp}
+		f,err := db.LookupMostRecent(db.NewQuery().ByIdSpec(idspec))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if f == nil {
+			// This flight hasn't shown up yet. So remove it from the 'seen' set.
+			set.Remove(fs)
+			continue
+		}
+
+		// OK ! Maybe update our DB with schedule data
+		str2 := fmt.Sprintf("-- %s\n", fs)
+		str2 += fmt.Sprintf(" - %s:%s %v\n", f.IcaoId, f.FullString(), f.TagList())
+		changed := f.MergeIdentityFrom(fs.Flight)
+		if changed {
+			f.Analyse()
+			str += str2 + fmt.Sprintf(" - %s:%s %v\n", f.IcaoId, f.FullString(), f.TagList())
+
+			if err := db.PersistFlight(f); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+	}
+
+	set.AgeOut(2 * time.Hour)
 	if err := saveFIFOSet(c,set); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	/* LookupHistory is an expensive way to get from any two of
+	
+	/* FWIW ... LookupHistory is an expensive way to get from any two of
      {callsign,depaturedate,registration} to a fr24ID, the thing that
      lets us lookup track data. Shame.
 
      It also gives us robust arrival times, for accurate taskqueue scheduling. */
-	for _,fs := range new {		
 
-		_=fs
-	}
 	
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(fmt.Sprintf("OK\n\n%s", str)))

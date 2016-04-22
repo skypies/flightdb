@@ -2,6 +2,7 @@ package fgae
 
 import(
 	"fmt"
+	"time"
 	
 	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/datastore"
@@ -73,7 +74,7 @@ func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 	f,err := db.LookupMostRecent(db.NewQuery().ByIcaoId(frag.IcaoId))
 	if err != nil { return err }
 
-	prefix := fmt.Sprintf("[%s/%s]%s", frag.IcaoId, frag.Callsign, frag.DataSystem)
+	prefix := fmt.Sprintf("[%s/%s]%s %s", frag.IcaoId, frag.Callsign, frag.DataSystem, time.Now())
 	
 	if f == nil {
 		f = fdb.NewFlightFromTrackFragment(frag)
@@ -133,6 +134,6 @@ func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 
 // Say we've pulled some identity information from somewhere; if it matches something,
 // let's merge it in
-func (db FlightDB)AddPartialIdentity(id *fdb.Identity) error {
-	return nil
-}
+//func (db FlightDB)AddPartialIdentity(id *fdb.Identity) error {
+//	return nil
+//}

@@ -18,5 +18,5 @@ type FlightSnapshot struct {
 }
 
 func (fs FlightSnapshot)String() string {
-	return fmt.Sprintf("%-21.21s @ %s", fs.IdentString(), fs.Trackpoint) //date.InPdt(fs.Pos.TimestampUTC), fs.Pos.Latlong)
+	return fmt.Sprintf("%s:%-21.21s @ %s", fs.IcaoId, fs.FullString(), fs.Trackpoint) //date.InPdt(fs.Pos.TimestampUTC), fs.Pos.Latlong)
 }

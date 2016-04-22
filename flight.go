@@ -87,6 +87,9 @@ func (f *Flight)NormalizedCallsignString() string {
 func (f *Flight)SetTag(tag string) {
 	f.Tags[tag]++
 }
+func (f *Flight)DropTag(tag string) {
+	delete(f.Tags, tag)
+}
 func (f *Flight)HasTag(tag string) bool {
 	_,exists := f.Tags[tag]
 	return exists
@@ -205,9 +208,11 @@ func (f *Flight)Analyse() (error, string) {
 	case BareFlightNumber:
 		fallthrough
 	case IcaoFlightNumber:
+		f.DropTag("GA")
 		f.SetTag("AL")
 
 	default:
+		f.DropTag("AL")
 		f.SetTag("GA")
 	}
 
@@ -267,6 +272,42 @@ func (f *Flight)ComputeIndicatedAltitudes(metars *metar.Archive) {
 	}
 }
 
+// Returns true if f1 was updated
+func (f1 *Flight)MergeIdentityFrom(f2 Flight) bool {
+	changed := false
+
+	str := fmt.Sprintf(" -  f1: %s:%s %v\n", f1.IcaoId, f1.FullString(), f1.TagList())
+	str += fmt.Sprintf(" - +f2: %s:%s %v\n", f2.IcaoId, f2.FullString(), f2.TagList())
+
+	if f1.Callsign == "" && f2.Callsign != "" {
+		changed,f1.Callsign = true,f2.Callsign
+		f1.ParseCallsign()
+	}
+	if f1.Registration == "" && f2.Registration != "" {
+		changed,f1.Registration = true,f2.Registration
+	}
+	if f1.EquipmentType == "" && f2.EquipmentType != "" {
+		changed,f1.EquipmentType = true,f2.EquipmentType
+	}
+	if f1.PlannedDepartureUTC.IsZero() && !f2.PlannedDepartureUTC.IsZero() {
+		changed,f1.PlannedDepartureUTC = true,f2.PlannedDepartureUTC
+	}
+	if f1.PlannedArrivalUTC.IsZero() && !f2.PlannedArrivalUTC.IsZero() {
+		changed,f1.PlannedArrivalUTC = true,f2.PlannedArrivalUTC
+	}
+	if f1.Origin == "" && f2.Origin != ""           { changed,f1.Origin = true,f2.Origin }
+	if f1.Destination == "" && f2.Destination != "" { changed,f1.Destination = true,f2.Destination }
+	if f1.Number == 0 && f2.Number != 0             { changed,f1.Number = true,f2.Number }
+	if f1.IATA == "" && f2.IATA != ""               { changed,f1.IATA = true,f2.IATA }
+	if f1.ICAO == "" && f2.ICAO != ""               { changed,f1.ICAO = true,f2.ICAO }
+
+	if changed {
+		f1.DebugLog += fmt.Sprintf("-- MergeIdentity %s\n%s", time.Now(), str)
+		f1.DebugLog += fmt.Sprintf(" - =  : %s:%s %v\n", f1.IcaoId, f1.FullString(), f1.TagList())
+	}
+	
+	return changed
+}
 
 // Functions to support indexing & retrieval in the DB
 func (f *Flight)GetDatastoreKey() string { return f.datastoreKey }
