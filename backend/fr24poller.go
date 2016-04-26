@@ -6,6 +6,7 @@ import(
 	"time"
 	
 	"google.golang.org/appengine"
+	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/memcache"
 	"google.golang.org/appengine/urlfetch"
 	"golang.org/x/net/context"
@@ -20,6 +21,7 @@ import(
 
 func init() {
 	http.HandleFunc("/fdb/fr24", fr24PollHandler)
+	http.HandleFunc("/fdb/schedcache/view", schedcacheViewHandler)
 	http.HandleFunc("/fdb/fr24q", fr24QueryHandler)
 }
 
@@ -74,6 +76,27 @@ func updateAirframeCache(c context.Context, resp []fdb.FlightSnapshot, list bool
 }
 
 // }}}
+// {{{ updateScheduleCache
+
+func updateScheduleCache(c context.Context, resp []fdb.FlightSnapshot) error {
+
+	if len(resp) == 0 { return nil } // Don't overwrite in cases of error
+	
+	sc := ref.BlankScheduleCache()
+	for i,_ := range resp {
+		sc.Map[resp[i].IcaoId] = &resp[i]
+	}
+	sc.LastUpdated = time.Now()
+	
+	if err := sc.Persist(c); err != nil {
+		log.Errorf(c, "updateScheduleCache/Persist: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+// }}}
 
 // {{{ {load,save}FIFOSet
 
@@ -108,7 +131,7 @@ func fr24PollHandler(w http.ResponseWriter, r *http.Request) {
 	fr,_ := fr24.NewFr24(urlfetch.Client(c))
 	db := fgae.FlightDB{C:c}
 
-	flights,err := fr.LookupCurrentList(sfo.KLatlongSFO.Box(160,160))
+	flights,err := fr.LookupCurrentList(sfo.KLatlongSFO.Box(320,320))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -120,18 +143,27 @@ func fr24PollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Are any of these new ? use {callsign,reg} as the unique ID (unique within 2 hours, anyhow)
-	set := fdb.FIFOSet{}
-	if err := loadFIFOSet(c,&set); err != nil {
+	if err := updateScheduleCache(c, flights); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	new := set.FindNew(flights)
-	str += fmt.Sprintf("\n----{ %d flights, %d new }----\n", len(flights), len(new))
 
-	// Look up the things we've just noticed, and update where needed
-	tstamp := time.Now().Add(-5 * time.Minute)
-	for _,fs := range new {		
+	// Load up the list of things we've acted on 'recently'
+	alreadyProcessed := fdb.FIFOSet{}
+	if err := loadFIFOSet(c,&alreadyProcessed); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Filter out the things we've acted on recently (and, speculatively, add them
+	// to the 'processed' list
+	new := alreadyProcessed.FindNew(flights)
+	str += fmt.Sprintf("\n----{ %d flights, %d new, set=%d }----\n", len(flights), len(new),
+		len(alreadyProcessed))
+
+	// Review the flights we've yet to process.
+	tstamp := time.Now().Add(-30 * time.Second)
+	for _,fs := range new {
 		if fs.IcaoId == "" {
 			continue
 		}
@@ -144,15 +176,13 @@ func fr24PollHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		if f == nil {
 			// This flight hasn't shown up yet. So remove it from the 'seen' set.
-			set.Remove(fs)
+			alreadyProcessed.Remove(fs)
 			continue
 		}
 
-		// OK ! Maybe update our DB with schedule data
-		str2 := fmt.Sprintf("-- %s\n", fs)
-		str2 += fmt.Sprintf(" - %s:%s %v\n", f.IcaoId, f.FullString(), f.TagList())
-		changed := f.MergeIdentityFrom(fs.Flight)
-		if changed {
+		// OK ! Maybe update our DB with schedule data ...
+		str2 := fmt.Sprintf("-- %s\n - %s:%s %v\n", fs, f.IcaoId, f.FullString(), f.TagList())
+		if changed := f.MergeIdentityFrom(fs.Flight); changed == true {
 			f.Analyse()
 			str += str2 + fmt.Sprintf(" - %s:%s %v\n", f.IcaoId, f.FullString(), f.TagList())
 
@@ -163,18 +193,16 @@ func fr24PollHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	set.AgeOut(2 * time.Hour)
-	if err := saveFIFOSet(c,set); err != nil {
+	alreadyProcessed.AgeOut(2 * time.Hour)
+	if err := saveFIFOSet(c,alreadyProcessed); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-
 	
 	/* FWIW ... LookupHistory is an expensive way to get from any two of
      {callsign,depaturedate,registration} to a fr24ID, the thing that
      lets us lookup track data. Shame.
 
      It also gives us robust arrival times, for accurate taskqueue scheduling. */
-
 	
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(fmt.Sprintf("OK\n\n%s", str)))
@@ -195,6 +223,18 @@ func fr24QueryHandler(w http.ResponseWriter, r *http.Request) {
 	
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(fmt.Sprintf("OK\nq=%s\n%#v\n", r.FormValue("q"), id)))
+}
+
+// }}}
+// {{{ schedcacheViewHandler
+
+func schedcacheViewHandler(w http.ResponseWriter, r *http.Request) {
+	c := appengine.NewContext(r)
+
+	sc := ref.NewScheduleCache(c)
+	
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte(fmt.Sprintf("OK\n%s\n", sc)))
 }
 
 // }}}

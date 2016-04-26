@@ -29,6 +29,11 @@ func (s Schedule)IcaoFlight() string {
 func (s Schedule)IataFlight() string {
 	if s.IATA != "" { return fmt.Sprintf("%s%d", s.IATA, s.Number) } else { return "" }
 }
+func (s Schedule)BestFlightNumber() string {
+	str := s.IataFlight()
+	if str == "" { str = s.IcaoFlight() }
+	return str
+}
 
 type Identity struct {
 	IcaoId          string   // hex string (cf. adsb.IcaoId)

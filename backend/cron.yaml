@@ -1,7 +1,7 @@
 application: serfr0-fdb
 
 cron:
-- description: Airframe scanning via fr24
+- description: Airframe/schedule polling
   url: /fdb/fr24
-  schedule: every 5 minutes
+  schedule: every 2 minutes
   target: backend

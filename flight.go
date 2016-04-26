@@ -68,6 +68,9 @@ func (f *Flight)ParseCallsign() CallsignType {
 		f.Identity.Schedule.ICAO, f.Identity.Schedule.Number = c.IcaoPrefix, c.Number
 	case BareFlightNumber:
 		f.Identity.Schedule.Number = c.Number
+		if f.Airframe.CallsignPrefix != "" {
+			f.Identity.Schedule.ICAO = f.Airframe.CallsignPrefix
+		}
 	}
 
 	return c.CallsignType
@@ -208,6 +211,7 @@ func (f *Flight)Analyse() (error, string) {
 	case BareFlightNumber:
 		fallthrough
 	case IcaoFlightNumber:
+		f.ParseCallsign()  // Populate the Schedule fields from the callsign
 		f.DropTag("GA")
 		f.SetTag("AL")
 
