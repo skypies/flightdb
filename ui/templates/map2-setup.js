@@ -123,6 +123,10 @@ var waypoints = {
     "BAXBE": {pos:{lat: 36.7730556, lng:-121.6263889}},
     "APLLE": {pos:{lat: 37.0338889, lng:-121.8050000}},
 
+    // Randoms
+    "PARIY": {pos:{lat: 37.3560056, lng:-121.9231222}},  // SJC ?
+    "ZORSA": {pos:{lat: 37.3627583, lng:-122.0500306}},
+
     // Personal entries
     "X_RSH": {pos:{lat: 36.868582,  lng:-121.691934}},
     "X_BLH": {pos:{lat: 37.2199471, lng:-122.0425108}},

@@ -17,7 +17,7 @@ func init() {
 
 var(
 	ListReporterHeaders = []string{
-		"ID", "FLIGHTNUMBER","ORIGIN","DESTINATION","TAGS",
+		"ID", "FLIGHTNUMBER","EQUIP","ORIGIN","DESTINATION","TAGS",
 		"YEAR(PST)", "MONTH(PST)","DAY(PST)","TIME(PST)",
 		"ALTITUDE(FEET)","GROUNDSPEED(KNOTS)",
 	}
@@ -41,7 +41,8 @@ func ListReporter(r *Report, f *fdb.Flight, intersections []fdb.TrackIntersectio
 	}
 
 	textrow := []string{
-		f.IdentString(), f.IataFlight(), f.Origin, f.Destination, strings.Join(f.TagList(), " "),
+		f.IdentString(), f.IataFlight(), f.EquipmentType, f.Origin, f.Destination,
+		strings.Join(f.TagList(), " "),
 	}
 
 	// Generate market distribution for matches
