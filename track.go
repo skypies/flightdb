@@ -1,3 +1,4 @@
+
 package flightdb2
 
 import(
@@ -182,6 +183,10 @@ func (t Track)PostProcess() {
 		t[i].VerticalSpeedFPM = (t[i].Altitude - t[i-1].Altitude) / dur.Minutes()		
 		t[i].VerticalAccelerationFPMPS = (
 			t[i].VerticalSpeedFPM - t[i-1].VerticalSpeedFPM) / dur.Seconds()		
+
+		// AngleOfInclination; distKM=adjacent, vertDistKM=opposite; ang=arctan(opp/adj)
+		vertDistKM := (t[i].Altitude - t[i-1].Altitude) / geo.KFeetPerKM
+		t[i].AngleOfInclination = math.Atan2(vertDistKM,distKM) * 180.0/math.Pi
 	}
 }
 

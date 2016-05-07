@@ -10,20 +10,24 @@ import(
 
 // Also return trackpoint info ?
 func (f *Flight)SatisfiesGeoRestriction(gr geo.GeoRestrictor, tracks []string) (bool, TrackIntersection, string) {
-
+	
 	if len(tracks) == 0 {
-		return f.AnyTrack().SatisfiesGeoRestriction(gr)
-	} else {
-		for _,tName := range tracks {
-			if f.HasTrack(tName) {
-				str := fmt.Sprintf("* wanted tracks %v, found %v", tracks, tName)
-				ok,tis,deb := f.Tracks[tName].SatisfiesGeoRestriction(gr)
-				return ok,tis,str+deb
-			}
-		}
-		str := fmt.Sprintf("* wanted tracks %v, only had %v", tracks, f.ListTracks())
-		return false, TrackIntersection{}, str
+		_,tName := f.AnyTrackWithName()
+		ok,tis,deb := f.Tracks[tName].SatisfiesGeoRestriction(gr)
+		tis.TrackName = tName
+		return ok,tis,deb
 	}
+
+	for _,tName := range tracks {
+		if f.HasTrack(tName) {
+			str := fmt.Sprintf("* wanted tracks %v, found %v", tracks, tName)
+			ok,tis,deb := f.Tracks[tName].SatisfiesGeoRestriction(gr)
+			tis.TrackName = tName
+			return ok,tis,str+deb
+		}
+	}
+	str := fmt.Sprintf("* wanted tracks %v, only had %v", tracks, f.ListTracks())
+	return false, TrackIntersection{}, str
 }
 
 // }}}

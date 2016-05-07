@@ -77,7 +77,7 @@ func (g *DescentPdf)Init() {
 		ng.YTickFmt = "%.0fft"
 		ng.XTickOtherSide = true
 		ng.YTickOtherSide = true
-
+		
 		v += 110
 	}
 	
@@ -119,6 +119,18 @@ func (g *DescentPdf)Init() {
 		ng.YTickOtherSide = true
 		ng.YTickFmt = "%.0f feet/min"
 
+		// This is overlayed into the same grid as verticalspeed
+		if g.ToShow["angleofinclination"] {
+			ng := incompleteGrid()
+			g.Grids["angleofinclination"] = ng
+			ng.LineColor = GreenRGB
+			ng.H = 50
+			ng.MinY = -8
+			ng.MaxY = +8
+			ng.YGridlineEvery = 4
+			ng.YTickFmt = "%.0f deg"
+		}
+		
 		// This is overlayed into the same grid as verticalspeed
 		if g.ToShow["verticalacceleration"] {
 			ng = incompleteGrid()
@@ -220,6 +232,9 @@ func (g *DescentPdf)DrawTrackWithDistFunc(t fdb.Track, f DistanceFunc, colorsche
 		}
 		if grid,exists := g.Grids["verticalacceleration"]; exists {
 			grid.Line(x1,tpA.VerticalAccelerationFPMPS, x2,tpB.VerticalAccelerationFPMPS)
+		}
+		if grid,exists := g.Grids["angleofinclination"]; exists {
+			grid.Line(x1,tpA.AngleOfInclination, x2,tpB.AngleOfInclination)
 		}
 
 		g.Debug += fmt.Sprintf("%3d: %.1f, %.1f\n", i, tpA.VerticalSpeedFPM,

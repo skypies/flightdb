@@ -9,28 +9,33 @@ import (
 )
 
 func init() {
-	report.HandleReport("levelflight", LevelFlightReporter, "Level flight across {region}")
-	// report.TrackSpec("levelflight", []string{"FA", "FOIA", "fr24", "ADSB", "MLAT"}) // *Not* ADSB; need <6000' data
+	report.HandleReport("levelflight", LevelFlightReporter,
+		"Level flight across {region} with angle <= {tol}")
 }
 
 func LevelFlightReporter(r *report.Report, f *fdb.Flight, tis []fdb.TrackIntersection) (report.FlightReportOutcome, error){
 	ti,err := r.GetFirstAreaIntersection(tis)
-	if err != nil { return report.RejectedByReport, err }
-	
-//	if ti.Start.Altitude > 8000.0 {
-//		r.I["[C] Flights passed through, but too high (>8000 ft)"]++
-//		return report.RejectedByReport,nil
-//	}
-
-	r.I["[C] Flights passing through region, below 8000 ft"]++
-
-	altDelta := ti.End.Altitude - ti.Start.Altitude
-	if math.Abs(altDelta) > r.Options.AltitudeTolerance {
-		r.I[fmt.Sprintf("[D] Flights whose altitude changed by >%.0f", r.AltitudeTolerance)]++
-		return report.RejectedByReport,nil
+	if err != nil {
+		return report.RejectedByReport, err
 	}
 
-	r.I[fmt.Sprintf("[D] <b>Flights with level flight (delta<%.0f)</b>", r.AltitudeTolerance)]++
+	r.I["[C] Flights passing through region"]++
+
+	// See if any trackpoints inside the intersection lie outside the tolerance
+	for _,ti := range tis {
+		t := f.Tracks[ti.TrackName]
+		t.PostProcess()
+
+		for i:=ti.I; i<=ti.J; i++ {
+			if math.Abs((*t)[i].AngleOfInclination) > r.AltitudeTolerance {
+				r.I[fmt.Sprintf("[D] Flights not level (|angle| > %.1f deg)</b>", r.AltitudeTolerance)]++
+				return report.RejectedByReport,nil
+			}
+		}
+	}
+	
+	r.I[fmt.Sprintf("[D] <b>Flights with level flight (|angle| <= %.1f deg)</b>",
+		r.AltitudeTolerance)]++
 	
 	row := []string{
 		r.Links(f),

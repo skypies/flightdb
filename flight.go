@@ -143,12 +143,16 @@ func (f Flight)ListTracks() []string {
 	sort.Strings(ret)
 	return ret
 }
-func (f Flight)AnyTrack() Track {
+func (f Flight)AnyTrackWithName() (Track, string) {
+	// This is kinda dumb. A track (and trackpoint) should know this key.
 	for _,name := range []string{"ADSB", "MLAT", "FA:TA", "FA:TZ", "fr24", "FOIA"} {
-		if f.HasTrack(name) { return *f.Tracks[name] }
+		if f.HasTrack(name) { return *f.Tracks[name], name }
 	}
-
-	return Track{}
+	return Track{}, ""
+}
+func (f Flight)AnyTrack() Track {
+	t,_ := f.AnyTrackWithName()
+	return t
 }
 func (f Flight)PreferredTrack(pref []string) (string, Track) {
 	for _,name := range pref {

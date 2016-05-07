@@ -108,11 +108,10 @@ Skyline Window
 37.495131, -122.368961
 37.206145, -122.048494
 -->
+
           <tr>
             <td>To</td>
             <td>
-<!--              <input type="text" name="winfromlat" size="11" value="37.206145"/>,
-              <input type="text" name="winfromlong" size="11" value="-122.048494"/>-->
               <input type="text" name="winfromlat" size="11" value=""/>,
               <input type="text" name="winfromlong" size="11" value=""/> (latlong)
             </td>
@@ -120,12 +119,25 @@ Skyline Window
           <tr>
             <td>From</td>
             <td>
-<!--              <input type="text" name="wintolat" size="11" value="37.495131"/>,
-              <input type="text" name="wintolong" size="11" value="-122.368961"/>-->
               <input type="text" name="wintolat" size="11" value=""/>,
               <input type="text" name="wintolong" size="11" value=""/> (latlong)
             </td>
           </tr>
+<!--
+          <tr>
+            <td>To (testing)</td>
+            <td>
+              {{template "widget-waypoint-or-pos" dict "Waypoints" .Waypoints "Name" "winstart"}}
+            </td>
+          </tr>            
+          <tr>
+            <td>From (testing)</td>
+            <td>
+              {{template "widget-waypoint-or-pos" dict "Waypoints" .Waypoints "Name" "winend"}}
+            </td>
+          </tr>            
+          -->
+
 <!--          <tr>
             <td>Altitude</td>
             <td>
@@ -143,7 +155,7 @@ Skyline Window
           </td></tr>
 
           <tr>
-            <td>Data Source</td>
+            <td>Data Source [BROKEN]</td>
             <td>
               <input type="radio" name="datasource" value="ADSB"/>ADSB-only,
               <input type="radio" name="datasource" value="fr24"/>fr24-only,
@@ -153,9 +165,10 @@ Skyline Window
           </tr>
           
           <tr>
-            <td>Altitude</td>
+            <td>Altitude Tolerance</td>
             <td>
-              Tolerance: <input type="text" name="altitudetolerance" size="4" value="300"/> feet
+              <b>{tol}</b> <input type="text" name="altitudetolerance"
+              size="4" value="300"/> feet (or degrees)
             </td>
           </tr>
 

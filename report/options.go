@@ -19,6 +19,11 @@ import(
 	fdb "github.com/skypies/flightdb2"
 )
 
+type NamedPos struct {
+	Name         string     // waypoint name
+	geo.Latlong  // embed
+}
+
 type Options struct {
 	Name               string
 	Start, End         time.Time
@@ -36,7 +41,9 @@ type Options struct {
 	AltitudeMin        int64
 	AltitudeMax        int64
 
-	// Geo-restriction 2: Window. Represent this a bit better.
+	WindowStart        NamedPos
+	WindowEnd          NamedPos
+	// Geo-restriction 2: Window. Represent this a bit better.	
 	WindowTo, WindowFrom geo.Latlong	
 	WindowMin, WindowMax float64
 
@@ -63,6 +70,19 @@ func FormValueLatlong(r *http.Request, stem string) geo.Latlong {
 	lat  := widget.FormValueFloat64EatErrs(r, stem+"lat")
 	long := widget.FormValueFloat64EatErrs(r, stem+"long")
 	return geo.Latlong{lat,long}
+}
+
+func FormValueNamedPos(r *http.Request, stem string) NamedPos {
+	if wp := strings.ToUpper(r.FormValue(stem+"_waypoint")); wp != "" {
+		if _,exists := sfo.KFixes[wp]; !exists {
+			return NamedPos{} //, fmt.Errorf("Waypoint '%s' not known", wp)
+		}
+		return NamedPos{wp, sfo.KFixes[wp]}
+	} else {
+		lat  := widget.FormValueFloat64EatErrs(r, stem+"_lat")
+		long := widget.FormValueFloat64EatErrs(r, stem+"_long")
+		return NamedPos{"", geo.Latlong{lat,long}}
+	}
 }
 
 func FormValueReportOptions(r *http.Request) (Options, error) {
@@ -92,6 +112,8 @@ func FormValueReportOptions(r *http.Request) (Options, error) {
 		AltitudeMin: widget.FormValueInt64(r, "altitudemin"),
 		AltitudeMax: widget.FormValueInt64(r, "altitudemax"),
 
+		WindowStart: FormValueNamedPos(r, "winstart"),
+		WindowEnd:   FormValueNamedPos(r, "winend"),
 		// Hmm.
 		WindowTo: FormValueLatlong(r, "winto"),
 		WindowFrom: FormValueLatlong(r, "winfrom"),
@@ -126,6 +148,7 @@ func FormValueReportOptions(r *http.Request) (Options, error) {
 	}
 	
 	// The form only sends one value (via dropdown), but keep it as a list just in case
+	// This hurts my head, but should move to the new widget thing
 	for _, waypoint := range widget.FormValueCommaSepStrings(r,"waypoint") {
 		waypoint = strings.ToUpper(waypoint)
 		if _,exists := sfo.KFixes[waypoint]; !exists {
@@ -160,6 +183,17 @@ func (o Options)ListGeoRestrictors() []geo.GeoRestrictor {
 		ret = append(ret, window)
 	}
 
+	/*
+	if !o.WindowStart.IsNil() && !o.WindowEnd.IsNil() {
+		window := geo.Window{
+			LatlongLine: o.Start.BuildLine(o.WindowEnd),
+			MinAltitude: o.WindowMin,
+			MaxAltitude: o.WindowMax,
+		}
+		ret = append(ret, window)
+	}
+*/
+	
 	addCenteredRestriction := func(pos geo.Latlong) {
 		if o.RadiusKM > 0 {
 			ret = append(ret, pos.Circle(o.RadiusKM))

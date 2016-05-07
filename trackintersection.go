@@ -4,6 +4,7 @@ import "fmt"
 
 type TrackIntersection struct {
 	Start,End Trackpoint
+	TrackName string
 	I,J int
 }
 

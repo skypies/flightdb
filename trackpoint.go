@@ -39,8 +39,9 @@ type Trackpoint struct {
 	GroundAccelerationKPS     float64 `datastore:"-" json:"-"` // In knots per second
 	VerticalSpeedFPM          float64 `datastore:"-" json:"-"` // Feet per minute (~== VerticalRate)
 	VerticalAccelerationFPMPS float64 `datastore:"-" json:"-"` // In (feet per minute) per second
-
-	// Populated just in first trackpoint, to hold notes for the whole track.
+	AngleOfInclination        float64 `datastore:"-" json:"-"` // In degrees. +ve means climbing
+	
+	// Populated just in first trackpoint, to hold transient notes for the whole track.
 	Notes                     string  `datastore:"-" json:"-"`
 }
 

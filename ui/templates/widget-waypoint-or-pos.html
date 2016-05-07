@@ -1,0 +1,9 @@
+{{define "widget-waypoint-or-pos"}}
+              <select name="{{.Name}}_waypoint">
+                <option value="" selected="1">(waypoint)</option> 
+                {{range .Waypoints}}
+                <option value="{{.}}">{{.}}</option>{{end}}
+              </select>, or latlong
+              <input type="text" name="{{.Name}}_lat" size="7" value=""/>,
+              <input type="text" name="{{.Name}}_long" size="7" value=""/>
+{{end}}

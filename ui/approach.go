@@ -198,6 +198,9 @@ func DescentPDFInit(w http.ResponseWriter, r *http.Request, numFlights int) *fpd
 	if widget.FormValueCheckbox(r, "showaccelerations") {
 		dp.ToShow["groundacceleration"],dp.ToShow["verticalacceleration"] = true,true
 	}
+	if widget.FormValueCheckbox(r, "showangleofinclination") {
+		dp.ToShow["angleofinclination"] = true
+	}
 
 	dp.Init()
 	dp.DrawFrames()
