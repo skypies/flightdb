@@ -182,12 +182,11 @@ func DescentPDFInit(w http.ResponseWriter, r *http.Request, numFlights int) *fpd
 	altitudeMax := 30000
 	if alt := widget.FormValueInt64(r, "alt"); alt > 0 {
 		altitudeMax = int(alt)
-	}
-
+	}	
+	
 	dp := fpdf.DescentPdf{
 		ColorScheme: colorscheme,
 		OriginPoint: sfo.KLatlongSFO,
-		//OriginLabel: trackType,
 		AltitudeMax: float64(altitudeMax),
 		LengthNM:    float64(lengthNM),
 		ToShow:      map[string]bool{"altitude":true, "groundspeed":true, "verticalspeed":true},
@@ -195,6 +194,11 @@ func DescentPDFInit(w http.ResponseWriter, r *http.Request, numFlights int) *fpd
 		AveragingWindow: widget.FormValueDuration(r, "averagingwindow"),
 	}
 
+	if originPos,err := FormValueAirportLocation(r, "airportdest"); err == nil {
+		dp.OriginPoint = originPos
+		dp.OriginLabel = r.FormValue("airportdest")
+	}
+	
 	if widget.FormValueCheckbox(r, "showaccelerations") {
 		dp.ToShow["groundacceleration"],dp.ToShow["verticalacceleration"] = true,true
 	}

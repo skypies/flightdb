@@ -1,8 +1,11 @@
 package ui
 
 import(
+	"fmt"
 	"net/http"
 	
+	"github.com/skypies/geo"
+	"github.com/skypies/geo/sfo"
 	"github.com/skypies/util/widget"
 
 	fdb "github.com/skypies/flightdb2"
@@ -30,4 +33,11 @@ func FormValueIdSpecs(r *http.Request) ([]fdb.IdSpec, error) {
 	}
 
 	return ret, nil
+}
+
+func FormValueAirportLocation(r *http.Request, name string) (geo.Latlong, error) {
+	if pos,exists := sfo.KAirports[r.FormValue(name)]; exists {
+		return pos, nil
+	}
+	return geo.Latlong{}, fmt.Errorf("airport '%s' not known; try KSFO,KOAK etc", r.FormValue(name))
 }

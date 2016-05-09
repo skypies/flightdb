@@ -164,6 +164,10 @@ func (g DescentPdf)DrawFrames() {
 func (g DescentPdf)DrawCaption() {
 	title := ""
 
+	if g.OriginLabel != "" {
+		title += "* Origin point == " + g.OriginLabel + "\n"
+	}
+	
 	if g.AveragingWindow > 0 {
 		title += fmt.Sprintf("* Averaging window: %s\n", g.AveragingWindow)
 	}
