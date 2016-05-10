@@ -71,8 +71,8 @@ func ListReporter(r *Report, f *fdb.Flight, intersections []fdb.TrackIntersectio
 
 	if len(intersections) > 0 {
 		addTrackpointIntersection(intersections[0].Start)
-	} else if len(r.HackWaypoints) > 0 {
-		for _,wpName := range r.HackWaypoints {
+	} else if len(r.Waypoints) > 0 {
+		for _,wpName := range r.Waypoints {
 			if trackName,i := f.AtWaypoint(wpName); trackName != "" {
 				track := f.Tracks[trackName]
 				// for interpolation, see DistAlongLine - or is it busted ?

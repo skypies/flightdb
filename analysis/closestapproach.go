@@ -27,10 +27,10 @@ func ClosestApproachReporter(r *report.Report, f *fdb.Flight, tis []fdb.TrackInt
 	if t == nil { return report.RejectedByReport, nil } // Flight had no track data !
 	if r.ReferencePoint.IsNil() { return report.RejectedByReport, nil } // No ref pt
 	
-	iClosest := t.ClosestTo(r.ReferencePoint)
+	iClosest := t.ClosestTo(r.ReferencePoint.Latlong)
 	if iClosest < 0 { return report.RejectedByReport, nil } // track was in fact empty ?
 
-	dist := (*t)[iClosest].DistKM(r.ReferencePoint)
+	dist := (*t)[iClosest].DistKM(r.ReferencePoint.Latlong)
 	summaryStr := fmt.Sprintf("* Closest to %s\n* <b>%.2f</b> KM away\n", r.ReferencePoint, dist)
 	(*t)[iClosest].AnalysisMapIcon = "red-large"
 	(*t)[iClosest].AnalysisAnnotation += summaryStr

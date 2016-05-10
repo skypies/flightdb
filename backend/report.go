@@ -73,7 +73,7 @@ func reportHandler(w http.ResponseWriter, r *http.Request) {
 	idspecsRejectByRestrict := []string{}
 	idspecsRejectByReport := []string{}
 
-	query := db.QueryForTimeRangeWaypoint(rep.Tags, rep.Options.HackWaypoints, rep.Start,rep.End)
+	query := db.QueryForTimeRangeWaypoint(rep.Tags, rep.Options.Waypoints, rep.Start,rep.End)
 	rep.Debug(fmt.Sprintf("Using DB Query:-\n%s\n%#v\n", query, query))
 		
 	iter := db.NewLongIterator(query)

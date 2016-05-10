@@ -86,7 +86,7 @@ var waypoints = {
 
     // BRIXX1 (skip the first two, nothing flies along them anyway and they make a mess)
     //"CORKK": {pos:{lat: 37.7335889 , lng:  -122.4975500}},
-    //"BRIXX": {pos:{lat: 37.6178444 , lng:  -122.3745278}},
+    "BRIXX": {pos:{lat: 37.6178444 , lng:  -122.3745278}},
     "LUYTA": {pos:{lat: 37.2948889 , lng:  -122.2045528}},
     "JILNA": {pos:{lat: 37.2488056 , lng:  -122.1495000}},
     "YADUT": {pos:{lat: 37.2039889 , lng:  -122.0232778}},
