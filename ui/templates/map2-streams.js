@@ -4,7 +4,7 @@ function streamVectors() {
     var idspecs = {{.IdSpecs}}
     for (var i in idspecs) {
         var idspec = idspecs[i].idspec
-        var url = {{.VectorURLPath}}+'?idspec='+idspec+'&json=1&trackspec='+{{.TrackSpec}}
+        var url = {{.VectorURLPath}}+'?idspec='+idspec+'&json=1&trackspec='+{{.TrackSpec}}+'&colorby='+{{.ColorScheme}}
         
         $.getJSON( url, function( data ) {
             $.each( data, function( key, val ) {

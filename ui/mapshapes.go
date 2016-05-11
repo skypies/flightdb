@@ -134,6 +134,7 @@ func LatlongTimeBoxToMapLines(tb geo.LatlongTimeBox, color string) []MapLine {
 	return maplines
 }
 
+// This overlaps heavily with ColorScheme :/
 type ColoringStrategy int
 const(
 	ByADSBReceiver ColoringStrategy = iota

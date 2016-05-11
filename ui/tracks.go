@@ -12,7 +12,7 @@ import(
 	"google.golang.org/appengine/urlfetch"
 	"golang.org/x/net/context"
 
-	// "github.com/skypies/adsb"
+	"github.com/skypies/geo"
 	"github.com/skypies/geo/sfo"
 	"github.com/skypies/util/widget"
 	fdb "github.com/skypies/flightdb2"
@@ -403,23 +403,6 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 }
 
 // }}}
-// {{{ OutputTracksAsLinesOnAMap
-
-// ?idspec==XX,YY,...
-// &colorby=procedure   (what we tagged them as)
-
-func OutputTracksAsLinesOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.Flight) {
-	lines   := []MapLine{}
-
-	for _,f := range flights {
-		flightLines := FlightToMapLines(f, "")
-		lines = append(lines, flightLines...)
-	}
-
-	OutputMapLinesOnAMap(w,r,lines)
-}
-
-// }}}
 // {{{ OutputMapLinesOnAMap
 
 // ?idspec==XX,YY,...
@@ -457,8 +440,6 @@ func OutputMapLinesOnAMap(w http.ResponseWriter, r *http.Request, inputLines []M
 // {{{ OutputFlightAsVectorJSON
 
 func OutputFlightAsVectorJSON(w http.ResponseWriter, r *http.Request, f *fdb.Flight) {
-	//colorscheme := FormValueColorScheme(r)
-
 	// This is such a botch job
 	trackspecs := widget.FormValueCommaSepStrings(r, "trackspec")
 	if len(trackspecs) == 0 {
@@ -467,7 +448,7 @@ func OutputFlightAsVectorJSON(w http.ResponseWriter, r *http.Request, f *fdb.Fli
 	trackName,_ := f.PreferredTrack(trackspecs)
 		
 	w.Header().Set("Content-Type", "application/json")
-	lines := FlightToMapLines(f, trackName)
+	lines := FlightToMapLines(f, trackName, FormValueColorScheme(r))
 	jsonBytes,err := json.Marshal(lines)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -522,6 +503,7 @@ func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspe
 		"IdSpecs": IdSpecsToJSVar(idspecs),
 		"VectorURLPath": vectorURLPath,  // retire this when DBv1/v2ui.go and friends are gone
 		"TrackSpec": trackspec,
+		"ColorScheme": FormValueColorScheme(r).String(),
 		
 		// Would be nice to do something better for rendering hints, before they grow without bound
 		"MapLineOpacity": opacity,
@@ -538,9 +520,32 @@ func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspe
 
 // }}}
 
+// {{{ MapLineColor
+
+func MapLineColor(f *fdb.Flight, trackName string, l geo.LatlongLine, colorscheme ColorScheme) string {
+	color := "#101000"
+
+	t := f.Tracks[trackName]
+	tp := (*t)[l.I]
+
+	switch colorscheme {
+	case ByAltitude: color = ColorByAltitude(tp.Altitude)
+		
+	case ByData:
+		fallthrough
+	default:
+		color = "#223399" // FOIA
+		colorMap := map[string]string{"ADSB":"#dd6610", "fr24":"#08aa08", "FA":"#0808aa"}
+		if k,exists := colorMap[trackName]; exists { color = k }
+	}
+
+	return color
+}
+
+// }}}
 // {{{ FlightToMapLines
 
-func FlightToMapLines(f *fdb.Flight, trackName string) []MapLine{
+func FlightToMapLines(f *fdb.Flight, trackName string, colorscheme ColorScheme) []MapLine{
 	lines   := []MapLine{}
 
 	if trackName == "" { trackName = "fr24"}
@@ -549,12 +554,8 @@ func FlightToMapLines(f *fdb.Flight, trackName string) []MapLine{
 	_,track := f.PreferredTrack([]string{trackName})
 	flightLines := track.AsLinesSampledEvery(sampleRate)
 
-	// Default coloring scheme; by track type
-	color := "#223399"
-	colorMap := map[string]string{"ADSB":"#dd6610","fr24":"#08aa08","FA":"#0808aa"}
-	if k,exists := colorMap[trackName]; exists { color = k }
-	
 	for i,_ := range flightLines {
+		color := MapLineColor(f, trackName, flightLines[i], colorscheme)
 		// color := colors[i%2]  // candystripe the lines
 		mapLine := MapLine{
 			Start: flightLines[i].From,

@@ -13,8 +13,7 @@ import(
 	_ "github.com/skypies/flightdb2/analysis" // Populate the report registry
 )
 
-
-func FormValueColorScheme(r *http.Request) fpdf.ColorScheme {
+func FormValuePDFColorScheme(r *http.Request) fpdf.ColorScheme {
 	switch r.FormValue("colorby") {
 	case "delta": return fpdf.ByDeltaGroundspeed
 	case "plot": return fpdf.ByPlotKind

@@ -116,7 +116,7 @@ func descentHandler(w http.ResponseWriter, r *http.Request) {
 // {{{ OutputApproachesAsPDF
 
 func OutputApproachesAsPDF(w http.ResponseWriter, r *http.Request, flights []*fdb.Flight) {
-	colorscheme := FormValueColorScheme(r)
+	colorscheme := FormValuePDFColorScheme(r)
 
 	s,e,_ := widget.FormValueDateRange(r)
 
@@ -172,7 +172,7 @@ func OutputApproachesAsPDF(w http.ResponseWriter, r *http.Request, flights []*fd
 // {{{ DescentPDFInit
 
 func DescentPDFInit(w http.ResponseWriter, r *http.Request, numFlights int) *fpdf.DescentPdf {
-	colorscheme := FormValueColorScheme(r)
+	colorscheme := FormValuePDFColorScheme(r)
 	colorscheme = fpdf.ByPlotKind
 
 	lengthNM := 80
