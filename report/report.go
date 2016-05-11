@@ -90,7 +90,21 @@ func (r *Report)ListPreferredDataSources() []string {
 // Ensure the flight matches all the search restrictions
 func (r *Report)PreProcess(f *fdb.Flight) (bool, []fdb.TrackIntersection) {
 	r.I["[A] PreProcessed"]++
-	
+
+	for _,nottag := range r.NotTags {
+		if f.HasTag(nottag) {
+			r.I[fmt.Sprintf("[B] Eliminated: had not-tag '%s'", nottag)]++
+			return false, []fdb.TrackIntersection{}
+		}
+	}
+
+	for _,notwp := range r.NotWaypoints {
+		if f.HasWaypoint(notwp) {
+			r.I[fmt.Sprintf("[B] Eliminated: had not-waypoint '%s'", notwp)]++
+			return false, []fdb.TrackIntersection{}
+		}
+	}
+
 	// If restrictions were specified, only match flights that satisfy them
 	failed := false
 	intersections := []fdb.TrackIntersection{}

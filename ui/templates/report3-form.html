@@ -27,7 +27,12 @@
           <tr>
             <td>Flight tags</td>
             <td><input type="text" name="tags" size="12" value=""/>
-            (e.g. <code>SERFR1</code>,<code>OCEANIC:</code>,<code>:SFO</code>,<code>AL</code>)</td>
+            (e.g. <code>:SFO_S</code>,<code>OCEANIC:</code>,<code>:SFO</code>)</td>
+          </tr>
+          <tr>
+            <td>NOT tags</td>
+            <td><input type="text" name="nottags" size="12" value=""/>
+            (matches will be excluded; not efficient!)
           </tr>
 
           <tr>
@@ -50,7 +55,21 @@
               </select>.
             </td>
           </tr>
-          
+          <tr>
+            <td>NOT Waypoints</td>
+            <td>
+              <select name="notwaypoint1">
+                <option value="" selected="1">(waypoint)</option> 
+                {{range .Waypoints}}
+                <option value="{{.}}">{{.}}</option>{{end}}
+              </select>,
+              <select name="notwaypoint2">
+                <option value="" selected="1">(waypoint)</option> 
+                {{range .Waypoints}}
+                <option value="{{.}}">{{.}}</option>{{end}}
+              </select>,
+          </tr>
+              
           <tr><td colspan="2"><hr/></td></tr>
           <tr><td colspan="2"><b>Time restrictions</b> - define a time range for flights.
               Approximate. If you pick more than a few days, it may timeout.<br/>

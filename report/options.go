@@ -23,6 +23,9 @@ type Options struct {
 	Start, End         time.Time
 	Tags             []string
 	Waypoints        []string
+
+	NotTags          []string  // Tags that are blacklisted from results; not efficient
+	NotWaypoints     []string  // Tags that are blacklisted from results; not efficient
 	
 	// Geo restriction 1: Box.
 	BoxCenter          geo.NamedLatlong
@@ -91,7 +94,9 @@ func FormValueReportOptions(r *http.Request) (Options, error) {
 		Start: s,
 		End: e,
 		Tags: widget.FormValueCommaSpaceSepStrings(r,"tags"),
+		NotTags: widget.FormValueCommaSpaceSepStrings(r,"nottags"),
 		Waypoints: []string{},
+		NotWaypoints: []string{},
 		
 		BoxCenter: FormValueNamedLatlong(r, "boxcenter"),
 		BoxRadiusKM: widget.FormValueFloat64EatErrs(r, "boxradiuskm"),
@@ -128,6 +133,12 @@ func FormValueReportOptions(r *http.Request) (Options, error) {
 		if r.FormValue(name) != "" {
 			waypoint := strings.ToUpper(r.FormValue(name))
 			opt.Waypoints = append(opt.Waypoints, waypoint)
+		}
+	}
+	for _,name := range []string{"notwaypoint1", "notwaypoint2", "notwaypoint3"} {
+		if r.FormValue(name) != "" {
+			waypoint := strings.ToUpper(r.FormValue(name))
+			opt.NotWaypoints = append(opt.NotWaypoints, waypoint)
 		}
 	}
 	
@@ -242,8 +253,12 @@ func (r *Report)ToCGIArgs() string {
 	for i,wp := range r.Waypoints {
 		str += fmt.Sprintf("&waypoint%d=%s", i+1, wp)
 	}
+	for i,wp := range r.NotWaypoints {
+		str += fmt.Sprintf("&notwaypoint%d=%s", i+1, wp)
+	}
 
 	if len(r.Tags) > 0 { str += fmt.Sprintf("&tags=%s", strings.Join(r.Tags,",")) }
+	if len(r.NotTags) > 0 { str += fmt.Sprintf("&nottags=%s", strings.Join(r.NotTags,",")) }
 	
 	return str
 }
@@ -257,7 +272,9 @@ func (o Options)DescriptionText() string {
 	if s != e { str += "-"+e }
 
 	if len(o.Tags)>0 { str += fmt.Sprintf(", tags=%v", o.Tags) }
+	if len(o.NotTags)>0 { str += fmt.Sprintf(", not-tags=%v", o.NotTags) }
 	if len(o.Waypoints)>0 { str += fmt.Sprintf(", waypoints=%v", o.Waypoints) }
+	if len(o.NotWaypoints)>0 { str += fmt.Sprintf(", not-waypoints=%v", o.NotWaypoints) }
 
 	altStr := ""
 	if o.AltitudeMin > 0 || o.AltitudeMax > 0 {
