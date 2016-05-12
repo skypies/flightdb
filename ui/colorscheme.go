@@ -24,23 +24,41 @@ const(
 	ByData ColorScheme = iota
 	ByAltitude
 	ByComplaints
+	ByTotalComplaints
 )
 
 func (cs ColorScheme)String() string {
 	switch cs {
-	case ByData:       return "source"
-	case ByAltitude:   return "altitude"
-	case ByComplaints: return "complaints"
-	default: return ""
+	case ByData:            return "source"
+	case ByAltitude:        return "altitude"
+	case ByComplaints:      return "complaints"
+	case ByTotalComplaints: return "totalcomplaints"
+	default:                return ""
 	}
 }
 
 func FormValueColorScheme(r *http.Request) ColorScheme {
 	switch r.FormValue("colorby") {
-	case "source":     return ByData
-	case "altitude":   return ByAltitude
-	case "complaints": return ByComplaints
-	default:           return ByData
+	case "source":          return ByData
+	case "altitude":        return ByAltitude
+	case "complaints":      return ByComplaints
+	case "totalcomplaints": return ByTotalComplaints
+	default:                return ByData
+	}
+}
+
+func ColorByTotalComplaintCount(n int) string {
+	switch {
+	case n == 0: return "#404040"
+	case n < 30: return grad12[n/3]
+	default: return grad12[11]
+	}
+}
+func ColorByComplaintCount(n int) string {
+	switch {
+	case n == 0: return "#404040"
+	case n < 10: return grad12[n-1]
+	default: return grad12[11]
 	}
 }
 

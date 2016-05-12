@@ -12,8 +12,9 @@ function streamVectors() {
                 var color = val.color
                 if (!color) { color = "#0022ff" }
                 var opacity = val.opacity
-                if (!opacity) { opacity = 1.0 }
-                {{if .MapLineOpacity}}opacity = {{.MapLineOpacity}}{{end}}
+                if (!opacity) {
+                    {{if .MapLineOpacity}}opacity = {{.MapLineOpacity}}{{end}}
+                }
                 var coords = []
                 coords.push({lat:val.s.Lat, lng:val.s.Long})
                 coords.push({lat:val.e.Lat, lng:val.e.Long})

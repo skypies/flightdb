@@ -446,9 +446,21 @@ func OutputFlightAsVectorJSON(w http.ResponseWriter, r *http.Request, f *fdb.Fli
 		trackspecs = []string{"FOIA", "ADSB", "MLAT", "FA", "fr24"}
 	}
 	trackName,_ := f.PreferredTrack(trackspecs)
-		
+
+	colorscheme := FormValueColorScheme(r)
+	complaintTimes := []time.Time{}
+	if colorscheme == ByComplaints || colorscheme == ByTotalComplaints {
+		client := urlfetch.Client(appengine.NewContext(r))
+		if times,err := getComplaintTimesFor(client, f); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		} else {
+			complaintTimes = times
+		}
+	}
+	
 	w.Header().Set("Content-Type", "application/json")
-	lines := FlightToMapLines(f, trackName, FormValueColorScheme(r))
+	lines := FlightToMapLines(f, trackName, colorscheme, complaintTimes)
 	jsonBytes,err := json.Marshal(lines)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -520,17 +532,67 @@ func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspe
 
 // }}}
 
-// {{{ MapLineColor
+// {{{ getComplaintTimesFor
 
-func MapLineColor(f *fdb.Flight, trackName string, l geo.LatlongLine, colorscheme ColorScheme) string {
+func getComplaintTimesFor(client *http.Client, f *fdb.Flight) ([]time.Time, error) {
+	if f.IataFlight() == "" { return []time.Time{},nil }
+	s,e := f.Times()
+
+	times := []time.Time{}
+	
+	url := fmt.Sprintf("https://stop.jetnoise.net/complaints-for?flight=%s&start=%d&end=%d",
+		f.IataFlight(), s.Unix(), e.Unix())
+
+	if resp,err := client.Get(url); err != nil {
+		return times, err
+	} else {
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusNotFound {
+			// We don't have a track
+			return times, nil
+		} else if resp.StatusCode != http.StatusOK {
+			return times, fmt.Errorf("Bad status for %s: %v", url, resp.Status)
+		} else if err := json.NewDecoder(resp.Body).Decode(&times); err != nil {
+			return times, err
+		}
+	}
+
+	return times, nil
+}
+
+// }}}
+
+// {{{ MapLineFormat
+
+func MapLineFormat(f *fdb.Flight, trackName string, l geo.LatlongLine, numComplaints int, colorscheme ColorScheme) (string, float64) {
+	// Defaults
 	color := "#101000"
-
+	opacity := 0.6
+	
 	t := f.Tracks[trackName]
 	tp := (*t)[l.I]
 
 	switch colorscheme {
-	case ByAltitude: color = ColorByAltitude(tp.Altitude)
-		
+	case ByAltitude:
+		color = ColorByAltitude(tp.Altitude)
+
+	case ByComplaints:
+		color = ColorByComplaintCount(numComplaints)
+		if numComplaints == 0 {
+			opacity = 0.1
+		} else {
+			opacity = 0.8
+		}
+
+	case ByTotalComplaints:
+		color = ColorByTotalComplaintCount(numComplaints)
+		if numComplaints == 0 {
+			opacity = 0.1
+		} else {
+			opacity = 0.8
+		}
+
 	case ByData:
 		fallthrough
 	default:
@@ -538,14 +600,14 @@ func MapLineColor(f *fdb.Flight, trackName string, l geo.LatlongLine, colorschem
 		colorMap := map[string]string{"ADSB":"#dd6610", "fr24":"#08aa08", "FA":"#0808aa"}
 		if k,exists := colorMap[trackName]; exists { color = k }
 	}
-
-	return color
+	
+	return color,opacity
 }
 
 // }}}
 // {{{ FlightToMapLines
 
-func FlightToMapLines(f *fdb.Flight, trackName string, colorscheme ColorScheme) []MapLine{
+func FlightToMapLines(f *fdb.Flight, trackName string, colorscheme ColorScheme, times []time.Time) []MapLine{
 	lines   := []MapLine{}
 
 	if trackName == "" { trackName = "fr24"}
@@ -554,14 +616,39 @@ func FlightToMapLines(f *fdb.Flight, trackName string, colorscheme ColorScheme) 
 	_,track := f.PreferredTrack([]string{trackName})
 	flightLines := track.AsLinesSampledEvery(sampleRate)
 
+	complaintCounts := make([]int, len(flightLines))
+	if colorscheme == ByComplaints {
+		// Walk through lines; for each, bucket up the complaints that occur during it
+		j := 0
+		t := f.Tracks[trackName]
+		for i,l := range flightLines {
+			s, e := (*t)[l.I].TimestampUTC, (*t)[l.J].TimestampUTC
+			for j < len(times) {
+				if times[j].After(s) && !times[j].After(e) {
+					// This complaint timestamp hits this flightline
+					complaintCounts[i]++
+				} else if times[j].After(e) {
+					// This complaint is for a future line; move to next line
+					break
+				}
+				// The complaint is not for the future, so consume it
+				j++
+			}
+		}
+	}
+	
 	for i,_ := range flightLines {
-		color := MapLineColor(f, trackName, flightLines[i], colorscheme)
-		// color := colors[i%2]  // candystripe the lines
+		color,opacity := MapLineFormat(f, trackName, flightLines[i], complaintCounts[i], colorscheme)
+
+		if colorscheme == ByTotalComplaints {
+			color,opacity = MapLineFormat(f, trackName, flightLines[i], len(times), colorscheme)
+		}
+
 		mapLine := MapLine{
 			Start: flightLines[i].From,
 			End: flightLines[i].To,
 			Color: color,
-			Opacity: 0.6,
+			Opacity: opacity,
 		}
 		lines = append(lines, mapLine)
 	}
