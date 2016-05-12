@@ -586,11 +586,11 @@ func MapLineFormat(f *fdb.Flight, trackName string, l geo.LatlongLine, numCompla
 		}
 
 	case ByTotalComplaints:
-		color = ColorByTotalComplaintCount(numComplaints)
+		color = ColorByTotalComplaintCount(numComplaints, 4)  // magic scaling factor
 		if numComplaints == 0 {
 			opacity = 0.1
 		} else {
-			opacity = 0.8
+			opacity = 0.6
 		}
 
 	case ByData:

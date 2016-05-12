@@ -47,10 +47,10 @@ func FormValueColorScheme(r *http.Request) ColorScheme {
 	}
 }
 
-func ColorByTotalComplaintCount(n int) string {
+func ColorByTotalComplaintCount(n,scale int) string {
 	switch {
 	case n == 0: return "#404040"
-	case n < 30: return grad12[n/3]
+	case n < 10*scale: return grad12[n/scale]
 	default: return grad12[11]
 	}
 }
