@@ -633,6 +633,43 @@ func (t Track)AsLinesSampledEvery(d time.Duration) []geo.LatlongLine {
 }
 
 // }}}
+// {{{ t.AsSanityFilteredTrack
+
+// Strip out any trackpoints that look really bogus.
+// Leaves original track entirely untouched, and returns a completely separate new copy.
+func (in Track)AsSanityFilteredTrack() Track {
+	rejectedPoints := []int{}
+
+	// Skip the first point
+	for i:=1; i<len(in); i++ {
+		// Compute the implied groundspeed, to see if this position is crazy given the previous pos
+		durSincePrevPoint     := in[i].TimestampUTC.Sub(in[i-1].TimestampUTC)
+		distFromPrevPointKM   := in[i].DistanceTravelledKM - in[i-1].DistanceTravelledKM
+		impliedGroundSpeedKPH := distFromPrevPointKM / durSincePrevPoint.Hours()
+
+		if impliedGroundSpeedKPH > 1000 {
+			rejectedPoints = append(rejectedPoints, i)
+		}
+	}
+
+	// Go in reverse order, or the index values will be invalid
+	sort.Sort(sort.Reverse(sort.IntSlice(rejectedPoints)))
+
+  tmpTrack := make([]Trackpoint, len(in))
+  copy(tmpTrack, in)
+	out := Track(tmpTrack)
+	
+	if len(rejectedPoints) > 0 {
+		for _,index := range rejectedPoints {
+			out = append(out[:index], out[index+1:]...)
+		}
+		out.PostProcess()  // Recompute stuff, now we've removed bogus points
+	}
+
+	return out
+}
+
+// }}}
 
 // {{{ t.ClosestTo
 
