@@ -30,9 +30,9 @@
             (e.g. <code>:SFO_S</code>,<code>OCEANIC:</code>,<code>:SFO</code>)</td>
           </tr>
           <tr>
-            <td>NOT tags</td>
+            <td>But EXCLUDING tags</td>
             <td><input type="text" name="nottags" size="12" value=""/>
-            (matches will be excluded; not efficient!)
+            (any matches will be removed; not efficient!)
           </tr>
 
           <tr>
@@ -56,7 +56,7 @@
             </td>
           </tr>
           <tr>
-            <td>NOT Waypoints</td>
+            <td>But EXCLUDING waypoints</td>
             <td>
               <select name="notwaypoint1">
                 <option value="" selected="1">(waypoint)</option> 
@@ -68,6 +68,11 @@
                 {{range .Waypoints}}
                 <option value="{{.}}">{{.}}</option>{{end}}
               </select>,
+              <select name="notwaypoint3">
+                <option value="" selected="1">(waypoint)</option> 
+                {{range .Waypoints}}
+                <option value="{{.}}">{{.}}</option>{{end}}
+              </select>.
           </tr>
               
           <tr><td colspan="2"><hr/></td></tr>

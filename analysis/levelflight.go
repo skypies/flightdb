@@ -34,8 +34,9 @@ func NewLevelFlightReporter(r *report.Report, f *fdb.Flight, tis []fdb.TrackInte
 			longestLevelRunKM = levelRunKM
 			iStart,iEnd,tName = i,j,trackName
 		}
-		r.Info(fmt.Sprintf("%s: %s[%d,%d] == %.2fKM\n", f.BestFlightNumber(), ti.TrackName, i, j,
-			levelRunKM))
+		_=ti
+		//r.Info(fmt.Sprintf("%s: %s[%d,%d] == %.2fKM\n", f.BestFlightNumber(), ti.TrackName, i, j,
+		//	levelRunKM))
 	}
 
 	for _,ti := range tis {
@@ -62,7 +63,7 @@ func NewLevelFlightReporter(r *report.Report, f *fdb.Flight, tis []fdb.TrackInte
 		}
 	}
 
-	r.I[fmt.Sprintf("[Z_] max was %.1f", longestLevelRunKM)]++
+	// r.I[fmt.Sprintf("[Z_] max was %.1f", longestLevelRunKM)]++
 
 	if longestLevelRunKM < r.RefDistanceKM {
 		r.I[fmt.Sprintf("[D] Flights without level flight (|angle| <= %.1f deg, for >= %.1f KM)</b>",
@@ -77,7 +78,7 @@ func NewLevelFlightReporter(r *report.Report, f *fdb.Flight, tis []fdb.TrackInte
 
 	for i:=iStart; i<=iEnd; i++ {
 		(*t)[i].AnalysisMapIcon = "red-large"
-		(*t)[i].AnalysisAnnotation += fmt.Sprintf("** Level flight for %.1f KM\n", longestLevelRunKM)
+		(*t)[i].AnalysisAnnotation += fmt.Sprintf("* <b>Level flight for %.1f KM</b>\n", longestLevelRunKM)
 	}
 	
 	row := []string{

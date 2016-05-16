@@ -577,6 +577,9 @@ func MapLineFormat(f *fdb.Flight, trackName string, l geo.LatlongLine, numCompla
 	case ByAltitude:
 		color = ColorByAltitude(tp.Altitude)
 
+	case ByAngleOfInclination:
+		color = ColorByAngle(tp.AngleOfInclination)
+
 	case ByComplaints:
 		color = ColorByComplaintCount(numComplaints)
 		if numComplaints == 0 {
