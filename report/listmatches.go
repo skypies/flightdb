@@ -18,7 +18,7 @@ func init() {
 var(
 	ListReporterHeaders = []string{
 		"ID", "FLIGHTNUMBER","EQUIP","ORIGIN","DESTINATION","TAGS",
-		"YEAR(PST)", "MONTH(PST)","DAY(PST)","TIME(PST)",
+		"DATETIME(PST)", "YEAR(PST)", "MONTH(PST)","DAY(PST)","TIME(PST)",
 		"ALTITUDE(FEET)","GROUNDSPEED(KNOTS)",
 	}
 )
@@ -54,6 +54,7 @@ func ListReporter(r *Report, f *fdb.Flight, intersections []fdb.TrackIntersectio
 	addTrackpointIntersection := func(tp fdb.Trackpoint) {
 		tpInPT := date.InPdt(tp.TimestampUTC)
 		textrow = append(textrow, []string{
+			tpInPT.Format("01/02/2006 15:04"),
 			tpInPT.Format("2006"),
 			tpInPT.Format("01"),
 			tpInPT.Format("02"),

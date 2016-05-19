@@ -107,6 +107,14 @@ http://backend-dot-serfr0-fdb.appspot.com/foia/load?date=20140516
 	20151230   (Thu May 5, 09:23+)
 	20151231   (Thu May 5, 09:23+)
 
+201601* (Wed May 18, 15:30ish - this data is all way too small (a 20KM box around Portola Valley)
+
+PROBS
+
+1. Idempotent retry: -rw-r--r-- 1 abw abw 43 May  5 17:18 ./20151218.txt
+2. Delete all of 201601*, as the tracks are in a tiny box
+
+
  */
 
 import(
