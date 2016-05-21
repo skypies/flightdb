@@ -63,6 +63,9 @@ var (
 	OceanicAirports = map[string]int{
 		"LIH":1, "OGG":1, "HNL":1, "KOA":1, "NRT":1, "HND":1, "KIX":1, "PVG":1, "PEK":1, "CAN":1,
 		"CTU":1, "WUH":1, "HKG":1, "TPE":1, "ICN":1, "MNL":1, "NHL":1, "SYD":1, "VRD":1, "AKL":1,
+		// The same using ICAO airport codes; FOIA data uses ICAO codes for non-US airports
+		"NZAA":1, "ZGGG":1, "ZUUU":1, "VHHH":1, "RJTT":1, "PHNL":1, "RKSI":1, "RJBB":1, "PHKO":1,
+		"PHLI":1, "RPLL":1, "RJAA":1, "ZBAA":1, "PHOG":1, "ZSPD":1, "YSSY":1, "RCTP":1, "ZHHH":1,
 	}
 	SouthwestAirports = map[string]int{
 		"PHX":1, "TUS":1, "SBP":1, "LAX":1, "LGB":1, "BUR":1, "ONT":1, "SNA":1, "DCA":1,

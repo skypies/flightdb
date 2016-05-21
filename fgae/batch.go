@@ -1,7 +1,7 @@
 // Use a shared workqueue ('batch') to do some processing against the entire database.
 package fgae
 
-// http://fdb.serfr1.org/batch/flights/dates?job=retag&date=range&range_from=2014/01/01&range_to=2015/12/31&tag=FOIA
+// http://fdb.serfr1.org/batch/flights/dates?job=retag&date=range&range_from=2014/01/01&range_to=2015/12/31&tags=FOIA
 
 import (
 	"fmt"
