@@ -40,7 +40,7 @@ func (q *Query)ByTimeRange(s,e time.Time) *Query {
 		Filter("Timeslots >= ", slots[0]).
 		Filter("Timeslots <= ", slots[len(slots)-1])
 
-	// This is the wrong way to do it; it asserts that the match has a matching timeslot for
+	// This would be the wrong way to do it; it asserts that the match has a matching timeslot for
 	// every interval in the range - i.e. that the flight lasts the entire time range.
 	//for _,slot := range 
 	//	q.Query = q.Query.Filter("Timeslots = ", slot) //.Format("1/2/06, 3:30 PM PST"))
@@ -71,7 +71,11 @@ func (q *Query)ByWaypoints(waypoints []string) *Query {
 }
 
 func (q *Query)ByIdSpec(idspec fdb.IdSpec) *Query {
-	q = q.ByTime(idspec.Time)
+	if idspec.Duration != 0 {
+		q = q.ByTimeRange(idspec.Time, idspec.Time.Add(idspec.Duration))
+	} else {
+		q = q.ByTime(idspec.Time)
+	}
 
 	if idspec.IcaoId != "" {
 		q = q.ByIcaoId(adsb.IcaoId(idspec.IcaoId))

@@ -12,7 +12,8 @@ dispatch:
 
 - url: "fdb.serfr1.org/fdb/*"
   module: ui
-
+- url: "fdb.serfr1.org/api/*"
+  module: ui
 - url: "*/static/*"
   module: ui
 
@@ -23,6 +24,5 @@ dispatch:
 
 - url: "fdb.serfr1.org/report"
   module: backend
-
 - url: "fdb.serfr1.org/batch/*"
   module: backend

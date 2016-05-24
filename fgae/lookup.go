@@ -31,8 +31,8 @@ func (db FlightDB)LookupAllKeys(q *Query) ([]*datastore.Key, error) {
 }
 
 func (db FlightDB)LookupAll(q *Query) ([]*fdb.Flight, error) {
-	// TODO: I'm not sure we want to secretly add this Order() everywhere ...
-	return db.getallByQuery(q.Query.Order("-LastUpdate"))
+	// Results are not ordered ... for timerange idspecs, would need to sort on Timeslots
+	return db.getallByQuery(q.Query) //.Order("-LastUpdate"))
 }
 
 func (db FlightDB)LookupMostRecent(q *Query) (*fdb.Flight, error) {

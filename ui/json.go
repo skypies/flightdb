@@ -4,7 +4,7 @@ import(
 	"encoding/json"
 	"fmt"
 	"net/http"
-	
+
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"
 
@@ -17,6 +17,32 @@ func init() {
 	http.HandleFunc("/fdb/json", jsonHandler)
 	http.HandleFunc("/fdb/snarf", snarfHandler)
 }
+
+// {{{ LookupIdspec
+
+func LookupIdspec(db fgae.FlightDB, idspec fdb.IdSpec) ([]*fdb.Flight, error) {
+	flights := []*fdb.Flight{}
+	
+	if idspec.Duration == 0 {
+		// This is a point-in-time idspec; we want the single, most recent match only
+		if result,err := db.LookupMostRecent(db.NewQuery().ByIdSpec(idspec)); err != nil {
+			return flights, err
+		} else {
+			flights = append(flights, result)
+		}
+
+	} else {
+		// This is a range idspec; we want everything that matches.
+		if results,err := db.LookupAll(db.NewQuery().ByIdSpec(idspec)); err != nil {
+			return flights, err
+		} else {
+			flights = append(flights, results...)
+		}
+	}
+	return flights, nil
+}
+
+// }}}
 
 // {{{ jsonHandler
 
@@ -35,20 +61,25 @@ func jsonHandler(w http.ResponseWriter, r *http.Request) {
 	db := fgae.FlightDB{C:c}
 	flights := []*fdb.Flight{}
 	for _,idspec := range idspecs {
-		f,err := db.LookupMostRecent(db.NewQuery().ByIdSpec(idspec))
-		if err != nil {
+		if results,err := LookupIdspec(db, idspec); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
-		} else if f == nil {
+		} else if len(results) == 0 {
 			http.NotFound(w,r)
 			//http.Error(w, fmt.Sprintf("idspec %s not found", idspec), http.StatusNotFound)
 			return
+		} else {
+			for _,f := range results {
+				if af := airframes.Get(f.IcaoId); af != nil { f.Airframe = *af }
+				if r.FormValue("notracks") != "" {
+					f.PruneTrackContents()
+				}
+				flights = append(flights, f)
+			}
 		}
-		if af := airframes.Get(f.IcaoId); af != nil { f.Airframe = *af }
-		flights = append(flights, f)
 	}
 
-	jsonBytes,err := json.Marshal(flights)
+	jsonBytes,err := json.MarshalIndent(flights, "", " ")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -77,7 +108,7 @@ func snarfHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	} else {
 		defer resp.Body.Close()
-
+		
 		if resp.StatusCode != http.StatusOK {
 			err = fmt.Errorf ("Bad status: %v", resp.Status)
 			http.Error(w, err.Error(), http.StatusInternalServerError)

@@ -279,7 +279,7 @@ func (g *DescentPdf)DrawTrackAsDistanceAlongPath(t fdb.Track) {
 	// We want to render this working backwards from the end, so descents can line up together.
 	// That means we're interested in each point's distance travelled in relation to the end point.
 	g.Debug += fmt.Sprintf("DrawTrackAsDistanceAlongPath\n")
-	iClosest := t.ClosestTo(g.OriginPoint)
+	iClosest := t.ClosestTo(g.OriginPoint, 5000.0)
 	if iClosest < 0 { return }
 	endpointKM := t[iClosest].DistanceTravelledKM
 

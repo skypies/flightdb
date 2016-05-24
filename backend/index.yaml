@@ -35,6 +35,11 @@ indexes:
   properties:
   - name: Ident
   - name: Timeslots
+  
+- kind: flight
+  properties:
+  - name: Ident
+  - name: Timeslots
   - name: LastUpdate
     direction: desc
 

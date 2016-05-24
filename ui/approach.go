@@ -229,7 +229,7 @@ func DescentPDFAddFlight(r *http.Request, dp *fpdf.DescentPdf, f *fdb.Flight) er
 			dp.DrawTrackAsDistanceAlongPath(t)
 		}
 
-		if strings.Count(dp.Caption, "\n") < 5 {
+		if strings.Count(dp.Caption, "\n") < 4 {
 			dp.Caption += fmt.Sprintf("%s %s\n", f.IdentString(), t.MediumString())
 		}
 	}

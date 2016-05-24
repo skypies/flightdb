@@ -1,8 +1,10 @@
 package report
 
 import(
+	// "encoding/json"
 	"fmt"
 	"strings"
+	//"time"
 
 	"github.com/skypies/util/date"
 	
@@ -88,7 +90,18 @@ func ListReporter(r *Report, f *fdb.Flight, intersections []fdb.TrackIntersectio
 
 	r.AddRow(&htmlrow, &textrow)
 	r.SetHeaders(ListReporterHeaders)
-	
+
+/*
+	f.PruneTrackContents()
+	blob,_ := f.ToBlob(30 * time.Minute)
+	blob.Blob = []byte{}
+	// jsonBytes,_ := json.MarshalIndent(blob, "", "  ")
+	// r.Info(string(jsonBytes) + "\n\n")
+	r.Info(fmt.Sprintf(" * %s\n", f))
+	for i,t := range blob.Timeslots {
+		r.Info(fmt.Sprintf(" %03d] %s, %d\n", i, t, t.Unix()))
+	}
+*/	
 	return Accepted, nil
 }
 
