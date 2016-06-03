@@ -102,6 +102,10 @@ var waypoints = {
     "DUYET": {pos:{lat: 37.5674000, lng: -122.2529278}},
     "NEPIC": {pos:{lat: 37.5858944, lng: -122.2968833}},
 
+    // Things for SFO departures
+    "PORTE": {pos:{lat: 37.4897861, lng: -122.4745778}},
+    "SSTIK": {pos:{lat: 37.6783444, lng: -122.3616583}},
+
     // Things for Oceanic
     "PPEGS": {pos:{lat: 37.3920722, lng: -122.2817222}},
     "ALLBE": {pos:{lat: 37.5063889, lng: -127.0000000}},
