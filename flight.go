@@ -18,9 +18,9 @@ type Flight struct {
 	Waypoints map[string]time.Time
 	
 	// Internal fields
-	datastoreKey string
-	lastUpdate   time.Time
-	DebugLog     string
+	datastoreKey  string
+	lastUpdate    time.Time
+	DebugLog      string
 }
 
 func BlankFlight() Flight {
@@ -89,6 +89,11 @@ func (f *Flight)NormalizedCallsignString() string {
 
 func (f *Flight)SetTag(tag string) {
 	f.Tags[tag]++
+}
+func (f *Flight)SetTags(tags []string) {
+	for _,tag := range tags {
+		f.Tags[tag]++
+	}
 }
 func (f *Flight)DropTag(tag string) {
 	delete(f.Tags, tag)
@@ -230,13 +235,10 @@ func (f *Flight)Analyse() (error, string) {
 	if f.Destination != ""      { f.SetTag(fmt.Sprintf(":%s", f.Destination)) }
 
 	// This stuff should get all table driven at some point ...
-	if f.HasOriginMatch     (OceanicAirports)   { f.SetTag("OCEANIC:") }
-	if f.HasDestinationMatch(OceanicAirports)   { f.SetTag(":OCEANIC") }
-	if f.HasOriginMatch     (SouthwestAirports) { f.SetTag("SW:") }
-	if f.HasDestinationMatch(SouthwestAirports) { f.SetTag(":SW") }
-	if f.HasOriginMatch     (NorCalAirports)    { f.SetTag("NORCAL:") }
-	if f.HasDestinationMatch(NorCalAirports)    { f.SetTag(":NORCAL") }
-	
+	f.SetAirportComboTagsFor(OceanicAirports,   "OCEANIC")
+	f.SetAirportComboTagsFor(SouthwestAirports, "SW")
+	f.SetAirportComboTagsFor(NorCalAirports,    "NORCAL")
+
 	f.AnalyseWaypoints()
 	f.TagCoarseFlightpathForSFO()  // SFO_S:, :SFO_S
 	

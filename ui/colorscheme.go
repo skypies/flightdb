@@ -1,6 +1,14 @@
 package ui
 
-import "net/http"
+import(
+	"fmt"
+	"net/http"
+)
+
+func init() {
+	http.HandleFunc("/fdb/colorkey", ColorKeyHandler)
+}
+
 
 var(
 	// http://www.perbang.dk/rgbgradient/
@@ -118,3 +126,29 @@ func ColorByAltitude(alt float64) string {
 	default:          return grad12[0]
 	}
 }
+
+
+func ColorKeyHandler(w http.ResponseWriter, r *http.Request) {
+	str := "<html><body>\n"
+
+	str += "<h1>Altitude colors</h1>\n"
+	str += "<table>\n"
+	str += fmt.Sprintf("<tr><td> &lt;   500</td><td bgcolor='%s'>&nbsp;&nbsp;&nbsp;</td></tr>\n", grad12[11])
+	str += fmt.Sprintf("<tr><td> &lt;  2000</td><td bgcolor='%s'>&nbsp;&nbsp;&nbsp;</td></tr>\n", grad12[10])
+	str += fmt.Sprintf("<tr><td> &lt;  4000</td><td bgcolor='%s'>&nbsp;&nbsp;&nbsp;</td></tr>\n", grad12[9])
+	str += fmt.Sprintf("<tr><td> &lt;  6000</td><td bgcolor='%s'>&nbsp;&nbsp;&nbsp;</td></tr>\n", grad12[8])
+	str += fmt.Sprintf("<tr><td> &lt;  8000</td><td bgcolor='%s'>&nbsp;&nbsp;&nbsp;</td></tr>\n", grad12[7])
+	str += fmt.Sprintf("<tr><td> &lt; 10000</td><td bgcolor='%s'>&nbsp;&nbsp;&nbsp;</td></tr>\n", grad12[6])
+	str += fmt.Sprintf("<tr><td> &lt; 14000</td><td bgcolor='%s'>&nbsp;&nbsp;&nbsp;</td></tr>\n", grad12[5])
+	str += fmt.Sprintf("<tr><td> &lt; 18000</td><td bgcolor='%s'>&nbsp;&nbsp;&nbsp;</td></tr>\n", grad12[4])
+	str += fmt.Sprintf("<tr><td> &lt; 22000</td><td bgcolor='%s'>&nbsp;&nbsp;&nbsp;</td></tr>\n", grad12[3])
+	str += fmt.Sprintf("<tr><td> &lt; 26000</td><td bgcolor='%s'>&nbsp;&nbsp;&nbsp;</td></tr>\n", grad12[2])
+	str += fmt.Sprintf("<tr><td> &lt; 30000</td><td bgcolor='%s'>&nbsp;&nbsp;&nbsp;</td></tr>\n", grad12[1])
+	str += fmt.Sprintf("<tr><td> &gt; 30000</td><td bgcolor='%s'>&nbsp;&nbsp;&nbsp;</td></tr>\n", grad12[0])
+	str += "</table>\n"
+	
+	str += "</body></html>\n"
+	w.Header().Set("Content-Type", "text/html")
+	fmt.Fprintf(w, str)
+}
+

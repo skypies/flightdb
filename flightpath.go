@@ -58,6 +58,14 @@ func (f *Flight)HasDestinationMatch(dests map[string]int) bool {
 	return exists
 }
 
+// If the aircraft flies to/from any of the airports in the list, set two tags:
+//  to airport:    :STEM   :STEM:
+//  from airport:  STEM:   :STEM:
+func (f *Flight)SetAirportComboTagsFor(airports map[string]int, stem string) {
+	if f.HasOriginMatch     (airports)   { f.SetTag(stem+":"); f.SetTag(":"+stem+":") }
+	if f.HasDestinationMatch(airports)   { f.SetTag(":"+stem); f.SetTag(":"+stem+":") }
+}
+
 // Find a better home for this config
 var (
 	OceanicAirports = map[string]int{
@@ -75,7 +83,6 @@ var (
 		"SFO":1, "SJC":1, "OAK":1,
 	}
 )
-
 
 // SFO_S_A for southern arrivals:  :SFO && 30 km box around ANJEE, WWAVE, or their midpoint)
 // SFO_S_D for southern departures:  (SFO: ||OAK:) && 30 km (TBR) box around PPEGS
@@ -106,3 +113,63 @@ func (f *Flight)TagCoarseFlightpathForSFO() {
 	}
 }
 
+
+type Procedure struct {
+	Name         string            // E.g. SERFR2
+	Waypoints  []string            // The sequence of waypoints that makes it up
+	Required     map[string]int   // Which of the waypoints can't be omitted
+}
+
+// Did the flight fly the 'Required' waypoints of the procedure ? The string is the name
+// of the final waypoint of the procedure that was flown - i.e. the flight was vectored
+// off-procedure after that waypoint.
+func (f *Flight)FlewProcedure(p Procedure) (bool,string) {
+	for i,wp := range p.Waypoints {
+		if !f.HasWaypoint(wp) {
+			if _,exists := p.Required[wp]; exists { return false, "" }
+			if i == 0 { return false, wp } // "This should never happen"
+			return true, p.Waypoints[i-1]
+		}
+	}
+
+	return true,""
+}
+
+var NorCalProcedures = []Procedure{
+	{
+		Name:      "BIGSUR2",
+		Waypoints: []string{"ANJEE", "SKUNK", "BOLDR", "MENLO"}, // Ignore CARME
+		Required:  map[string]int{"ANJEE":1, "SKUNK":1},
+	},
+	{
+		Name:      "SERFR2",
+		Waypoints: []string{"WWAVS", "EPICK", "EDDYY", "SWELS", "MENLO"}, // Ignore SERFR
+		Required:  map[string]int{"WWAVS":1, "EPICK":1},
+	},
+	{
+		Name:      "WWAVS1",
+		Waypoints: []string{"WWAVS", "WPOUT", "THEEZ", "WESLA", "MVRKK"}, // Ignore SERFR
+		Required:  map[string]int{"WWAVS":1, "WPOUT":1},
+	},
+}
+
+type FlownProcedure struct {
+	Name          string  `json:"name,omitempty"` // Name of the proecdure itself
+	VectoredAfter string  `json:"vectoredafter,omitempty"` // Name of the final on-procedure waypoint
+}
+func (fp FlownProcedure)String() string {
+	str := fp.Name
+	if fp.VectoredAfter != "" {
+		str += "/" + fp.VectoredAfter
+	}
+	return str
+}
+
+func (f *Flight)DetermineFlownProcedure() FlownProcedure {
+	for _,proc := range NorCalProcedures {
+		if flew,vector := f.FlewProcedure(proc); flew {
+			return FlownProcedure{Name: proc.Name, VectoredAfter:vector}
+		}
+	}
+	return FlownProcedure{}
+}
