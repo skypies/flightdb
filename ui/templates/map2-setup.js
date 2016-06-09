@@ -114,6 +114,9 @@ var waypoints = {
     "PAINT": {pos:{lat: 38.0000000, lng: -125.5000000}},
     "OSI"  : {pos:{lat: 37.3925000, lng: -122.2813000}},
     "PIRAT": {pos:{lat: 37.2576500, lng: -122.8633528}},
+    "PYE"  : {pos:{lat: 38.0797567, lng: -122.8678275}},
+    "STINS": {pos:{lat: 37.8236111, lng: -122.7566667}},
+    "HADLY": {pos:{lat: 37.4022222, lng: -122.5755556}},
 
     "PONKE": {pos:{lat: 37.4588167, lng: -121.9960528}},
     "WETOR": {pos:{lat: 37.4847194, lng: -122.0571417}},
@@ -130,6 +133,37 @@ var waypoints = {
     // Randoms
     "PARIY": {pos:{lat: 37.3560056, lng:-121.9231222}},  // SJC ?
     "ZORSA": {pos:{lat: 37.3627583, lng:-122.0500306}},
+
+    // Things for East Bay
+    "HOPTA": {pos:{lat: 37.78501944, lng: -122.154}},
+    "BOYSS": {pos:{lat: 38.02001944, lng: -122.3778639}},
+    "WNDSR": {pos:{lat: 38.681808, lng: -122.478747}},
+    "WEBRR": {pos:{lat: 38.243881, lng: -122.412142}},
+    "SPAMY": {pos:{lat: 39.200661, lng: -122.591042}},
+    "HUBRT": {pos:{lat: 39.040228, lng: -122.568314}},
+    "DRAXE": {pos:{lat: 38.759, lng: -122.389047}},
+    "BMBOO": {pos:{lat: 38.892972, lng: -122.233019}},
+    "RBUCL": {pos:{lat: 39.070053, lng: -122.02615}},
+    "GRTFL": {pos:{lat: 38.35216944, lng: -122.2314694}},
+    "TRUKN": {pos:{lat: 37.71755833, lng: -122.2145889}},
+    "DEDHD": {pos:{lat: 38.33551666, lng: -122.1128083}},
+    "HYPEE": {pos:{lat: 37.88024444, lng: -122.0674833}},
+    "COSMC": {pos:{lat: 37.82606111, lng: -122.0049}},
+    "TYDYE": {pos:{lat: 37.689319, lng: -122.268944}},
+    "ORRCA": {pos:{lat: 38.610325, lng: -121.551622}},
+    "MOGEE": {pos:{lat: 38.336111, lng: -121.389722}},
+    "TIPRE": {pos:{lat: 38.205833, lng: -121.035833}},
+    "SYRAH": {pos:{lat: 37.99105, lng: -121.103089}},
+    "RAIDR": {pos:{lat: 38.0325, lng: -122.5575}},
+    "CRESN": {pos:{lat: 37.697475, lng: -122.012019}},
+    "AAAME": {pos:{lat: 37.770908, lng: -122.082811}},
+    "ALLXX": {pos:{lat: 37.729606, lng: -122.064283}},
+    "HIRMO": {pos:{lat: 37.92765, lng: -122.14835}},
+    "CEXUR": {pos:{lat: 37.934161, lng: -122.252928}},
+    "WOULD": {pos:{lat: 37.774508, lng: -122.058064}},
+    "FINSH": {pos:{lat: 37.651203, lng: -122.257161}},
+    "HUSHH": {pos:{lat: 37.7495, lng: -122.338592}},
+    "AANET": {pos:{lat: 38.530769, lng: -122.497194}},
 
     // Personal entries
     "X_RSH": {pos:{lat: 36.868582,  lng:-121.691934}},
