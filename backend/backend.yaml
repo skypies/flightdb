@@ -3,7 +3,7 @@ module: backend
 version: one
 runtime: go
 api_version: go1
-instance_class: B1
+instance_class: B2
 basic_scaling:
   max_instances: 10
   idle_timeout: 4m
@@ -18,4 +18,4 @@ handlers:
   login: admin
 - url: /.*
   script: _go_app
-  login: required
+#  login: required

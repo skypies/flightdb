@@ -12,6 +12,7 @@ import(
 	"google.golang.org/appengine/urlfetch"
 	"golang.org/x/net/context"
 
+	"github.com/skypies/geo"
 	"github.com/skypies/geo/sfo"
 	"github.com/skypies/util/widget"
 	fdb "github.com/skypies/flightdb2"
@@ -130,6 +131,7 @@ func MapHandler(w http.ResponseWriter, r *http.Request) {
 		"Circles": MapCirclesToJSVar(circles),
 		"MapsAPIKey": "",//kGoogleMapsAPIKey,
 		"Center": sfo.KFixes["EDDYY"], //sfo.KLatlongSFO,
+		"Waypoints": WaypointMapVar(sfo.KFixes),
 		"Zoom": 9,
 	}
 
@@ -168,6 +170,18 @@ func renderReportFurniture(rep *report.Report) *MapShapes {
 	}
 
 	return ms
+}
+
+// }}}
+
+// {{{ WaypointMapVar
+
+func WaypointMapVar(in map[string]geo.Latlong) template.JS {
+	str := "{\n"
+	for name,pos := range in {
+		str += fmt.Sprintf("    %q: {pos:{lat:%.6f,lng:%.6f}},\n", name, pos.Lat, pos.Long)
+	}
+	return template.JS(str + "  }\n")		
 }
 
 // }}}
@@ -301,6 +315,7 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 		"Circles": MapCirclesToJSVar(ms.Circles),
 		"MapsAPIKey": "",//kGoogleMapsAPIKey,
 		"Center": sfo.KFixes["BOLDR"], //sfo.KLatlongSFO,
+		"Waypoints": WaypointMapVar(sfo.KFixes),
 		"Zoom": 9,
 	}
 
@@ -336,6 +351,7 @@ func OutputMapLinesOnAMap(w http.ResponseWriter, r *http.Request, inputLines []M
 		"WhiteOverlay": true,
 		"MapsAPIKey": "",//kGoogleMapsAPIKey,
 		"Center": sfo.KFixes["EPICK"], //sfo.KLatlongSFO,
+		"Waypoints": WaypointMapVar(sfo.KFixes),
 		"Zoom": 8,
 	}
 	if err := templates.ExecuteTemplate(w, "fdb2-tracks", params); err != nil {
@@ -390,7 +406,8 @@ func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspe
 		"VectorURLPath": vectorURLPath,  // retire this when DBv1/v2ui.go and friends are gone
 		"TrackSpec": trackspec,
 		"ColorScheme": FormValueColorScheme(r).String(),
-		
+		"Waypoints": WaypointMapVar(sfo.KFixes),
+
 		// Would be nice to do something better for rendering hints, before they grow without bound
 		"MapLineOpacity": opacity,
 		"WhiteOverlay": true,

@@ -70,7 +70,10 @@ func jsonHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		} else {
 			for _,f := range results {
-				if af := airframes.Get(f.IcaoId); af != nil { f.Airframe = *af }
+				if f == nil { continue }  // Bad input data ??
+				if af := airframes.Get(f.IcaoId); af != nil {
+					f.Airframe = *af
+				}
 				if r.FormValue("notracks") != "" {
 					f.PruneTrackContents()
 				}
