@@ -134,15 +134,7 @@ func LatlongTimeBoxToMapLines(tb geo.LatlongTimeBox, color string) []MapLine {
 	return maplines
 }
 
-// This overlaps heavily with ColorScheme :/
-type ColoringStrategy int
-const(
-	ByADSBReceiver ColoringStrategy = iota
-	ByDataSource
-	ByInstance
-	ByCandyStripe // a mix of ADSBreceiver & instance
-)
-
+// This is a kind of abuse of ColoringStrategy from colorscheme.go
 func TrackToMapPoints(t *fdb.Track, icon, banner string, coloring ColoringStrategy) []MapPoint {
 	sourceColors := map[string]string{
 		"ADSB":  "yellow",
@@ -164,7 +156,6 @@ func TrackToMapPoints(t *fdb.Track, icon, banner string, coloring ColoringStrate
 	for i,_ := range *t {
 		color := icon
 		tp := (*t)[i]
-
 		if coloring == ByCandyStripe {
 			if tp.ReceiverName == "NorthPi" {
 				if color == "blue" { color = "red" } else { color = "green" }
@@ -184,7 +175,7 @@ func TrackToMapPoints(t *fdb.Track, icon, banner string, coloring ColoringStrate
 				//	tp.Lat  += 0.0006
 				//	tp.Long += 0.0006
 				//}
-			} else if coloring == ByDataSource {
+			} else if coloring == ByData {
 				if c,exists := sourceColors[tp.DataSource]; exists { color = c }
 			}
 		}

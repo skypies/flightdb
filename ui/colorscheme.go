@@ -1,8 +1,11 @@
 package ui
 
 import(
+	"html/template"
 	"fmt"
 	"net/http"
+
+	"github.com/skypies/util/widget"
 )
 
 func init() {
@@ -50,16 +53,25 @@ var(
 	}
 )
 
-type ColorScheme int
+type ColorScheme struct {
+	Strategy ColoringStrategy
+	DefaultOpacity float64
+}
+
+type ColoringStrategy int
 const(
-	ByData ColorScheme = iota
+	ByData ColoringStrategy = iota
 	ByAltitude
 	ByAngleOfInclination
 	ByComplaints
 	ByTotalComplaints
+
+	// Old ones, for trackpoints
+	ByADSBReceiver
+	ByCandyStripe
 )
 
-func (cs ColorScheme)String() string {
+func (cs ColoringStrategy)String() string {
 	switch cs {
 	case ByData:               return "source"
 	case ByAltitude:           return "altitude"
@@ -70,7 +82,7 @@ func (cs ColorScheme)String() string {
 	}
 }
 
-func FormValueColorScheme(r *http.Request) ColorScheme {
+func FormValueColoringStrategy(r *http.Request) ColoringStrategy {
 	switch r.FormValue("colorby") {
 	case "source":          return ByData
 	case "altitude":        return ByAltitude
@@ -81,6 +93,25 @@ func FormValueColorScheme(r *http.Request) ColorScheme {
 	}
 }
 
+// This doesn't "work", as the embedded ampersand ends up encoded.
+func (cs ColorScheme)CGIArgs() template.HTML {
+	str := fmt.Sprintf("colorby=%s&maplineopacity=%.2f", cs.Strategy.String(), cs.DefaultOpacity)
+	return template.HTML(str)
+}
+
+func FormValueColorScheme(r *http.Request) ColorScheme {
+	cs := ColorScheme{
+		Strategy: FormValueColoringStrategy(r),
+		DefaultOpacity: widget.FormValueFloat64EatErrs(r, "maplineopacity"),
+	}
+
+	if cs.DefaultOpacity == 0.0 {
+		cs.DefaultOpacity = 0.6
+	}
+
+	return cs
+}
+
 func ColorByTotalComplaintCount(n,scale int) string {
 	switch {
 	case n == 0: return "#404040"
@@ -89,6 +120,7 @@ func ColorByTotalComplaintCount(n,scale int) string {
 	}
 }
 func ColorByComplaintCount(n int) string {
+	n *= 2 // Get some dynamic range going
 	switch {
 	case n == 0: return "#404040"
 	case n < 10: return grad12[n-1]
@@ -151,4 +183,3 @@ func ColorKeyHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	fmt.Fprintf(w, str)
 }
-

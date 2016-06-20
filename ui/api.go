@@ -77,7 +77,7 @@ func OutputFlightAsVectorJSON(w http.ResponseWriter, r *http.Request, f *fdb.Fli
 
 	colorscheme := FormValueColorScheme(r)
 	complaintTimes := []time.Time{}
-	if colorscheme == ByComplaints || colorscheme == ByTotalComplaints {
+	if colorscheme.Strategy == ByComplaints || colorscheme.Strategy == ByTotalComplaints {
 		client := urlfetch.Client(appengine.NewContext(r))
 		if times,err := getComplaintTimesFor(client, f); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -103,12 +103,12 @@ func OutputFlightAsVectorJSON(w http.ResponseWriter, r *http.Request, f *fdb.Fli
 func MapLineFormat(f *fdb.Flight, trackName string, l geo.LatlongLine, numComplaints int, colorscheme ColorScheme) (string, float64) {
 	// Defaults
 	color := "#101000"
-	opacity := 0.6
+	opacity := colorscheme.DefaultOpacity
 	
 	t := f.Tracks[trackName]
 	tp := (*t)[l.I]
 
-	switch colorscheme {
+	switch colorscheme.Strategy {
 	case ByAltitude:
 		color = ColorByAltitude(tp.Altitude)
 
@@ -119,16 +119,12 @@ func MapLineFormat(f *fdb.Flight, trackName string, l geo.LatlongLine, numCompla
 		color = ColorByComplaintCount(numComplaints)
 		if numComplaints == 0 {
 			opacity = 0.1
-		} else {
-			opacity = 0.8
 		}
 
 	case ByTotalComplaints:
 		color = ColorByTotalComplaintCount(numComplaints, 4)  // magic scaling factor
 		if numComplaints == 0 {
 			opacity = 0.1
-		} else {
-			opacity = 0.6
 		}
 
 	case ByData:
@@ -150,7 +146,7 @@ func FlightToMapLines(f *fdb.Flight, trackName string, colorscheme ColorScheme, 
 
 	if trackName == "" { trackName = "fr24"}
 	
-	sampleRate := time.Second * 5
+	sampleRate := time.Millisecond * 2500
 	_,origTrack := f.PreferredTrack([]string{trackName})
 
 	// There was once a track with a crazy datapoint in ...
@@ -159,7 +155,7 @@ func FlightToMapLines(f *fdb.Flight, trackName string, colorscheme ColorScheme, 
 	flightLines := track.AsLinesSampledEvery(sampleRate)
 
 	complaintCounts := make([]int, len(flightLines))
-	if colorscheme == ByComplaints {
+	if colorscheme.Strategy == ByComplaints {
 		// Walk through lines; for each, bucket up the complaints that occur during it
 		j := 0
 		t := f.Tracks[trackName]
@@ -182,7 +178,7 @@ func FlightToMapLines(f *fdb.Flight, trackName string, colorscheme ColorScheme, 
 	for i,_ := range flightLines {
 		color,opacity := MapLineFormat(f, trackName, flightLines[i], complaintCounts[i], colorscheme)
 
-		if colorscheme == ByTotalComplaints {
+		if colorscheme.Strategy == ByTotalComplaints {
 			color,opacity = MapLineFormat(f, trackName, flightLines[i], len(times), colorscheme)
 		}
 

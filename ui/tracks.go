@@ -240,14 +240,14 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 	
 	coloring := ByADSBReceiver
 	switch r.FormValue("colorby") {
-	case "src":   coloring = ByDataSource
+	case "src":   coloring = ByData
 	case "rcvr":  coloring = ByADSBReceiver
 	case "candy": coloring = ByCandyStripe
 	}
 
 	// Live fetch, and overlay, a track from fr24.
 	if r.FormValue("fr24") != "" {
-		coloring = ByDataSource
+		coloring = ByData
 		//bannerText += MaybeAddFr24Track(c, flights[0])
 		MaybeAddFr24Track(c, flights[0])
 	}
@@ -382,11 +382,9 @@ func IdSpecsToJSVar(idspecs []string) template.JS {
 
 func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspecs []string, vectorURLPath string) {
 	ms := NewMapShapes()
-	
-	opacity	:= widget.FormValueFloat64EatErrs(r, "maplineopacity")
-	if opacity == 0.0 { opacity = 0.6 }
 
 	trackspec := ""
+	colorscheme := FormValueColorScheme(r)
 	legend := fmt.Sprintf("%d flights", len(idspecs))
 	if rep,err := getReport(r); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -399,6 +397,7 @@ func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspe
 		legend += ", "+rep.DescriptionText()
 	}
 
+	
 	var params = map[string]interface{}{
 		"Legend": legend,
 		"Points": MapPointsToJSVar(ms.Points),
@@ -407,11 +406,14 @@ func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspe
 		"IdSpecs": IdSpecsToJSVar(idspecs),
 		"VectorURLPath": vectorURLPath,  // retire this when DBv1/v2ui.go and friends are gone
 		"TrackSpec": trackspec,
-		"ColorScheme": FormValueColorScheme(r).String(),
+
+		"ColorSchemeStrategy": colorscheme.Strategy.String(),
+		"ColorSchemeOpacity": fmt.Sprintf("%.2f", colorscheme.DefaultOpacity),
+		//"ColorSchemeAsCGIArgs": colorscheme.CGIArgs(), // Golang is too clever for this, sigh
+
 		"Waypoints": WaypointMapVar(sfo.KFixes),
 
 		// Would be nice to do something better for rendering hints, before they grow without bound
-		"MapLineOpacity": opacity,
 		"WhiteOverlay": true,
 
 		"MapsAPIKey": "",//kGoogleMapsAPIKey,
