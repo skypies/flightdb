@@ -52,7 +52,6 @@ type Options struct {
 	
 	// Formatting / output options
 	ResultsFormat      string // csv, html
-	MapLineOpacity     float64
 
 	ReportLogLevel // For debugging
 }
@@ -114,7 +113,6 @@ func FormValueReportOptions(r *http.Request) (Options, error) {
 		ReferencePoint: FormValueNamedLatlong(r, "refpt"),
 		RefDistanceKM: widget.FormValueFloat64EatErrs(r, "refdistancekm"),
 
-		MapLineOpacity: widget.FormValueFloat64EatErrs(r, "maplineopacity"),
 		ResultsFormat: r.FormValue("resultformat"),
 	}
 	
@@ -248,8 +246,6 @@ func (r *Report)ToCGIArgs() string {
 		if r.WindowMax > 0.0 { str += fmt.Sprintf("&winmax=%.0f", r.WindowMax) }
 	}
 	
-	if r.MapLineOpacity > 0.0 { str += fmt.Sprintf("&maplineopacity=%.2f", r.MapLineOpacity) }
-
 	for i,wp := range r.Waypoints {
 		str += fmt.Sprintf("&waypoint%d=%s", i+1, wp)
 	}

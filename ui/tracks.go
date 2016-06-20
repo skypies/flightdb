@@ -179,6 +179,7 @@ func renderReportFurniture(rep *report.Report) *MapShapes {
 func WaypointMapVar(in map[string]geo.Latlong) template.JS {
 	str := "{\n"
 	for name,pos := range in {
+		if len(name)>2 && name[0] == 'X' && name[1] == '_' { continue }
 		str += fmt.Sprintf("    %q: {pos:{lat:%.6f,lng:%.6f}},\n", name, pos.Lat, pos.Long)
 	}
 	return template.JS(str + "  }\n")		
@@ -382,7 +383,9 @@ func IdSpecsToJSVar(idspecs []string) template.JS {
 func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspecs []string, vectorURLPath string) {
 	ms := NewMapShapes()
 	
-	opacity := 0.6
+	opacity	:= widget.FormValueFloat64EatErrs(r, "maplineopacity")
+	if opacity == 0.0 { opacity = 0.6 }
+
 	trackspec := ""
 	legend := fmt.Sprintf("%d flights", len(idspecs))
 	if rep,err := getReport(r); err != nil {
@@ -392,7 +395,6 @@ func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspe
 		if r.FormValue("nofurniture") == "" {
 			ms.Add(renderReportFurniture(rep))
 		}
-		opacity = rep.MapLineOpacity
 		trackspec = strings.Join(rep.ListPreferredDataSources(), ",")
 		legend += ", "+rep.DescriptionText()
 	}
