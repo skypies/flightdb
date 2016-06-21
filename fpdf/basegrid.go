@@ -158,12 +158,22 @@ func (bg BaseGrid)DrawGridlines() {
 		align := "L"		
 		if bg.YTickFmt != "" {
 			if bg.YTickOtherSide {
+				// By default the 'not other' side is on the right
 				bg.MoveTo(bg.MinX, y)
-				bg.MoveBy(0.5, -2)
+				if bg.InvertX {
+					bg.MoveBy(0.5, -2)
+				} else {
+					bg.MoveBy(-19, -2)
+					align = "R"
+				}
 			} else {
 				bg.MoveTo(bg.MaxX, y)
-				bg.MoveBy(-19, -2)
-				align = "R"
+				if bg.InvertX {
+					bg.MoveBy(-19, -2)
+					align = "R"
+				} else {
+					bg.MoveBy(0.5, -2)
+				}
 			}
 
 			bg.MaybeSetTextColor()
