@@ -207,6 +207,11 @@ func DescentPDFInit(w http.ResponseWriter, r *http.Request, numFlights int) *fpd
 	}
 
 	dp.Init()
+
+	if r.FormValue("asdepartures") != "" {
+		dp.ReconfigureForDepartures()
+	}
+
 	dp.DrawFrames()
 
 	if rep,err := getReport(r); err==nil && rep!=nil {

@@ -149,6 +149,17 @@ func (g *DescentPdf)Init() {
 }
 
 // }}}
+// {{{ dp.ReconfigureForDepartures
+
+// If we are rendering departures, flip everything so the origin is on the Left Hand Side.
+func (g *DescentPdf)ReconfigureForDepartures() {
+	for name,_ := range g.Grids {
+		g.Grids[name].InvertX = false
+		g.Grids[name].YTickOtherSide = !g.Grids[name].YTickOtherSide
+	}
+}
+
+// }}}
 
 // {{{ dp.DrawFrames
 
