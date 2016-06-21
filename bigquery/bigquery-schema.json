@@ -1,0 +1,25 @@
+[
+    {"name":"FdbId",        "type":"string"},
+    {"name":"ModeS",        "type":"string"},
+    {"name":"Registration", "type":"string"},
+    {"name":"Equip",        "type":"string"},
+    {"name":"Start",        "type":"timestamp"},
+    {"name":"End",          "type":"timestamp"},
+    {"name":"DatePST",      "type":"string"},
+    {"name":"TrackSources", "type":"string", "mode":"repeated"},
+    {"name":"Tags",         "type":"string", "mode":"repeated"},
+    {"name":"Waypoints",    "type":"record", "mode":"repeated", "fields": [
+        {"name":"Waypoint", "type":"string"},
+        {"name":"Time", "type":"timestamp"}
+    ]},
+    {"name":"Procedures",   "type":"record", "mode":"repeated", "fields": [
+        {"name":"Name",          "type":"string"},
+        {"name":"VectoredAfter", "type":"string"}
+    ]},    
+    {"name":"FlightNumber", "type":"string"},
+    {"name":"FlightKey",    "type":"string"},
+    {"name":"Airline",      "type":"string"},
+    {"name":"Callsign",     "type":"string"},
+    {"name":"Orig",         "type":"string"},
+    {"name":"Dest",         "type":"string"}
+]

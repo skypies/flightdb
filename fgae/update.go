@@ -58,7 +58,7 @@ func (db *FlightDB)PersistFlight(f *fdb.Flight) error {
 	key,err := db.findOrGenerateFlightKey(f)
 	if err != nil { return err }
 	
-	if blob,err := f.ToBlob(kTimeslotDuration); err != nil {
+	if blob,err := f.ToBlob(); err != nil {
 		return err
 	} else {
 		_, err = datastore.Put(db.C, key, blob)

@@ -98,7 +98,7 @@ func NewIdSpec(idspecString string) (IdSpec,error) {
 }
 
 func (f Flight)IdSpec() IdSpec {
-	times := f.Timeslots(time.Minute * 30)  // FIXME: where does slot duration live
+	times := f.Timeslots()
 	midIndex := len(times) / 2
 
 	return IdSpec{

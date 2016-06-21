@@ -173,3 +173,13 @@ func (f *Flight)DetermineFlownProcedure() FlownProcedure {
 	}
 	return FlownProcedure{}
 }
+
+func (f *Flight)DetermineFlownProcedures() []FlownProcedure {
+	ret := []FlownProcedure{}
+	for _,proc := range NorCalProcedures {
+		if flew,vector := f.FlewProcedure(proc); flew {
+			ret = append(ret, FlownProcedure{Name: proc.Name, VectoredAfter:vector})
+		}
+	}
+	return ret
+}

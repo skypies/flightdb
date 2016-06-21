@@ -282,7 +282,7 @@ func ProcedureHandler(w http.ResponseWriter, r *http.Request) {
 		e = e.Add(-24 * time.Hour)
 	}
 
-	tStart := time.Now()	
+	tStart := time.Now()
 	cfs,err,str := db.FetchCondensedFlights(s,e,tags)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

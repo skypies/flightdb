@@ -187,7 +187,7 @@ func (f Flight)MidTime() time.Time {
 
 func (f Flight)IdSpecString() string {
 	return f.IdSpec().String()
-	//	times := f.Timeslots(time.Minute * 30)  // ARGH
+	//	times := f.Timeslots()
 //	return fmt.Sprintf("%s@%d", f.Identity.IcaoId, times[0].Unix())
 }
 
@@ -324,7 +324,9 @@ func (f *Flight)GetDatastoreKey() string { return f.datastoreKey }
 func (f *Flight)SetDatastoreKey(k string) { f.datastoreKey = k }
 func (f *Flight)GetLastUpdate() time.Time { return f.lastUpdate }
 func (f *Flight)SetLastUpdate(t time.Time) { f.lastUpdate = t }
-func (f *Flight)Timeslots(d time.Duration) []time.Time {
+func (f *Flight)Timeslots() []time.Time { return f.ArbitraryTimeslots(TimeslotDuration) }
+
+func (f *Flight)ArbitraryTimeslots(d time.Duration) []time.Time {
 	// ARGH
 	// This is a mess; depending on which tracks are available, we end up with very
 	// smaller or larger timespans. So we pick the likely smallest in all cases, ADSB.	

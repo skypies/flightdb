@@ -93,7 +93,7 @@ func ListReporter(r *Report, f *fdb.Flight, intersections []fdb.TrackIntersectio
 
 /*
 	f.PruneTrackContents()
-	blob,_ := f.ToBlob(30 * time.Minute)
+	blob,_ := f.ToBlob()
 	blob.Blob = []byte{}
 	// jsonBytes,_ := json.MarshalIndent(blob, "", "  ")
 	// r.Info(string(jsonBytes) + "\n\n")

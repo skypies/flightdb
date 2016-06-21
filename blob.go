@@ -33,7 +33,7 @@ func (f *Flight)IndexTagList() []string {
 	return tags
 }
 
-func (f *Flight)ToBlob(d time.Duration) (*IndexedFlightBlob, error) {
+func (f *Flight)ToBlob() (*IndexedFlightBlob, error) {
 	var buf bytes.Buffer
 	if err := gob.NewEncoder(&buf).Encode(f); err != nil {
 		return nil,err
@@ -43,7 +43,7 @@ func (f *Flight)ToBlob(d time.Duration) (*IndexedFlightBlob, error) {
 		Blob: buf.Bytes(),
 		Icao24: f.IcaoId,
 		Ident: f.Callsign,
-		Timeslots: f.Timeslots(d),
+		Timeslots: f.Timeslots(),
 		Tags: f.IndexTagList(),
 		// Waypoints: f.WaypointList(),
 		LastUpdate: time.Now(),

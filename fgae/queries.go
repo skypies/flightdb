@@ -25,7 +25,7 @@ func (db FlightDB)NewQuery() *Query {
 
 func (q *Query)ByTime(t time.Time) *Query {
 	// Round the time off to the nearest timeslot; and then assert flights posess it
-	slots := date.Timeslots(t,t,kTimeslotDuration)
+	slots := date.Timeslots(t,t,fdb.TimeslotDuration)
 	q.Query = q.Query.Filter("Timeslots = ", slots[0])
 	return q
 }
@@ -35,7 +35,7 @@ func (q *Query)ByTimeRange(s,e time.Time) *Query {
 	// https://cloud.google.com/appengine/docs/go/datastore/queries#Go_Restrictions_on_queries
 	// This pair of filters assert that a match must have at least one timeslot that matches
 	// both inequalities - i.e. that it has a timeslot within the range.
-	slots := date.Timeslots(s,e,kTimeslotDuration)
+	slots := date.Timeslots(s,e,fdb.TimeslotDuration)
 	q.Query = q.Query.
 		Filter("Timeslots >= ", slots[0]).
 		Filter("Timeslots <= ", slots[len(slots)-1])
