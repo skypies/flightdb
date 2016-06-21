@@ -270,15 +270,16 @@ func (g *DescentPdf)DrawTrackAsDistanceFromOrigin(t fdb.Track) {
 }
 
 // }}}
-// {{{ dp.DrawTrackAsDistanceAlongPath
+// {{{ dp.DrawTrackAsDistanceRemainingAlongPath
 
 // Consider distance to be distance travelled along the path.
 // (E.g. if the aircraft descends in a steady spiral, we'll plot the 'unrolled' version as a
 // long steady line.)
-func (g *DescentPdf)DrawTrackAsDistanceAlongPath(t fdb.Track) {
+// Also, plot as 'distance remaining until destination'
+func (g *DescentPdf)DrawTrackAsDistanceRemainingAlongPath(t fdb.Track) {
 	// We want to render this working backwards from the end, so descents can line up together.
 	// That means we're interested in each point's distance travelled in relation to the end point.
-	g.Debug += fmt.Sprintf("DrawTrackAsDistanceAlongPath\n")
+	g.Debug += fmt.Sprintf("DrawTrackAsDistanceRemainingAlongPath\n")
 	iClosest := t.ClosestTo(g.OriginPoint, 5000.0)
 	if iClosest < 0 { return }
 	endpointKM := t[iClosest].DistanceTravelledKM
@@ -298,6 +299,34 @@ func (g *DescentPdf)DrawTrackAsDistanceAlongPath(t fdb.Track) {
 		//g.Debug += fmt.Sprintf("%s\n", tp)
 		
 		return distToGoNM, tp.IndicatedAltitude, rgb
+	}
+
+	g.DrawTrackWithDistFunc(t, trackpointToXY, g.ColorScheme)
+}
+
+// }}}
+// {{{ dp.DrawTrackAsDistanceTravelledAlongPath
+
+// As above, but plat as 'distance travelled from Origin' (i.e. suitable for departures)
+func (g *DescentPdf)DrawTrackAsDistanceTravelledAlongPath(t fdb.Track) {
+	// We want to render this working backwards from the end, so descents can line up together.
+	// That means we're interested in each point's distance travelled in relation to the end point.
+	g.Debug += fmt.Sprintf("DrawTrackAsDistanceTravelledAlongPath\n")
+
+	// Assume that we depart from the OriginPoint. If we're missing early datapoints, then assume
+	// linear travel,
+	offsetKM := t[0].DistKM(g.OriginPoint)
+
+	g.Debug += fmt.Sprintf("* offsetKM=%.2f\n", offsetKM)
+	
+	trackpointToXY := func(tp fdb.Trackpoint) (float64, float64, []int) {		
+		distTravelledKM := tp.DistanceTravelledKM + offsetKM  // ignore endpointKM ??
+		distTravelledNM := distTravelledKM * geo.KNauticalMilePerKM
+
+		rgb := []int{0,0,0}
+		if g.ColorScheme == ByPlotKind { rgb = []int{250,0,0} }
+		
+		return distTravelledNM, tp.IndicatedAltitude, rgb
 	}
 
 	g.DrawTrackWithDistFunc(t, trackpointToXY, g.ColorScheme)

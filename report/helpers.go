@@ -42,7 +42,13 @@ func (r *Report)Links(f *fdb.Flight) string {
 	} else {
 		addFrag("map",     "/fdb/tracks?idspec="+f.IdSpecString()+"&"+reportArgs)
 		addFrag("vec",     "/fdb/trackset?idspec="+f.IdSpecString()+"&"+reportArgs)
-		addFrag("side",    "/fdb/descent?idspec="+f.IdSpecString()+"&"+dateArgs+"&length=100")
+
+		sideUrl := "/fdb/descent?idspec="+f.IdSpecString()+"&"+dateArgs+"&length=100"
+		if f.HasTag("NORCAL:") {
+			addFrag("dep", sideUrl + "&asdepartures=yes")
+		} else {
+			addFrag("arr", sideUrl)
+		}
 	}
 
 	tickbox := "<input type=\"checkbox\" name=\"idspec\" checked=\"yes\" value=\""+bestIdSpec+"\"/>"

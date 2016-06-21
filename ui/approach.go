@@ -225,8 +225,10 @@ func DescentPDFAddFlight(r *http.Request, dp *fpdf.DescentPdf, f *fdb.Flight) er
 	} else {
 		if r.FormValue("dist") == "from" {
 			dp.DrawTrackAsDistanceFromOrigin(t)
+		} else if r.FormValue("asdepartures") != "" {
+			dp.DrawTrackAsDistanceTravelledAlongPath(t)
 		} else {
-			dp.DrawTrackAsDistanceAlongPath(t)
+			dp.DrawTrackAsDistanceRemainingAlongPath(t)
 		}
 
 		if strings.Count(dp.Caption, "\n") < 4 {
