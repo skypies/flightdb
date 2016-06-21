@@ -23,8 +23,8 @@ type FlightForBigQuery struct {
 	TrackSources []string
 	Tags         []string
 
-	Waypoints    []WaypointForBigQuery
-	Procedures   []FlownProcedure
+	Waypoint     []WaypointForBigQuery  // Not 'Waypoints', so that the SQL reads more naturally
+	Procedure    []FlownProcedure
 
 	// These fields only defined if we have schedule data for the flight
 	FlightNumber   string // IATA scheduled flight number
@@ -35,18 +35,18 @@ type FlightForBigQuery struct {
 }
 
 type WaypointForBigQuery struct {
-	Waypoint string
-	Time     time.Time
+	Name string
+	Time time.Time
 }
 
 func (fbq FlightForBigQuery)String() string {
 	proc := ""
-	if len(fbq.Procedures) > 0 { proc = fmt.Sprintf("%v", fbq.Procedures[0]) }
+	if len(fbq.Procedure) > 0 { proc = fmt.Sprintf("%v", fbq.Procedure[0]) }
 	str := fmt.Sprintf("%s %s {%s} %v %v",
 		fbq.FlightNumber,
 		date.InPdt(fbq.End).Format("2006/01/02"),
 		proc,
-		fbq.Waypoints,
+		fbq.Waypoint,
 		fbq.Tags)
 	return str
 }
@@ -70,8 +70,8 @@ func (f *Flight)ForBigQuery() *FlightForBigQuery {
 		TrackSources: f.ListTracks(),
 		Tags: f.TagList(),
 
-		Waypoints: []WaypointForBigQuery{},
-		Procedures: f.DetermineFlownProcedures(),
+		Waypoint: []WaypointForBigQuery{},
+		Procedure: f.DetermineFlownProcedures(),
 		
 		FlightNumber: f.IataFlight(),
 		FlightKey: fmt.Sprintf("%s-%s", f.IataFlight(), date.InPdt(mid).Format("20060102")),
@@ -85,7 +85,7 @@ func (f *Flight)ForBigQuery() *FlightForBigQuery {
 	for k,v := range f.Waypoints { wptl = append(wptl, WaypointAndTime{k,v}) }
 	sort.Sort(WaypointAndTimeList(wptl))
 	for _,wpt := range wptl {
-		fbq.Waypoints = append(fbq.Waypoints, WaypointForBigQuery{wpt.WP, wpt.Time})
+		fbq.Waypoint = append(fbq.Waypoint, WaypointForBigQuery{wpt.WP, wpt.Time})
 	}
 	
 	return &fbq

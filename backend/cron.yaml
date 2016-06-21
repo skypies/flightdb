@@ -5,3 +5,8 @@ cron:
   url: /fdb/fr24
   schedule: every 2 minutes
   target: backend
+
+- description: Publish flights into bigquery
+  url: /backend/publish-flights?datestring=yesterday
+  schedule: every day 07:00
+  timezone: America/Los_Angeles

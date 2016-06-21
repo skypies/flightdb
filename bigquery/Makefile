@@ -2,7 +2,9 @@ PROJECT=serfr0-1000
 DATASET=public
 TABLE=flights
 
-SCHEMA=./bigquery-schema.json
+SCHEMA=./flight-schema.json
+
+# https://cloud.google.com/bigquery/quickstart-command-line
 
 ls:
 	bq --project_id ${PROJECT} show ${DATASET}.${TABLE}
@@ -17,3 +19,8 @@ mktable:
 	  --schema ${SCHEMA} \
 	  --time_partitioning_type=DAY \
 	  ${DATASET}.${TABLE}
+
+rmtable:
+	bq --project_id ${PROJECT} rm -f ${DATASET}.${TABLE}
+
+newtable: rmtable mktable

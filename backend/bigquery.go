@@ -113,11 +113,13 @@ func writeBigQueryFlightsGCSFile(r *http.Request, datestring, foldername,filenam
 			break // we're all done with this iterator
 		}
 
-		// A flight that straddles midnight will have timeslots either side, and so will end up
-		// showing in two sets of results. In such cases, only include the flight in the first
-		// day. So if the flight's timeslot is before our start time, skip it.
-		slots := f.Timeslots()
-		if len(slots)>0 && slots[0].Before(s) {
+		// A flight that straddles midnight will have timeslots either
+		// side, and so will end up showing in the results for two
+		// different days. We don't want dupes in the aggregate output, so
+		// we should only include the flight in one of them; we pick the
+		// first day. So if the flight's timeslot does not start after our
+		// start-time, skip it.
+		if slots := f.Timeslots(); len(slots)>0 && slots[0].Before(s) {
 			continue
 		}
 		
@@ -139,7 +141,6 @@ func writeBigQueryFlightsGCSFile(r *http.Request, datestring, foldername,filenam
 }
 
 // }}}
-
 // {{{ submitLoadJob
 
 func submitLoadJob(r *http.Request, gcsfolder, gcsfile string) error {
@@ -184,7 +185,6 @@ func submitLoadJob(r *http.Request, gcsfolder, gcsfile string) error {
 }
 
 // }}}
-
 
 // {{{ -------------------------={ E N D }=----------------------------------
 

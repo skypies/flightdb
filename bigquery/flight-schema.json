@@ -8,11 +8,11 @@
     {"name":"DatePST",      "type":"string"},
     {"name":"TrackSources", "type":"string", "mode":"repeated"},
     {"name":"Tags",         "type":"string", "mode":"repeated"},
-    {"name":"Waypoints",    "type":"record", "mode":"repeated", "fields": [
-        {"name":"Waypoint", "type":"string"},
+    {"name":"Waypoint",     "type":"record", "mode":"repeated", "fields": [
+        {"name":"Name", "type":"string"},
         {"name":"Time", "type":"timestamp"}
     ]},
-    {"name":"Procedures",   "type":"record", "mode":"repeated", "fields": [
+    {"name":"Procedure",    "type":"record", "mode":"repeated", "fields": [
         {"name":"Name",          "type":"string"},
         {"name":"VectoredAfter", "type":"string"}
     ]},    
