@@ -66,7 +66,7 @@ func (f *Flight)ForBigQuery() *FlightForBigQuery {
 
 		Start: s,
 		End: e,
-		DatePST: date.InPdt(mid).Format("2006/01/02"),
+		DatePST: date.InPdt(mid).Format("2006-01-02"), // Use the same format as BQ's DATE() function
 		TrackSources: f.ListTracks(),
 		Tags: f.TagList(),
 
