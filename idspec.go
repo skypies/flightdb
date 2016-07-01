@@ -70,18 +70,22 @@ func NewIdSpec(idspecString string) (IdSpec,error) {
 			idspec.Duration = time.Unix(timeInts[1], 0).Sub(idspec.Time)
 		}
 	}
-	
-	// Let's see if it could be an ICAO callsign
-	parsedCallsign := NewCallsign(id)
-	if parsedCallsign.CallsignType == IcaoFlightNumber {
-		idspec.Callsign = id
-		return idspec, nil
-	}
-	
+
+	// PROBLEM: some sets of IcaoIDs look like callsigns, e.g. ADF06D, ADA526
+	// So if our callsign looks like that, pretend it isn't a callsign. This likely breaks a lot
+	// of callsign lookups, which is a shame.
+
 	// Looks like a 6 digit hex string ? Presume IcaoID
 	icaoid := regexp.MustCompile("^[A-F0-9]{6}$").FindStringSubmatch(id)
 	if icaoid != nil && len(icaoid)==1 {
 		idspec.IcaoId = id
+		return idspec, nil
+	}
+
+	// Let's see if it could be an ICAO callsign
+	parsedCallsign := NewCallsign(id)
+	if parsedCallsign.CallsignType == IcaoFlightNumber {
+		idspec.Callsign = id
 		return idspec, nil
 	}
 	
