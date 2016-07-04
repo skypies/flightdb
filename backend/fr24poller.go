@@ -127,42 +127,49 @@ func saveFIFOSet(c context.Context, s fdb.FIFOSet) error {
 // Need a grid of which fr24 data fields are provided by which call.
 
 func fr24PollHandler(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
-	fr,_ := fr24.NewFr24(urlfetch.Client(c))
-	db := fgae.FlightDB{C:c}
+	db := fgae.NewDB(r)
+	fr,_ := fr24.NewFr24(db.HTTPClient())
 
+	db.Perff("fr24Poll_100", "making call")
 	flights,err := fr.LookupCurrentList(sfo.KLatlongSFO.Box(320,320))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	db.Perff("fr24Poll_150", "call returned (%d flights), updating airframes", len(flights))
 
-	str,err := updateAirframeCache(c, flights, r.FormValue("list") != "")
+	str,err := updateAirframeCache(db.Ctx(), flights, r.FormValue("list") != "")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if err := updateScheduleCache(c, flights); err != nil {
+	db.Perff("fr24Poll_200", "updating schedulecache")
+	if err := updateScheduleCache(db.Ctx(), flights); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// Load up the list of things we've acted on 'recently'
+	db.Perff("fr24Poll_250", "loading alreadyProcessed fifoset")
 	alreadyProcessed := fdb.FIFOSet{}
-	if err := loadFIFOSet(c,&alreadyProcessed); err != nil {
+	if err := loadFIFOSet(db.Ctx(),&alreadyProcessed); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	db.Perff("fr24Poll_250", "fifoset loaded (%d entries); calling FindNew()", len(alreadyProcessed))
 
 	// Filter out the things we've acted on recently (and, speculatively, add them
 	// to the 'processed' list
 	new := alreadyProcessed.FindNew(flights)
 	str += fmt.Sprintf("\n----{ %d flights, %d new, set=%d }----\n", len(flights), len(new),
 		len(alreadyProcessed))
-
+	db.Perff("fr24Poll_400", "FindNew found %d new flights (set now=%d). Iterating!", len(new),
+		len(alreadyProcessed))
+	
 	// Review the flights we've yet to process.
 	tstamp := time.Now().Add(-30 * time.Second)
+	nMerges,nUpdates := 0,0
 	for _,fs := range new {
 		if fs.IcaoId == "" {
 			continue
@@ -182,10 +189,12 @@ func fr24PollHandler(w http.ResponseWriter, r *http.Request) {
 
 		// OK ! Maybe update our DB with schedule data ...
 		str2 := fmt.Sprintf("-- %s\n - %s:%s %v\n", fs, f.IcaoId, f.FullString(), f.TagList())
+		nMerges++
 		if changed := f.MergeIdentityFrom(fs.Flight); changed == true {
 			f.Analyse()
 			str += str2 + fmt.Sprintf(" - %s:%s %v\n", f.IcaoId, f.FullString(), f.TagList())
 
+			nUpdates++
 			if err := db.PersistFlight(f); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -193,10 +202,13 @@ func fr24PollHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	db.Perff("fr24Poll_450", "Iteration done. %d merges, %d updates", nMerges, nUpdates)
+	
 	alreadyProcessed.AgeOut(2 * time.Hour)
-	if err := saveFIFOSet(c,alreadyProcessed); err != nil {
+	if err := saveFIFOSet(db.Ctx(),alreadyProcessed); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+	db.Perff("fr24Poll_500", "fifoset saved, all done")
 	
 	/* FWIW ... LookupHistory is an expensive way to get from any two of
      {callsign,depaturedate,registration} to a fr24ID, the thing that

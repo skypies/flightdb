@@ -8,6 +8,7 @@ import (
 
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/taskqueue"
 	"google.golang.org/cloud/bigquery"
 
 	"github.com/skypies/util/date"
@@ -18,7 +19,9 @@ import (
 )
 
 func init() {
-	http.HandleFunc("/backend/publish-flights", publishFlightsHandler)
+	// Run out of dispatch.yaml entries, so put this in 'batch'
+	http.HandleFunc("/batch/publish-all-flights", publishAllFlightsHandler)
+	http.HandleFunc("/batch/publish-flights", publishFlightsHandler)
 }
 
 var(
@@ -40,6 +43,46 @@ var(
 	bigqueryTableName = "flights"
 )
 
+// {{{ publishAllFlightsHandler
+
+// http://backend-dot-serfr0-fdb.appspot.com/batch/publish-all-flights?skipload=1&date=range&range_from=2016/07/01&range_to=2016/07/03
+
+// /batch/publish-all-flights?date=range&range_from=2015/08/09&range_to=2015/08/10
+//  ?skipload=1  (optional, skip loading them into bigquery
+
+// Writes them all into a batch queue
+func publishAllFlightsHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
+	str := ""
+
+	s,e,_ := widget.FormValueDateRange(r)
+	days := date.IntermediateMidnights(s.Add(-1 * time.Second),e) // decrement start, to include it
+	url := "/batch/publish-flights"
+	
+	for _,day := range days {
+		dayStr := day.Format("2006.01.02")
+
+		thisUrl := fmt.Sprintf("%s?datestring=%s", url, dayStr)
+		if r.FormValue("skipload") != "" {
+			thisUrl += "&skipload=" + r.FormValue("skipload")
+		}
+		
+		t := taskqueue.NewPOSTTask(thisUrl, map[string][]string{})
+
+		if _,err := taskqueue.Add(ctx, t, "batch"); err != nil {
+			log.Errorf(ctx, "publishAllFligtsHandler: enqueue: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		str += " * posting for " + thisUrl + "\n"
+	}
+
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte(fmt.Sprintf("OK, enqueued %d\n--\n%s", len(days), str)))
+}
+
+// }}}
 // {{{ publishFlightsHandler
 
 // http://backend-dot-serfr0-fdb.appspot.com/backend/publish-flights?datestring=yesterday
@@ -59,7 +102,7 @@ func publishFlightsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filename := "flights-"+datestring+".json"
-	log.Infof(ctx, "Starting /backend/publish-complaints: %s", filename)
+	log.Infof(ctx, "Starting /batch/publish-flights: %s", filename)
 	
 	n,err := writeBigQueryFlightsGCSFile(r, datestring, folderGCS, filename)
 	if err != nil {
@@ -67,9 +110,11 @@ func publishFlightsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := submitLoadJob(r, folderGCS, filename); err != nil {
-		http.Error(w, "submitLoadJob failed: "+err.Error(), http.StatusInternalServerError)
-		return
+	if r.FormValue("skipload") == "" {
+		if err := submitLoadJob(r, folderGCS, filename); err != nil {
+			http.Error(w, "submitLoadJob failed: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "text/plain")

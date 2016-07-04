@@ -112,6 +112,11 @@ func tracksetHandler(w http.ResponseWriter, r *http.Request) {
 	for _,idspec := range idspecs {
 		idstrings = append(idstrings, idspec.String())
 	}
+
+	// More than this doesn't work out so well :/
+	if len(idstrings) > 900 {
+		idstrings = idstrings[:900]
+	}
 	
 	OutputMapLinesOnAStreamingMap(w, r, idstrings, "/fdb/vector")
 }
