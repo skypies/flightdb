@@ -72,6 +72,7 @@ func (g *DescentPdf)Init() {
 		ng.H = 100
 		ng.MinY = g.AltitudeMin
 		ng.MaxY = g.AltitudeMax
+		ng.YMinorGridlineEvery = 1000
 		ng.YGridlineEvery = 5000
 		ng.XTickFmt = "%.0fNM"
 		ng.YTickFmt = "%.0fft"

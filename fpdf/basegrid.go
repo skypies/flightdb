@@ -22,6 +22,7 @@ type BaseGrid struct {
 	// How to draw gridlines
 	NoGridlines                    bool    // No lines at all for this graph
 	XGridlineEvery, YGridlineEvery float64 // From Min[XY] to Max[XY]
+	XMinorGridlineEvery, YMinorGridlineEvery float64 // From Min[XY] to Max[XY]
 	XTickFmt,       YTickFmt       string  // Will be passed a float64 via fmt.Sprintf; blank==none
 	XTickOtherSide, YTickOtherSide bool    // Note that InvertX,Y also affect where ticks go
 
@@ -125,10 +126,12 @@ func (bg BaseGrid)Line(x1,y1,x2,y2 float64) {
 // {{{ bg.DrawGridlines
 
 func (bg BaseGrid)DrawGridlines() {
+	bg.SetFont("Arial", "", 8)
+
+	dashPattern := []float64{2,2}
+
 	bg.SetLineWidth(0.03)
 	bg.SetDrawColor(0xe0, 0xe0, 0xe0)
-	bg.SetFont("Arial", "", 8)	
-
 	for x := bg.MinX; x <= bg.MaxX; x += bg.XGridlineEvery {
 		if !bg.NoGridlines {
 			bg.MoveTo(x, bg.MinY)
@@ -148,7 +151,20 @@ func (bg BaseGrid)DrawGridlines() {
 			bg.DrawPath("D")
 		}
 	}
+
+	if !bg.NoGridlines && bg.XMinorGridlineEvery > 0 {
+		bg.SetLineWidth(0.01)
+		bg.SetDashPattern(dashPattern, 0.0)
+		for x := bg.MinX; x <= bg.MaxX; x += bg.XMinorGridlineEvery {
+			bg.MoveTo(x, bg.MinY)
+			bg.LineTo(x, bg.MaxY)
+		}
+		bg.DrawPath("D")
+		bg.SetDashPattern([]float64{}, 0.0)
+	}
 	
+	bg.SetLineWidth(0.03)
+	bg.SetDrawColor(0xe0, 0xe0, 0xe0)
 	for y := bg.MinY; y <= bg.MaxY; y += bg.YGridlineEvery {
 		if !bg.NoGridlines {
 			bg.MoveTo(bg.MinX, y)
@@ -181,16 +197,18 @@ func (bg BaseGrid)DrawGridlines() {
 			bg.DrawPath("D")
 		}
 	}
-
 	bg.DrawPath("D")
 
-	/*
-	bg.SetDrawColor(0x00, 0xff, 0x00)
-	bg.SetLineWidth(0.1)
-	bg.MoveTo(bg.MinX, bg.MinY)
-	bg.LineTo(bg.MaxX, bg.MaxY)
-	bg.DrawPath("D")
-*/
+	if !bg.NoGridlines && bg.YMinorGridlineEvery > 0 {
+		bg.SetLineWidth(0.01)
+		bg.SetDashPattern(dashPattern, 0.0)
+		for y := bg.MinY; y <= bg.MaxY; y += bg.YMinorGridlineEvery {
+			bg.MoveTo(bg.MinX, y)
+			bg.LineTo(bg.MaxX, y)
+		}
+		bg.DrawPath("D")
+		bg.SetDashPattern([]float64{}, 0.0)
+	}
 }
 
 // }}}
