@@ -31,27 +31,37 @@ func ClassBForTrack(r *report.Report, track fdb.Track) (*geo.TPClassBAnalysis,er
 	for i,tp := range track {
 		if tp.Altitude < 50 { continue } // Skip datapoints with null/empty altitude data
 
-		lookup := r.Archive.Lookup(tp.TimestampUTC)
-		if lookup == nil {
-			track[i].AnalysisAnnotation += fmt.Sprintf("* No Metar, using fake data (assume 29.62)\n")
-			lookup = &metar.Report{"asd", "KSFO", tp.TimestampUTC, 29.62}
-		}
-		if lookup == nil || lookup.Raw == "" {
-			track[i].AnalysisAnnotation += fmt.Sprintf("* No Metar, skipping\n")
-			return nil, fmt.Errorf("No metar, aborting")
-		}
-		track[i].AnalysisAnnotation += fmt.Sprintf("* METAR: %v\n", lookup)
+		iAlt := tp.Altitude
+		inchesHg := 29.9213
 		
-		iAlt := altitude.PressureAltitudeToIndicatedAltitude(tp.Altitude, lookup.AltimeterSettingInHg)
-
+		if tp.DataSource == "RG-FOIA" {
+			// iAlt is already pressure corrected
+			track[i].AnalysisAnnotation += fmt.Sprintf("* FOIA data, no altitude correction performed\n")
+			
+		} else {
+			lookup := r.Archive.Lookup(tp.TimestampUTC)
+			if lookup == nil {
+				track[i].AnalysisAnnotation += fmt.Sprintf("* No Metar, using fake data (assume 29.9213)\n")
+				lookup = &metar.Report{"asd", "KSFO", tp.TimestampUTC, 29.9213}
+			}
+			if lookup == nil || lookup.Raw == "" {
+				track[i].AnalysisAnnotation += fmt.Sprintf("* No Metar, skipping\n")
+				return nil, fmt.Errorf("No metar, aborting")
+			}
+			track[i].AnalysisAnnotation += fmt.Sprintf("* METAR: %v\n", lookup)
+		
+			inchesHg = lookup.AltimeterSettingInHg
+			iAlt = altitude.PressureAltitudeToIndicatedAltitude(tp.Altitude, inchesHg)
+			
+			track[i].AnalysisAnnotation += fmt.Sprintf("* PressureAltitude: %.0f, "+
+				"IndicatedAltitude: %.0f\n", tp.Altitude, iAlt)
+		}
+	
 		result := geo.TPClassBAnalysis{
 			I:i,
-			InchesHg: lookup.AltimeterSettingInHg,
+			InchesHg: inchesHg,
 			IndicatedAltitude: iAlt,
 		}
-
-		track[i].AnalysisAnnotation +=fmt.Sprintf("* PressureAltitude: %.0f, IndicatedAltitude: %.0f\n",
-			tp.Altitude, iAlt)
 
 		sfo.SFOClassBMap.ClassBPointAnalysis(tp.Latlong, tp.GroundSpeed, iAlt,
 			r.Options.AltitudeTolerance, &result)
