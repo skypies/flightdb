@@ -1,0 +1,42 @@
+{{define "fdb-historical-form"}}
+
+<html>
+  {{template "header"}}
+  <body>
+    <h1>Historic flight search (DBv2)</h1><p/>
+
+    <form action="/fdb/historical" method="post">
+      <div class="stack">
+        <table border="0">
+          <tr>
+            <td>Date</td>
+            <td><input type="text" size="10" name="date" autofocus="1"
+                       value="{{.TwoHoursAgo.Format "2006/01/02"}}"/> <code>YYYY/MM/DD</code></td>
+          </tr>
+          <tr>
+            <td>Time</td>
+            <td><input type="text" size="10" name="time"
+                       value="{{.TwoHoursAgo.Format "15:04:05"}}"/>
+              <code>HH:MM:SS</code>, 24-hour clock, Pacific Time.</td>
+          </tr>
+<!--
+          <tr>
+            <td>Result format</td>
+            <td>
+              <input type="radio" name="resultformat" value="maps" checked="yes"/>maps,
+              <input type="radio" name="resultformat" value="list"/>list.
+            </td>
+          </tr>
+-->
+        </table>
+
+        <p> Please note, it can take up to 5 minutes for flights to
+        appear in the results, so don't search too close to 'now'.</p>
+        
+        <p style="text-align:center"><input class="button" type="submit" value="SEARCH"/></p>
+      </div>
+    </form>
+  </body>
+</html>
+
+{{end}}

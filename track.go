@@ -395,16 +395,18 @@ func (t1 *Track)PlausibleExtension(t2 *Track) (bool, string) {
 // {{{ t.IndexAtTime
 
 // Returns -1 if not found
+// Finds the largest index whose trackpoint does not come before the specified time
 func (t Track)IndexAtTime(tm time.Time) int {
 	if tm.Before(t.Start()) || tm.After(t.End()) { return -1 }
 
-	// Rewrite with something hierarchical plz
+	// TODO: rewrite with something hierarchical
 	// Start loop on second point
 	for i:=1; i<len(t); i++ {
 		// If this point comes after our time, then the preceding point is our winner
 		if t[i].TimestampUTC.After(tm) { return i-1 }
 	}
-	return -1
+
+	return -1 // "Should not happen"
 }
 
 // }}}

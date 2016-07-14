@@ -2,6 +2,7 @@ package ui
 
 import(
 	"fmt"
+	"math/rand"
 	"net/http"
 	
 	"github.com/skypies/geo"
@@ -21,16 +22,39 @@ func FormValuePDFColorScheme(r *http.Request) fpdf.ColorScheme {
 	}
 }
 
-// Presumes a form field 'idspec', as per identity.go
-func FormValueIdSpecs(r *http.Request) ([]fdb.IdSpec, error) {
-	ret := []fdb.IdSpec{}
+// Presumes a form field 'idspec', as per identity.go, and also maxflights (as a cap)
+func FormValueIdSpecStrings(r *http.Request) ([]string) {
+	idspecs := widget.FormValueCommaSepStrings(r, "idspec")
 
-	for _,str := range widget.FormValueCommaSepStrings(r, "idspec") {
-		id,err := fdb.NewIdSpec(str)
-		if err != nil { return nil, err }
-		ret = append(ret, id)
+	// If asked for a random subset, go get 'em
+	maxFlights := widget.FormValueInt64(r, "maxflights")	
+	if maxFlights > 0 && len(idspecs) > int(maxFlights) {
+		randomSubset := map[string]int{}
+
+		for i:=0; i<int(maxFlights * 10); i++ {
+			if len(randomSubset) >= int(maxFlights) { break }
+			randomSubset[idspecs[rand.Intn(len(idspecs))]]++
+		}
+		
+		idspecs = []string{}
+		for id,_ := range randomSubset {
+			idspecs = append(idspecs, id)
+		}
 	}
 
+	return idspecs
+}
+
+// Presumes a form field 'idspec', as per identity.go, and also maxflights (as a cap)
+func FormValueIdSpecs(r *http.Request) ([]fdb.IdSpec, error) {
+	ret := []fdb.IdSpec{}
+	for _,str := range FormValueIdSpecStrings(r) {
+		id,err := fdb.NewIdSpec(str)
+		if err != nil { continue } // FIXME - why does this happen ? e.g. ACA564@1389250800
+		//if err != nil { return nil, err }
+		ret = append(ret, id)
+	}
+	
 	return ret, nil
 }
 

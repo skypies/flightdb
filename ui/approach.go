@@ -115,6 +115,7 @@ func descentHandler(w http.ResponseWriter, r *http.Request) {
 
 // {{{ OutputApproachesAsPDF
 
+// This is the old handler, useful for Class B
 func OutputApproachesAsPDF(w http.ResponseWriter, r *http.Request, flights []*fdb.Flight) {
 	colorscheme := FormValuePDFColorScheme(r)
 
@@ -146,11 +147,19 @@ func OutputApproachesAsPDF(w http.ResponseWriter, r *http.Request, flights []*fd
 	for _,f := range flights {
 		fStrs = append(fStrs, f.String())		
 
-		trackType,track := f.PreferredTrack([]string{"ADSB", "FOIA"})
-		if track == nil { continue }
+		trackType,track := f.PreferredTrack([]string{"FOIA", "ADSB"})
+		if track == nil || trackType == "" {
+			continue
+		}
 
+		track.PostProcess() // Calculate groundspeed data for FOIA data
+		
 		if trackType == "ADSB" {
 			track.AdjustAltitudes(metars)
+		} else {
+			for i,_ := range track {
+				track[i].IndicatedAltitude = track[i].Altitude
+			}
 		}
 		
 		fpdf.DrawTrack(pdf, track, colorscheme)

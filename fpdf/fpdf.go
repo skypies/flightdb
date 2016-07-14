@@ -6,14 +6,10 @@ import(
 	"io"
 	"math"
 	"time"
-	"github.com/jung-kurt/gofpdf"
+	"github.com/jung-kurt/gofpdf" // https://godoc.org/github.com/jung-kurt/gofpdf
 	"github.com/skypies/geo/sfo"
 	fdb "github.com/skypies/flightdb2"
 )
-
-// https://godoc.org/github.com/jung-kurt/gofpdf
-
-// http://fdb.serfr1.org/fdb/approach?idspec=SWA1724@1431581400 - FOIA comes up blank
 
 type ColorScheme int
 const(
@@ -315,6 +311,7 @@ func trackpointToApproachXY(tp fdb.Trackpoint) (float64, float64) {
 func DrawTrack(pdf *gofpdf.Fpdf, tInput fdb.Track, colorscheme ColorScheme) {
 	pdf.SetDrawColor(0xff, 0x00, 0x00)
 	pdf.SetLineWidth(0.25)
+	pdf.SetAlpha(0.5, "")
 
 	// We don't need trackpoints every 200ms
 	sampleRate := time.Second * 5
@@ -331,7 +328,7 @@ func DrawTrack(pdf *gofpdf.Fpdf, tInput fdb.Track, colorscheme ColorScheme) {
 		if x1 < ApproachBoxOffsetX { continue }
 		if y1 < ApproachBoxOffsetY { continue }
 
-		rgb := []int{}
+		rgb := []int{0xFF,0x00,0x00}
 		switch colorscheme {
 		case ByGroundspeed: rgb = groundspeedToRGB(t[i].GroundSpeed)
 		case ByDeltaGroundspeed: rgb = groundspeedDeltaToRGB(t[i+1].GroundSpeed - t[i].GroundSpeed)
@@ -346,6 +343,9 @@ func DrawTrack(pdf *gofpdf.Fpdf, tInput fdb.Track, colorscheme ColorScheme) {
 		pdf.Line(x1,y1,x2,y2)
 	}
 	pdf.DrawPath("D")	
+
+	pdf.SetAlpha(1.0, "")
+
 }
 
 // }}}
@@ -365,6 +365,7 @@ func NewApproachPdf(colorscheme ColorScheme) *gofpdf.Fpdf {
 	} else {
 		DrawSpeedGradientKey(pdf)
 	}
+
 	return pdf
 }
 
@@ -389,25 +390,6 @@ func WriteFlight(output io.Writer, f fdb.Flight) error {
 
 	DrawTrack(pdf, f.AnyTrack(), ByGroundspeed)
 	return pdf.Output(output)
-}
-
-// }}}
-
-
-
-
-// {{{ MoveByUV, LineByUV - Move/Line in PDF space, relative to current position
-
-// These two functions operate within PDF coord space.
-// The arguments should be in the PDF's metric (which should be milimeters)
-// They act relative to the last position, so allow for offsets for text placement etc.
-func MoveByUV(f *gofpdf.Fpdf, u,v float64) {
-	currU,currV := f.GetXY()
-	f.MoveTo(currU+u, currV+v)
-}
-func LineByUV(f *gofpdf.Fpdf, u,v float64) {
-	currU,currV := f.GetXY()
-	f.LineTo(currU+u, currV+v)
 }
 
 // }}}

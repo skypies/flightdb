@@ -65,6 +65,8 @@ func MaybeAddFr24Track(c context.Context, f *fdb.Flight) string {
 
 // {{{ trackHandler
 
+//  &all=1  - show all instances of the IdSpec
+
 func trackHandler(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
 
@@ -80,16 +82,29 @@ func trackHandler(w http.ResponseWriter, r *http.Request) {
 	db := fgae.FlightDB{C:c}
 	flights := []*fdb.Flight{}
 	for _,idspec := range idspecs {
-		f,err := db.LookupMostRecent(db.NewQuery().ByIdSpec(idspec))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		} else if f == nil {
-			http.Error(w, fmt.Sprintf("idspec %s not found", idspec), http.StatusInternalServerError)
-			return
-		}
-		if af := airframes.Get(f.IcaoId); af != nil { f.Airframe = *af }
-		flights = append(flights, f)
+		if r.FormValue("all") != "" {
+			results,err := db.LookupAll(db.NewQuery().ByIdSpec(idspec))
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			for _,f := range results {
+				if af := airframes.Get(f.IcaoId); af != nil { f.Airframe = *af }
+				flights = append(flights, f)
+			}
+
+		} else {
+			f,err := db.LookupMostRecent(db.NewQuery().ByIdSpec(idspec))
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			} else if f == nil {
+				http.Error(w, fmt.Sprintf("idspec %s not found", idspec), http.StatusInternalServerError)
+				return
+			}
+			if af := airframes.Get(f.IcaoId); af != nil { f.Airframe = *af }
+			flights = append(flights, f)
+		}			
 	}
 	
 	OutputTracksOnAMap(w, r, flights)
@@ -103,20 +118,14 @@ func trackHandler(w http.ResponseWriter, r *http.Request) {
 
 func tracksetHandler(w http.ResponseWriter, r *http.Request) {
 	//colorscheme := FormValueColorScheme(r)
-	idspecs,err := FormValueIdSpecs(r)
-	if err != nil {
+
+	// Make sure they can all be parsed ...
+	if _,err := FormValueIdSpecs(r); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	idstrings := []string{}
-	for _,idspec := range idspecs {
-		idstrings = append(idstrings, idspec.String())
-	}
-
-	// More than this doesn't work out so well :/
-	if len(idstrings) > 900 {
-		idstrings = idstrings[:900]
-	}
+	// ... but just pass along the strings
+	idstrings := FormValueIdSpecStrings(r)
 	
 	OutputMapLinesOnAStreamingMap(w, r, idstrings, "/fdb/vector")
 }

@@ -39,6 +39,7 @@ function initMap() {
     
     {{if .Points}}pointsOverlay(){{end}}
     {{if .IdSpecs}}streamVectors(){{end}}
+    {{if .AirspaceJS}}airspaceOverlay(){{end}}
 }
 
 function classBOverlay() {

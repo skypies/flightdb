@@ -2,6 +2,7 @@ package flightdb2
 
 import(
 	"fmt"
+	"time"
 	"github.com/skypies/geo"
 )
 
@@ -31,6 +32,24 @@ func (fs *FlightSnapshot)LocalizeTo(refpt geo.Latlong, elevation float64) {
 	fs.BearingToReference = fs.Trackpoint.Latlong.BearingTowards(fs.Reference)
 }
 
+// Returns nil if flight not known at that time.
+// Does not interpolate; returns the 'most recent' trackpoint to the specified time
+func (f *Flight)TakeSnapshotAt(t time.Time) *FlightSnapshot {
+
+	for _,trackKey := range []string{"FOIA", "ADSB", "MLAT"} {
+		if !f.HasTrack(trackKey) { continue }
+		track := *f.Tracks[trackKey]
+		index := track.IndexAtTime(t)
+		if index < 0 { continue }
+
+		fs := FlightSnapshot{Flight: *f, Trackpoint: track[index]}
+		if index > 0           { fs.PrevPos = track[index-1] }
+		if index <len(track)-1 { fs.NextPos = track[index+1] }
+		return &fs
+	}
+
+	return nil
+}
 
 type FlightSnapshotsByDist []FlightSnapshot
 func (s FlightSnapshotsByDist) Len() int      { return len(s) }
