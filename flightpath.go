@@ -84,8 +84,8 @@ var (
 	}
 )
 
-// SFO_S_A for southern arrivals:  :SFO && 30 km box around ANJEE, WWAVE, or their midpoint)
-// SFO_S_D for southern departures:  (SFO: ||OAK:) && 30 km (TBR) box around PPEGS
+// :SFO_S for southern arrivals:  :SFO && 30 km box around ANJEE, WWAVE, or their midpoint)
+// SFO_S: for southern departures:  (SFO: ||OAK:) && 30 km (TBR) box around PPEGS
 func (f *Flight)TagCoarseFlightpathForSFO() {
 	box := geo.LatlongBox{}
 	tag := ""

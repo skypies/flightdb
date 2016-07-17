@@ -239,6 +239,8 @@ func (f *Flight)Analyse() (error, string) {
 	f.SetAirportComboTagsFor(SouthwestAirports, "SW")
 	f.SetAirportComboTagsFor(NorCalAirports,    "NORCAL")
 
+	// We can do this track-specific stuff now, but it may not be
+	// useful, depending on how much track we have. Need a streaming solution.
 	f.AnalyseWaypoints()
 	f.TagCoarseFlightpathForSFO()  // SFO_S:, :SFO_S
 	
