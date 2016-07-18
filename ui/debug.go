@@ -56,6 +56,7 @@ func debugHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		str += fmt.Sprintf("    %s\n", f.IdSpec())
 		str += fmt.Sprintf("    %s\n", f.FullString())
+		str += fmt.Sprintf("    airframe: %s\n", f.Airframe.String())
 		str += fmt.Sprintf("    %s\n\n", f)
 		str += fmt.Sprintf("    index tags: %v\n", f.IndexTagList())
 		str += fmt.Sprintf("    /batch/flights/flight?flightkey=%s&job=retag\n", f.GetDatastoreKey())
