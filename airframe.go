@@ -17,3 +17,9 @@ func (af Airframe)String() string {
 	return fmt.Sprintf("[%s] %10.10s %3.3s %s",
 		af.Icao24, af.Registration,	af.CallsignPrefix, af.EquipmentType)
 }
+
+func (f *Flight)OverlayAirframe(af Airframe) {
+	if f.Airframe.Registration == ""   { f.Airframe.Registration = af.Registration }
+	if f.Airframe.EquipmentType == ""  { f.Airframe.EquipmentType = af.EquipmentType }
+	if f.Airframe.CallsignPrefix == "" { f.Airframe.CallsignPrefix = af.CallsignPrefix }
+}

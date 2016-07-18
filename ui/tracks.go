@@ -89,7 +89,7 @@ func trackHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			for _,f := range results {
-				if af := airframes.Get(f.IcaoId); af != nil { f.Airframe = *af }
+				if af := airframes.Get(f.IcaoId); af != nil { f.OverlayAirframe(*af) }
 				flights = append(flights, f)
 			}
 
@@ -102,7 +102,7 @@ func trackHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, fmt.Sprintf("idspec %s not found", idspec), http.StatusInternalServerError)
 				return
 			}
-			if af := airframes.Get(f.IcaoId); af != nil { f.Airframe = *af }
+			if af := airframes.Get(f.IcaoId); af != nil { f.OverlayAirframe(*af) }
 			flights = append(flights, f)
 		}			
 	}
@@ -242,7 +242,7 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 	// Preprocess; get airframe data, and run reports (to annotate tracks)
 	for i,_ := range flights {
 		if af := airframes.Get(flights[i].IcaoId); af != nil {
-			flights[i].Airframe = *af
+			flights[i].OverlayAirframe(*af)
 		}
 		if rep != nil {
 			if _,err := rep.Process(flights[i]); err != nil {
