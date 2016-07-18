@@ -410,6 +410,34 @@ func (t Track)IndexAtTime(tm time.Time) int {
 }
 
 // }}}
+// {{{ t.IndicesAtDistKMsFrom
+
+// This is not a very smart algorithm.
+// It assumes that dist to refpt is monotonic and decreasing.
+func (t Track)IndicesAtDistKMsFrom(refpt geo.Latlong, distsKM []float64) []int {
+	results := []int{}
+
+	if len(distsKM) == 0 { return results }
+	targetDist, distsKM := distsKM[0], distsKM[1:]
+
+	// Walk the track, picking out trackpoints that precede the given distances.
+	for i,tp := range t {
+		dist := tp.DistKM(refpt)
+
+		// If we've just moved past the target dist, then we have a match for this target
+		if dist < targetDist {
+			if i > 0 { results = append(results, i-1) }
+
+			// Finish, or reset for a new target.
+			if len(distsKM) == 0 { return results }
+			targetDist, distsKM = distsKM[0], distsKM[1:]
+		}
+	}
+
+	return results
+}
+
+// }}}
 // {{{ t.WindowedAverageAt
 
 // Returns a synthetic trackpoint with values for {ground|vertical}{speed|acceleration} computed
@@ -694,6 +722,10 @@ func (t Track)ClosestTo(ref geo.Latlong, maxAltitude float64) (int) {
 }
 
 // }}}
+
+// What we need: a lambda sig, that maps a trackpoint to a scalar (
+// Then a function that takes a lambda and a scalar value, and finds the two points that straddle
+// ... or maybe not; there are only two monotonic such scalars anyway (time, dist travelled)
 
 // {{{ OLD
 
