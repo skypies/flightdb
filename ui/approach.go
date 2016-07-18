@@ -137,10 +137,11 @@ func OutputApproachesAsPDF(w http.ResponseWriter, r *http.Request, flights []*fd
 	c := appengine.NewContext(r)
 	metars,err := metar.FetchFromNOAA(urlfetch.Client(c), "KSFO",s.AddDate(0,0,-1), e.AddDate(0,0,1))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		// we don't need metar for FOIA data anyhow, so stop noaa derailing things
+		// http.Error(w, err.Error(), http.StatusInternalServerError)
+		// return
 	}
-
+	
 	pdf := fpdf.NewApproachPdf(colorscheme)
 	fStrs := []string{}
 //outerLoop:
@@ -154,7 +155,7 @@ func OutputApproachesAsPDF(w http.ResponseWriter, r *http.Request, flights []*fd
 
 		track.PostProcess() // Calculate groundspeed data for FOIA data
 		
-		if trackType == "ADSB" {
+		if trackType == "ADSB" && metars != nil {
 			track.AdjustAltitudes(metars)
 		} else {
 			for i,_ := range track {
