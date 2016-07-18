@@ -50,7 +50,8 @@ func ApproachSignature(r *report.Report, f *fdb.Flight, tis []fdb.TrackIntersect
 	r.I["[D] <b>flight accepted</b>"]++
 
 	track.PostProcess()
-
+	track.AdjustAltitudes(&r.Archive)
+	
 	sigDistKMs := []float64{}
 	for _,v := range sigDistNMs { sigDistKMs = append(sigDistKMs, geo.NM2KM(v)) }
 	results := track.IndicesAtDistKMsFrom(sfo.KAirports["KSFO"], sigDistKMs)
@@ -82,7 +83,8 @@ func ApproachSignature(r *report.Report, f *fdb.Flight, tis []fdb.TrackIntersect
 			dist, sigDistNMs)
 
 		tpVals := []string{
-			fmt.Sprintf("{alt,angle,accel}@%.1fNM", sigDistNMs[i]),
+			fmt.Sprintf("{alt,pressurealt,angle,accel}@%.1fNM", sigDistNMs[i]),
+			fmt.Sprintf("%.0f", tp.IndicatedAltitude),
 			fmt.Sprintf("%.0f", tp.Altitude),
 			fmt.Sprintf("%.2f", tp.AngleOfInclination),
 			fmt.Sprintf("%.2f", tp.GroundAccelerationKPS),
