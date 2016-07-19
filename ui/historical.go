@@ -9,10 +9,10 @@ import(
 
 	"github.com/skypies/util/date"
 	"github.com/skypies/util/widget"
+	"github.com/skypies/geo"
 	"github.com/skypies/geo/sfo"
 
 	"github.com/skypies/flightdb2/fgae"
-	"github.com/skypies/flightdb2/report"
 )
 
 func init() {
@@ -80,7 +80,7 @@ func historicalHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	refPoint := report.FormValueLatlong(r, "pos")
+	refPoint := geo.FormValueLatlong(r, "pos")
 	
 	if as, err := db.LookupHistoricalAirspace(t.UTC(), refPoint, 1000); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
