@@ -56,14 +56,6 @@ type Options struct {
 	ReportLogLevel // For debugging
 }
 
-// If fields absent or blank, returns {0.0, 0.0}
-// Expects two string fields that start with stem, with 'lat' or 'long' appended.
-func FormValueLatlong(r *http.Request, stem string) geo.Latlong {
-	lat  := widget.FormValueFloat64EatErrs(r, stem+"_lat")
-	long := widget.FormValueFloat64EatErrs(r, stem+"_long")
-	return geo.Latlong{lat,long}
-}
-
 func FormValueNamedLatlong(r *http.Request, stem string) geo.NamedLatlong {
 	if wp := strings.ToUpper(r.FormValue(stem+"_name")); wp != "" {
 		if _,exists := sfo.KFixes[wp]; !exists {
@@ -72,7 +64,7 @@ func FormValueNamedLatlong(r *http.Request, stem string) geo.NamedLatlong {
 		return geo.NamedLatlong{wp, sfo.KFixes[wp]}
 	}
 
-	return geo.NamedLatlong{"", FormValueLatlong(r,stem)}
+	return geo.NamedLatlong{"", geo.FormValueLatlong(r,stem)}
 }
 
 func FormValueReportOptions(r *http.Request) (Options, error) {
@@ -209,12 +201,8 @@ func (o Options)String() string {
 	return str
 }
 
-func LatlongToCGIArgs(stem string, pos geo.Latlong) string {
-	return fmt.Sprintf("%s_lat=%.5f&%s_long=%.5f", stem, pos.Lat, stem, pos.Long)
-}
 func NamedLatlongToCGIArgs(stem string, nl geo.NamedLatlong) string {
-	return fmt.Sprintf("%s_name=%s&%s_lat=%.5f&%s_long=%.5f",
-		stem, nl.Name, stem, nl.Lat, stem, nl.Long)
+	return fmt.Sprintf("%s_name=%s&%s", stem, nl.Name, nl.Latlong.ToCGIArgs(stem))
 }
 
 // for html/template, which chokes 
