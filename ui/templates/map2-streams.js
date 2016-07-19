@@ -17,12 +17,15 @@ function streamVectors() {
                 coords.push({lat:val.s.Lat, lng:val.s.Long})
                 coords.push({lat:val.e.Lat, lng:val.e.Long})
 
+                var weight = 1
+                if (opacity > 1) { weight = opacity }
+                
                 var line = new google.maps.Polyline({
                     path: coords,
                     geodesic: true,
                     strokeColor: color,
                     strokeOpacity: opacity,
-                    strokeWeight: 1,
+                    strokeWeight: weight,
                     zIndex: 100
                 });
 
