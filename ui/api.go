@@ -127,6 +127,9 @@ func MapLineFormat(f *fdb.Flight, trackName string, l geo.LatlongLine, numCompla
 			opacity = 0.1
 		}
 
+	case ByExplicitColor:
+		color = "#" + colorscheme.ExplicitColor
+		
 	case ByData:
 		fallthrough
 	default:

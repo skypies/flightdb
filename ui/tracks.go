@@ -420,14 +420,10 @@ func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspe
 		"IdSpecs": IdSpecsToJSVar(idspecs),
 		"VectorURLPath": vectorURLPath,  // retire this when DBv1/v2ui.go and friends are gone
 		"TrackSpec": trackspec,
-
-		"ColorSchemeStrategy": colorscheme.Strategy.String(),
-		"ColorSchemeOpacity": fmt.Sprintf("%.2f", colorscheme.DefaultOpacity),
-		//"ColorSchemeAsCGIArgs": colorscheme.CGIArgs(), // Golang is too clever for this, sigh
-
+		"ColorScheme": colorscheme,
+		
 		"Waypoints": WaypointMapVar(sfo.KFixes),
 
-		// Would be nice to do something better for rendering hints, before they grow without bound
 		"WhiteOverlay": true,
 
 		"MapsAPIKey": "",//kGoogleMapsAPIKey,

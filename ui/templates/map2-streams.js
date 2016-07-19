@@ -1,12 +1,12 @@
-{{define "js-map2-streams"}} // Depends on: .MapLineOpacity
+{{define "js-map2-streams"}}
 
 function streamVectors() {
     var idspecs = {{.IdSpecs}}
     for (var i in idspecs) {
         var idspec = idspecs[i].idspec
         var url = {{.VectorURLPath}}+'?idspec='+idspec+'&json=1&trackspec='+{{.TrackSpec}}+
-            '&colorby='+{{.ColorSchemeStrategy}}+'&maplineopacity='+{{.ColorSchemeOpacity}}
-
+            '&'+{{.ColorScheme.QuotedCGIArgs}}
+        
         $.getJSON( url, function( data ) {
             $.each( data, function( key, val ) {
 

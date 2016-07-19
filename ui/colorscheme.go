@@ -54,8 +54,9 @@ var(
 )
 
 type ColorScheme struct {
-	Strategy ColoringStrategy
-	DefaultOpacity float64
+	Strategy        ColoringStrategy
+	DefaultOpacity  float64
+	ExplicitColor   string // Color will be used if the Explicit strategy is selected
 }
 
 type ColoringStrategy int
@@ -65,7 +66,8 @@ const(
 	ByAngleOfInclination
 	ByComplaints
 	ByTotalComplaints
-
+	ByExplicitColor
+	
 	// Old ones, for trackpoints
 	ByADSBReceiver
 	ByCandyStripe
@@ -78,6 +80,7 @@ func (cs ColoringStrategy)String() string {
 	case ByAngleOfInclination: return "angle"
 	case ByComplaints:         return "complaints"
 	case ByTotalComplaints:    return "totalcomplaints"
+	case ByExplicitColor:      return "explicit"
 	default:                   return ""
 	}
 }
@@ -89,20 +92,25 @@ func FormValueColoringStrategy(r *http.Request) ColoringStrategy {
 	case "angle":           return ByAngleOfInclination
 	case "complaints":      return ByComplaints
 	case "totalcomplaints": return ByTotalComplaints
+	case "explicit":        return ByExplicitColor
 	default:                return ByData
 	}
 }
 
 // This doesn't "work", as the embedded ampersand ends up encoded.
-func (cs ColorScheme)CGIArgs() template.HTML {
+func (cs ColorScheme)QuotedCGIArgs() template.JS {
 	str := fmt.Sprintf("colorby=%s&maplineopacity=%.2f", cs.Strategy.String(), cs.DefaultOpacity)
-	return template.HTML(str)
+	if cs.Strategy == ByExplicitColor {
+		str += fmt.Sprintf("&explicitcolor=%s", cs.ExplicitColor)
+	}
+	return template.JS("\""+str+"\"")
 }
 
 func FormValueColorScheme(r *http.Request) ColorScheme {
 	cs := ColorScheme{
 		Strategy: FormValueColoringStrategy(r),
 		DefaultOpacity: widget.FormValueFloat64EatErrs(r, "maplineopacity"),
+		ExplicitColor: r.FormValue("explicitcolor"),
 	}
 
 	if cs.DefaultOpacity == 0.0 {
