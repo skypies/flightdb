@@ -83,7 +83,8 @@ func ApproachSignature(r *report.Report, f *fdb.Flight, tis []fdb.TrackIntersect
 			dist, sigDistNMs)
 
 		tpVals := []string{
-			fmt.Sprintf("{alt,pressurealt,angle,accel}@%.1fNM", sigDistNMs[i]),
+			fmt.Sprintf("{time,alt,pressurealt,angle,accel}@%.1fNM", sigDistNMs[i]),
+			date.InPdt(tp.TimestampUTC).Format("15:04:05"),
 			fmt.Sprintf("%.0f", tp.IndicatedAltitude),
 			fmt.Sprintf("%.0f", tp.Altitude),
 			fmt.Sprintf("%.2f", tp.AngleOfInclination),
