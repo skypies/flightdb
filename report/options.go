@@ -45,6 +45,7 @@ type Options struct {
 	TrackDataSource    string  // TODO: replace with a cleverer track-specification thing
 	
 	// Options applicable to various reports
+	TextString         string  // An arbitrary string
 	ReferencePoint     geo.NamedLatlong // Some reports do things in relation to a fixed point
 	RefDistanceKM      float64     // ... and maybe within {dist} of {refpoint}
 	AltitudeTolerance  float64  // Some reports care about this
@@ -100,6 +101,7 @@ func FormValueReportOptions(r *http.Request) (Options, error) {
 		WindowMin: widget.FormValueFloat64EatErrs(r, "winmin"),
 		WindowMax: widget.FormValueFloat64EatErrs(r, "winmax"),
 
+		TextString: r.FormValue("textstring"),
 		AltitudeTolerance: widget.FormValueFloat64EatErrs(r, "altitudetolerance"),
 		Duration: widget.FormValueDuration(r, "duration"),
 		ReferencePoint: FormValueNamedLatlong(r, "refpt"),
@@ -243,6 +245,8 @@ func (r *Report)ToCGIArgs() string {
 
 	if len(r.Tags) > 0 { str += fmt.Sprintf("&tags=%s", strings.Join(r.Tags,",")) }
 	if len(r.NotTags) > 0 { str += fmt.Sprintf("&nottags=%s", strings.Join(r.NotTags,",")) }
+
+	if r.TextString != "" { str += fmt.Sprintf("&textstring=%s", r.TextString) }
 	
 	return str
 }
@@ -251,7 +255,7 @@ func (o Options)DescriptionText() string {
 	str := ""
 	if o.Name != ".list" { str += o.Name+": " }
 
-	s, e := o.Start.Format("2006/01/02"), o.End.Format("2006/01/02")
+	s, e := o.Start.Format("Mon 2006/01/02"), o.End.Format("Mon 2006/01/02")
 	str += s
 	if s != e { str += "-"+e }
 
@@ -272,6 +276,9 @@ func (o Options)DescriptionText() string {
 		str += fmt.Sprintf(", geo-window[%s-%s] applied", o.WindowStart.ShortString(),
 			o.WindowEnd.ShortString())
 	}
-
+	if o.TextString != "" {
+		str += fmt.Sprintf(", str='%s'", o.TextString)
+	}
+	
 	return str
 }

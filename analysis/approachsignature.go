@@ -13,14 +13,16 @@ import (
 )
 
 func init() {
-	report.HandleReport("approachsignature", ApproachSignature, "Signature for SFO approaches")
+	report.HandleReport("approachsignature", ApproachSignature,
+		"Signature for SFO approaches, only when equip has prefix {str}")
 }
 
 func ApproachSignature(r *report.Report, f *fdb.Flight, tis []fdb.TrackIntersection) (report.FlightReportOutcome, error){
 	r.I["[C] Flights considered for signatures"]++
 	
 	// Maybe make this configurable later
-	equipPrefix := "B73"
+	equipPrefix := r.TextString
+	if equipPrefix == "" { equipPrefix = "B73" } // Default
 	dest := "SFO"
 	reqWaypoints := []string{"EPICK","EDDYY","SWELS"}
 	sigDistNMs := []float64{41.1, 37.5, 34.5, 33.5}
