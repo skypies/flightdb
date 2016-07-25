@@ -1,6 +1,14 @@
 {{define "js-map2-setup"}} // Depends on: .Center (geo.Latlong), and .Zoom (int)
 
 var map;
+
+function setTextBox(boxName, legendHTML) {
+    var legend = document.getElementById(boxName);
+    var div = document.createElement('div');
+    div.innerHTML = legendHTML;
+    legend.appendChild(div);
+}
+
 function initMap() {
     map = new google.maps.Map(document.getElementById('map'), {
         center: {lat: {{.Center.Lat}}, lng: {{.Center.Long}}},
@@ -11,6 +19,9 @@ function initMap() {
 
     map.controls[google.maps.ControlPosition.RIGHT_TOP].push(
         document.getElementById('legend'));
+
+    map.controls[google.maps.ControlPosition.RIGHT_CENTER].push(
+        document.getElementById('details'));
     
     classBOverlay()
     {{if .WhiteOverlay}}
@@ -30,12 +41,11 @@ function initMap() {
 
     pathsOverlay()
 
-    {{if .Legend}}
-    var legend = document.getElementById('legend');
-    var div = document.createElement('div');
-    div.innerHTML = {{.Legend}};
-    legend.appendChild(div);
-    {{end}}
+    {{if .Legend}}setTextBox('legend', {{.Legend}}){{end}}
+//    var legend = document.getElementById('legend');
+ //   var div = document.createElement('div');
+  //  div.innerHTML = {{.Legend}};
+   // legend.appendChild(div);
     
     {{if .Points}}pointsOverlay(){{end}}
     {{if .IdSpecs}}streamVectors(){{end}}
