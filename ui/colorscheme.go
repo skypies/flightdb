@@ -8,10 +8,9 @@ import(
 	"github.com/skypies/util/widget"
 )
 
-func init() {
-	http.HandleFunc("/fdb/colorkey", ColorKeyHandler)
-}
+func init() { http.HandleFunc("/fdb/colorkey", ColorKeyHandler) }
 
+// {{{ var()
 
 var(
 	// http://www.perbang.dk/rgbgradient/
@@ -53,10 +52,15 @@ var(
 	}
 )
 
+// }}}
+
 type ColorScheme struct {
 	Strategy        ColoringStrategy
 	DefaultOpacity  float64
 	ExplicitColor   string // Color will be used if the Explicit strategy is selected
+
+	// Lots of values for various strategies
+	MinAltitude, MaxAltitude float64  // Adaptive altitude coloring
 }
 
 type ColoringStrategy int
@@ -73,8 +77,10 @@ const(
 	ByCandyStripe
 )
 
-func (cs ColoringStrategy)String() string {
-	switch cs {
+// {{{ strat.String
+
+func (strat ColoringStrategy)String() string {
+	switch strat {
 	case ByData:               return "source"
 	case ByAltitude:           return "altitude"
 	case ByAngleOfInclination: return "angle"
@@ -84,6 +90,10 @@ func (cs ColoringStrategy)String() string {
 	default:                   return ""
 	}
 }
+
+// }}}
+
+// {{{ FormValueColoringStrategy
 
 func FormValueColoringStrategy(r *http.Request) ColoringStrategy {
 	switch r.FormValue("colorby") {
@@ -97,20 +107,17 @@ func FormValueColoringStrategy(r *http.Request) ColoringStrategy {
 	}
 }
 
-// This doesn't "work", as the embedded ampersand ends up encoded.
-func (cs ColorScheme)QuotedCGIArgs() template.JS {
-	str := fmt.Sprintf("colorby=%s&maplineopacity=%.2f", cs.Strategy.String(), cs.DefaultOpacity)
-	if cs.Strategy == ByExplicitColor {
-		str += fmt.Sprintf("&explicitcolor=%s", cs.ExplicitColor)
-	}
-	return template.JS("\""+str+"\"")
-}
+// }}}
+// {{{ FormValueColorScheme
 
 func FormValueColorScheme(r *http.Request) ColorScheme {
 	cs := ColorScheme{
 		Strategy: FormValueColoringStrategy(r),
 		DefaultOpacity: widget.FormValueFloat64EatErrs(r, "maplineopacity"),
 		ExplicitColor: r.FormValue("explicitcolor"),
+
+		MinAltitude: widget.FormValueFloat64EatErrs(r, "minaltitude"),
+		MaxAltitude: widget.FormValueFloat64EatErrs(r, "maxaltitude"),
 	}
 
 	if cs.DefaultOpacity == 0.0 {
@@ -120,14 +127,35 @@ func FormValueColorScheme(r *http.Request) ColorScheme {
 	return cs
 }
 
-func ColorByTotalComplaintCount(n,scale int) string {
+// }}}
+
+// {{{ cs.QuotedCGIArgs
+
+// Call inside the template, e.g. var url = "/foo?" + {{.ColorScheme.QuotedCGIArgs}}
+func (cs ColorScheme)QuotedCGIArgs() template.JS {
+	str := fmt.Sprintf("colorby=%s&maplineopacity=%.2f", cs.Strategy.String(), cs.DefaultOpacity)
+	if cs.Strategy == ByExplicitColor {
+		str += fmt.Sprintf("&explicitcolor=%s", cs.ExplicitColor)
+	}
+	if cs.Strategy == ByAltitude && cs.MaxAltitude > cs.MinAltitude {
+		str += fmt.Sprintf("&minaltitude=%.0f&maxaltitude=%.0f", cs.MinAltitude, cs.MaxAltitude)
+	}
+
+	return template.JS("\""+str+"\"")
+}
+
+// }}}
+
+// {{{ cs.ColorBy[Total]ComplaintCount
+
+func (cs ColorScheme)ColorByTotalComplaintCount(n,scale int) string {
 	switch {
 	case n == 0: return "#404040"
 	case n < 10*scale: return grad12[n/scale]
 	default: return grad12[11]
 	}
 }
-func ColorByComplaintCount(n int) string {
+func (cs ColorScheme)ColorByComplaintCount(n int) string {
 	n *= 2 // Get some dynamic range going
 	switch {
 	case n == 0: return "#404040"
@@ -136,7 +164,10 @@ func ColorByComplaintCount(n int) string {
 	}
 }
 
-func ColorByAngle(a float64) string {
+// }}}
+// {{{ cs.ColorByAngle
+
+func (cs ColorScheme)ColorByAngle(a float64) string {
 	switch {
 	case a >  3.0: return gradRedToGreen7[6]
 	case a >  1.5: return gradRedToGreen7[5]
@@ -150,7 +181,22 @@ func ColorByAngle(a float64) string {
 	}
 }
 
-func ColorByAltitude(alt float64) string {
+// }}}
+// {{{ cs.ColorByAltitude
+
+func (cs ColorScheme)ColorByAltitude(alt float64) string {
+	if cs.MaxAltitude > cs.MinAltitude {
+		switch {
+		case alt < cs.MinAltitude: return grad12[11] // "#604040"
+		case alt > cs.MaxAltitude: return grad12[0]  // "#406040"
+		default:
+			ratio := (alt - cs.MinAltitude) / (cs.MaxAltitude - cs.MinAltitude)
+			bucket := int(10.0 * ratio) // [minalt,maxalt] --> [0,9]
+			bucket = 9 - bucket         // [0,9]           --> [9,0]
+			return grad12[bucket+1]     //                 --> [red,green]
+		}
+	}
+
 	switch {
 	case alt <   500: return grad12[11]
 	case alt <  2000: return grad12[10]
@@ -167,6 +213,9 @@ func ColorByAltitude(alt float64) string {
 	}
 }
 
+// }}}
+
+// {{{ ColorKeyHandler
 
 func ColorKeyHandler(w http.ResponseWriter, r *http.Request) {
 	str := "<html><body>\n"
@@ -191,3 +240,14 @@ func ColorKeyHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	fmt.Fprintf(w, str)
 }
+
+// }}}
+
+
+// {{{ -------------------------={ E N D }=----------------------------------
+
+// Local variables:
+// folded-file: t
+// end:
+
+// }}}

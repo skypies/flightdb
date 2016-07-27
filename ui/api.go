@@ -107,22 +107,23 @@ func MapLineFormat(f *fdb.Flight, trackName string, l geo.LatlongLine, numCompla
 	
 	t := f.Tracks[trackName]
 	tp := (*t)[l.I]
-
+	
+	// TODO: find a more generic API into the colorscheme, and retire this switch
 	switch colorscheme.Strategy {
 	case ByAltitude:
-		color = ColorByAltitude(tp.Altitude)
+		color = colorscheme.ColorByAltitude(tp.Altitude)
 
 	case ByAngleOfInclination:
-		color = ColorByAngle(tp.AngleOfInclination)
+		color = colorscheme.ColorByAngle(tp.AngleOfInclination)
 
 	case ByComplaints:
-		color = ColorByComplaintCount(numComplaints)
+		color = colorscheme.ColorByComplaintCount(numComplaints)
 		if numComplaints == 0 {
 			opacity = 0.1
 		}
 
 	case ByTotalComplaints:
-		color = ColorByTotalComplaintCount(numComplaints, 4)  // magic scaling factor
+		color = colorscheme.ColorByTotalComplaintCount(numComplaints, 4)  // magic scaling factor
 		if numComplaints == 0 {
 			opacity = 0.1
 		}

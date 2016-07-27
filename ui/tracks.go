@@ -411,7 +411,6 @@ func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspe
 		legend += ", "+rep.DescriptionText()
 	}
 
-	
 	var params = map[string]interface{}{
 		"Legend": legend,
 		"Points": MapPointsToJSVar(ms.Points),
@@ -423,9 +422,7 @@ func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspe
 		"ColorScheme": colorscheme,
 		
 		"Waypoints": WaypointMapVar(sfo.KFixes),
-
 		"WhiteOverlay": true,
-
 		"MapsAPIKey": "",//kGoogleMapsAPIKey,
 		"Center": sfo.KFixes["EDDYY"], //sfo.KLatlongSFO,
 		"Zoom": 10,
