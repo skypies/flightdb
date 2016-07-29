@@ -155,8 +155,8 @@ func FlightToMapLines(f *fdb.Flight, trackName string, colorscheme ColorScheme, 
 	_,origTrack := f.PreferredTrack([]string{trackName})
 
 	origTrack.PostProcess()
-	//track := origTrack.AsSanityFilteredTrack()
-	track := origTrack //.AsSanityFilteredTrack() // There was once a track with a crazy datapoint
+	track := origTrack.AsSanityFilteredTrack()
+	//track := origTrack //.AsSanityFilteredTrack() // There was once a track with a crazy datapoint
 	flightLines := track.AsLinesSampledEvery(sampleRate)
 
 	complaintCounts := make([]int, len(flightLines))
