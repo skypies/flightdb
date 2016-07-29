@@ -13,8 +13,9 @@ func init() { http.HandleFunc("/fdb/colorkey", ColorKeyHandler) }
 // {{{ var()
 
 var(
-	// http://www.perbang.dk/rgbgradient/
+	DefaultExplicitColor = "1100AA"  // No '#' on this one
 
+	// http://www.perbang.dk/rgbgradient/
 	grad12 = []string{
 		"#00BFA9",
 		"#00C266",
@@ -124,6 +125,10 @@ func FormValueColorScheme(r *http.Request) ColorScheme {
 		cs.DefaultOpacity = 0.6
 	}
 
+	if cs.Strategy == ByExplicitColor && cs.ExplicitColor == "" {
+		cs.ExplicitColor = DefaultExplicitColor
+	}
+	
 	return cs
 }
 
