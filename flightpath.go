@@ -102,6 +102,9 @@ func (f *Flight)TagCoarseFlightpathForSFO() {
 		matchers = append(matchers, BoxMatcher{":SFO_E", sfo.KFixes["ALWYS"].Box(64,64)})
 		matchers = append(matchers, BoxMatcher{":SFO_N", sfo.KFixes["LOZIT"].Box(20,20)})
 
+		// This is a provisional matcher; we might remove the tag (see below)
+		matchers = append(matchers, BoxMatcher{":SFO_NE", sfo.KFixes["FINSH"].Box(6,6)})
+
 	} else if f.Origin == "SFO" || f.Origin == "OAK" {
 		// Departures
 		matchers = append(matchers, BoxMatcher{"SFO_S:", sfo.KFixes["PPEGS"].Box(30,30)})
@@ -123,6 +126,24 @@ func (f *Flight)TagCoarseFlightpathForSFO() {
 			}
 		}
 	}
+
+	// Chained matchers
+	// SFO_NW is SFO_N && flies over BRIXX (at alt >5000')
+	if f.HasTag(":SFO_N") && f.HasWaypoint("BRIXX") {
+		altAtBrixx := 0.0
+		for _,trackName := range f.ListTracks() {
+			t := f.Tracks[trackName]
+			if brixxIndex := (*t).IndexAtTime(f.Waypoints["BRIXX"]); brixxIndex >= 0 {
+				altAtBrixx = (*t)[brixxIndex].Altitude
+			}
+		}
+		if altAtBrixx > 5000 {
+			f.SetTag(":SFO_NW")
+		}
+	}
+
+	// SFO_NE is SFO_N && flies within 3 km of FINSH (so boxside=6)
+	if f.HasTag(":SFO_NE") && !f.HasTag(":SFO_N") { f.DropTag(":SFO_NE") }
 }
 
 type Procedure struct {

@@ -122,14 +122,15 @@ func FormValueReportOptions(r *http.Request) (Options, error) {
 	}
 
 	// for _,name := range []string{"waypoint1", "waypoint2", "waypoint3"} {
+	// for _,name := range []string{"notwaypoint1", "notwaypoint2", "notwaypoint3"} {
 	for i:=1; i<=9; i++ {
 		name := fmt.Sprintf("waypoint%d", i)
 		if r.FormValue(name) != "" {
 			waypoint := strings.ToUpper(r.FormValue(name))
 			opt.Waypoints = append(opt.Waypoints, waypoint)
 		}
-	}
-	for _,name := range []string{"notwaypoint1", "notwaypoint2", "notwaypoint3"} {
+
+		name = fmt.Sprintf("notwaypoint%d", i)
 		if r.FormValue(name) != "" {
 			waypoint := strings.ToUpper(r.FormValue(name))
 			opt.NotWaypoints = append(opt.NotWaypoints, waypoint)
