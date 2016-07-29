@@ -84,19 +84,30 @@ var (
 	}
 )
 
+type BoxMatcher struct {
+	Tag string
+	geo.LatlongBox
+}
+
+// :SFO_E for eastern arrivals to SFO.
+// :SFO_N for northen arrivals to SFO.
 // :SFO_S for southern arrivals:  :SFO && 30 km box around ANJEE, WWAVE, or their midpoint)
 // SFO_S: for southern departures:  (SFO: ||OAK:) && 30 km (TBR) box around PPEGS
 func (f *Flight)TagCoarseFlightpathForSFO() {
-	box := geo.LatlongBox{}
-	tag := ""
-	
+	matchers := []BoxMatcher{}
+
 	if f.Destination == "SFO" {
-		box = sfo.KFixes["WWAVS"].Box(30,30)
-		tag = ":SFO_S"
+		// Various kinds of arrivals
+		matchers = append(matchers, BoxMatcher{":SFO_S", sfo.KFixes["WWAVS"].Box(30,30)})
+		matchers = append(matchers, BoxMatcher{":SFO_E", sfo.KFixes["ALWYS"].Box(64,64)})
+		matchers = append(matchers, BoxMatcher{":SFO_N", sfo.KFixes["LOZIT"].Box(20,20)})
+
 	} else if f.Origin == "SFO" || f.Origin == "OAK" {
-		box = sfo.KFixes["PPEGS"].Box(30,30)
-		tag = "SFO_S:"
-	} else {
+		// Departures
+		matchers = append(matchers, BoxMatcher{"SFO_S:", sfo.KFixes["PPEGS"].Box(30,30)})
+	}
+
+	if len(matchers) == 0 {
 		return
 	}
 	
@@ -105,14 +116,14 @@ func (f *Flight)TagCoarseFlightpathForSFO() {
 		lines := t.AsLinesSampledEvery(time.Second*1)
 	
 		for _,line := range lines {
-			if box.IntersectsLine(line) {
-				f.SetTag(tag)
-				return
+			for _,matcher := range matchers {
+				if matcher.IntersectsLine(line) {
+					f.SetTag(matcher.Tag)
+				}
 			}
 		}
 	}
 }
-
 
 type Procedure struct {
 	Name         string            // E.g. SERFR2
