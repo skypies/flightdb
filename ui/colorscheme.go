@@ -186,6 +186,15 @@ func (cs ColorScheme)ColorByAngle(a float64) string {
 
 func (cs ColorScheme)ColorByAltitude(alt float64) string {
 	if cs.MaxAltitude > cs.MinAltitude {
+		// This is a little hack, for highlighting ranges specifically.
+		if int(cs.MaxAltitude)%1000 == 1 {
+			switch {
+			case alt < cs.MinAltitude: return "#ff0000"
+			case alt > cs.MaxAltitude: return "#00ff00"
+			default: return "#0000ff"
+			}
+		}
+
 		switch {
 		case alt < cs.MinAltitude: return grad12[11] // "#604040"
 		case alt > cs.MaxAltitude: return grad12[0]  // "#406040"

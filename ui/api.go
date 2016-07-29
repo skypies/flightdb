@@ -100,13 +100,14 @@ func OutputFlightAsVectorJSON(w http.ResponseWriter, r *http.Request, f *fdb.Fli
 // }}}
 // {{{ MapLineFormat
 
-func MapLineFormat(f *fdb.Flight, trackName string, l geo.LatlongLine, numComplaints int, colorscheme ColorScheme) (string, float64) {
+func MapLineFormat(f *fdb.Flight, t fdb.Track, trackName string, l geo.LatlongLine, numComplaints int, colorscheme ColorScheme) (string, float64) {
 	// Defaults
 	color := "#101000"
 	opacity := colorscheme.DefaultOpacity
-	
-	t := f.Tracks[trackName]
-	tp := (*t)[l.I]
+
+	//t := f.Tracks[trackName]
+	//tp := (*t)[l.I]
+	tp := t[l.I]
 	
 	// TODO: find a more generic API into the colorscheme, and retire this switch
 	switch colorscheme.Strategy {
@@ -153,9 +154,9 @@ func FlightToMapLines(f *fdb.Flight, trackName string, colorscheme ColorScheme, 
 	sampleRate := time.Millisecond * 2500
 	_,origTrack := f.PreferredTrack([]string{trackName})
 
-	// There was once a track with a crazy datapoint in ...
 	origTrack.PostProcess()
-	track := origTrack.AsSanityFilteredTrack()
+	//track := origTrack.AsSanityFilteredTrack()
+	track := origTrack //.AsSanityFilteredTrack() // There was once a track with a crazy datapoint
 	flightLines := track.AsLinesSampledEvery(sampleRate)
 
 	complaintCounts := make([]int, len(flightLines))
@@ -180,10 +181,10 @@ func FlightToMapLines(f *fdb.Flight, trackName string, colorscheme ColorScheme, 
 	}
 	
 	for i,_ := range flightLines {
-		color,opacity := MapLineFormat(f, trackName, flightLines[i], complaintCounts[i], colorscheme)
+		color,opacity := MapLineFormat(f, track, trackName, flightLines[i], complaintCounts[i], colorscheme)
 
 		if colorscheme.Strategy == ByTotalComplaints {
-			color,opacity = MapLineFormat(f, trackName, flightLines[i], len(times), colorscheme)
+			color,opacity = MapLineFormat(f, track, trackName, flightLines[i], len(times), colorscheme)
 		}
 
 		mapLine := MapLine{
