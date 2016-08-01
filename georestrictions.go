@@ -9,11 +9,27 @@ import(
 // {{{ f.SatisfiesGeoRestriction
 
 // Also return trackpoint info ?
-func (f *Flight)SatisfiesGeoRestriction(gr geo.GeoRestrictor, tracks []string) (bool, TrackIntersection, string) {
-	
+func (f *Flight)SatisfiesGeoRestriction(gr geo.Restrictor, tracks []string) (bool, TrackIntersection, string) {
+
+	intersects,intersection,debug := f.IntersectsGeoRestriction(gr,tracks)
+
+	// A restrictor can require that a flight *not* intersect with the geothing
+	if !gr.MustNotIntersect() {
+		return intersects,intersection,debug
+	} else {
+		return !intersects,intersection, debug + "\n[Negated for MustNotIntersect]\n"
+	}
+}
+
+// }}}
+// {{{ f.IntersectsGeoRestriction
+
+// Also return trackpoint info ?
+func (f *Flight)IntersectsGeoRestriction(gr geo.Restrictor, tracks []string) (bool, TrackIntersection, string) {
+
 	if len(tracks) == 0 {
 		_,tName := f.AnyTrackWithName()
-		ok,tis,deb := f.Tracks[tName].SatisfiesGeoRestriction(gr)
+		ok,tis,deb := f.Tracks[tName].IntersectsGeoRestriction(gr)
 		tis.TrackName = tName
 		return ok,tis,deb
 	}
@@ -21,7 +37,7 @@ func (f *Flight)SatisfiesGeoRestriction(gr geo.GeoRestrictor, tracks []string) (
 	for _,tName := range tracks {
 		if f.HasTrack(tName) {
 			str := fmt.Sprintf("* wanted tracks %v, found %v", tracks, tName)
-			ok,tis,deb := f.Tracks[tName].SatisfiesGeoRestriction(gr)
+			ok,tis,deb := f.Tracks[tName].IntersectsGeoRestriction(gr)
 			tis.TrackName = tName
 			return ok,tis,str+deb
 		}
@@ -34,7 +50,7 @@ func (f *Flight)SatisfiesGeoRestriction(gr geo.GeoRestrictor, tracks []string) (
 
 // {{{ t.findEntry
 
-func (t Track)findEntry(lines []geo.LatlongLine, start int, gr geo.GeoRestrictor) (int,int,string) {
+func (t Track)findEntry(lines []geo.LatlongLine, start int, gr geo.Restrictor) (int,int,string) {
 	str := ""
 	//str += fmt.Sprintf("looking at %d lines, from %d", len(lines), start)
 
@@ -74,7 +90,7 @@ func (t Track)findEntry(lines []geo.LatlongLine, start int, gr geo.GeoRestrictor
 // }}}
 // {{{ t.findExit
 
-func (t Track)findExit(lines []geo.LatlongLine, start int, gr geo.GeoRestrictor) (int,int,string) {
+func (t Track)findExit(lines []geo.LatlongLine, start int, gr geo.Restrictor) (int,int,string) {
 	str := ""
 	for i:=start; i<len(lines); i++ {
 		line := lines[i]
@@ -121,9 +137,9 @@ func (t Track)findExit(lines []geo.LatlongLine, start int, gr geo.GeoRestrictor)
 }
 
 // }}}
-// {{{ t.SatisfiesGeoRestriction
+// {{{ t.IntersectsGeoRestriction
 
-func (t Track)SatisfiesGeoRestriction(gr geo.GeoRestrictor) (bool, TrackIntersection, string) {
+func (t Track)IntersectsGeoRestriction(gr geo.Restrictor) (bool, TrackIntersection, string) {
 	lines := t.AsLinesSampledEvery(time.Second * 1)
 	str := fmt.Sprintf("** %s\n** Geo   %s\n", t, gr)
 	

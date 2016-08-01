@@ -31,6 +31,7 @@ type Options struct {
 	BoxCenter          geo.NamedLatlong
 	BoxRadiusKM        float64  // [BROKEN FOR NOW] For defining areas of interest around waypoints
 	BoxSideKM          float64  // For defining areas of interest around waypoints
+	BoxExcludes        bool     // By default[false], tracks must intersect the box. NOT IMPLEMENTED
 	// Min/max altitudes. 0 == don't care
 	AltitudeMin        int64
 	AltitudeMax        int64
@@ -93,6 +94,7 @@ func FormValueReportOptions(r *http.Request) (Options, error) {
 		BoxCenter: FormValueNamedLatlong(r, "boxcenter"),
 		BoxRadiusKM: widget.FormValueFloat64EatErrs(r, "boxradiuskm"),
 		BoxSideKM: widget.FormValueFloat64EatErrs(r, "boxsidekm"),
+		BoxExcludes: widget.FormValueCheckbox(r, "boxexcludes"),
 		AltitudeMin: widget.FormValueInt64(r, "altitudemin"),
 		AltitudeMax: widget.FormValueInt64(r, "altitudemax"),
 
@@ -144,25 +146,28 @@ func FormValueReportOptions(r *http.Request) (Options, error) {
 	return opt, nil
 }
  
-func (o Options)ListGeoRestrictors() []geo.GeoRestrictor {
-	ret := []geo.GeoRestrictor{}
+func (o Options)ListGeoRestrictors() []geo.Restrictor {
+	ret := []geo.Restrictor{}
 
 	if !o.WindowStart.IsNil() && !o.WindowEnd.IsNil() {
-		window := geo.Window{
-			LatlongLine: o.WindowStart.BuildLine(o.WindowEnd.Latlong),
-			MinAltitude: o.WindowMin,
-			MaxAltitude: o.WindowMax,
+		window := geo.WindowRestrictor{
+			Window: geo.Window{
+				LatlongLine: o.WindowStart.BuildLine(o.WindowEnd.Latlong),
+				MinAltitude: o.WindowMin,
+				MaxAltitude: o.WindowMax,
+			},
 		}
 		ret = append(ret, window)
 	}
 
 	addCenteredRestriction := func(pos geo.Latlong) {
-		if o.BoxRadiusKM > 0 {
-			ret = append(ret, pos.Circle(o.BoxRadiusKM)) // BROKEN
-		} else if o.BoxSideKM > 0 {
-			box := pos.Box(o.BoxSideKM,o.BoxSideKM)
-			box.Floor, box.Ceil = o.AltitudeMin, o.AltitudeMax
-			ret = append(ret, box)
+		if o.BoxSideKM > 0 {
+			restric := geo.LatlongBoxRestrictor{LatlongBox: pos.Box(o.BoxSideKM,o.BoxSideKM) }
+			restric.Floor, restric.Ceil = o.AltitudeMin, o.AltitudeMax
+			restric.MustNotIntersectVal = o.BoxExcludes
+			ret = append(ret, restric)
+			// BROKEN } else if o.BoxRadiusKM > 0 {
+			// ret = append(ret, pos.Circle(o.BoxRadiusKM))
 		}
 	}
 
@@ -171,8 +176,8 @@ func (o Options)ListGeoRestrictors() []geo.GeoRestrictor {
 	return ret
 }
 
-func (o Options)GetRefpointRestrictor() geo.GeoRestrictor {
-	return o.ReferencePoint.Box(o.RefDistanceKM, o.RefDistanceKM)
+func (o Options)GetRefpointRestrictor() geo.Restrictor {
+	return geo.LatlongBoxRestrictor{LatlongBox:o.ReferencePoint.Box(o.RefDistanceKM,o.RefDistanceKM)}
 }
 
 func (o Options)ListMapRenderers() []geo.MapRenderer {
@@ -223,6 +228,7 @@ func (r *Report)ToCGIArgs() string {
 		str += "&" + NamedLatlongToCGIArgs("boxcenter", r.BoxCenter)
 		if r.BoxRadiusKM > 0.0 { str += fmt.Sprintf("&boxradiuskm=%.2f", r.BoxRadiusKM) }
 		if r.BoxSideKM > 0.0 { str += fmt.Sprintf("&boxsidekm=%.2f", r.BoxSideKM) }
+		if r.BoxExcludes { str += "&boxexcludes=checked" }
 	}
 
 	if r.AltitudeMin > 0 { str += fmt.Sprintf("&altitudemin=%d", r.AltitudeMin) }
@@ -273,7 +279,10 @@ func (o Options)DescriptionText() string {
 	}
 
 	if !o.BoxCenter.IsNil() {
-		str += fmt.Sprintf(", box %s@%.1fKM%s applied", o.BoxCenter.ShortString(), o.BoxSideKM, altStr)
+		boxname := "box"
+		if o.BoxExcludes { boxname = "exclude-box" }
+		str += fmt.Sprintf(", %s %s@%.1fKM%s applied", boxname, o.BoxCenter.ShortString(),
+			o.BoxSideKM, altStr)
 	}
 	if !o.WindowStart.IsNil() {
 		str += fmt.Sprintf(", geo-window[%s-%s] applied", o.WindowStart.ShortString(),
