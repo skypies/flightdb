@@ -102,7 +102,7 @@ func (f *Flight)TagCoarseFlightpathForSFO() {
 		// Various kinds of arrivals
 		matchers = append(matchers, BoxMatcher{":SFO_S", sfo.KFixes["WWAVS"].Box(30,30)})
 		matchers = append(matchers, BoxMatcher{":SFO_E", sfo.KFixes["ALWYS"].Box(64,64)})
-		matchers = append(matchers, BoxMatcher{":SFO_N", sfo.KFixes["LOZIT"].Box(20,20)})
+		matchers = append(matchers, BoxMatcher{":SFO_N", sfo.KFixes["LOZIT"].Box(25,25)})
 
 		// This is a provisional matcher; we might remove the tag (see below)
 		matchers = append(matchers, BoxMatcher{":SFO_NE", sfo.KFixes["FINSH"].Box(6,6)})
