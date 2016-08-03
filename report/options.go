@@ -48,6 +48,7 @@ type Options struct {
 	// Options applicable to various reports
 	TextString         string  // An arbitrary string
 	ReferencePoint     geo.NamedLatlong // Some reports do things in relation to a fixed point
+	ReferencePoint2    geo.NamedLatlong // Some reports do things in relation to a fixed point
 	RefDistanceKM      float64     // ... and maybe within {dist} of {refpoint}
 	AltitudeTolerance  float64  // Some reports care about this
 	time.Duration      // embedded; a time tolerance
@@ -107,6 +108,7 @@ func FormValueReportOptions(r *http.Request) (Options, error) {
 		AltitudeTolerance: widget.FormValueFloat64EatErrs(r, "altitudetolerance"),
 		Duration: widget.FormValueDuration(r, "duration"),
 		ReferencePoint: FormValueNamedLatlong(r, "refpt"),
+		ReferencePoint2: FormValueNamedLatlong(r, "refpt2"),
 		RefDistanceKM: widget.FormValueFloat64EatErrs(r, "refdistancekm"),
 
 		ResultsFormat: r.FormValue("resultformat"),
@@ -235,6 +237,7 @@ func (r *Report)ToCGIArgs() string {
 	if r.AltitudeMax > 0 { str += fmt.Sprintf("&altitudemax=%d", r.AltitudeMax) }
 
 	if !r.ReferencePoint.IsNil() { str += "&" + NamedLatlongToCGIArgs("refpt", r.ReferencePoint) }
+	if !r.ReferencePoint2.IsNil() { str += "&" + NamedLatlongToCGIArgs("refpt2", r.ReferencePoint2) }
 
 	if r.RefDistanceKM > 0.0 { str += fmt.Sprintf("&refdistancekm=%.2f", r.RefDistanceKM) }
 
