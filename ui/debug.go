@@ -6,7 +6,6 @@ import(
 	"net/http"
 	
 	"google.golang.org/appengine"
-	//"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/user"
 
 	"github.com/skypies/flightdb2/fgae"
@@ -64,6 +63,13 @@ func debugHandler(w http.ResponseWriter, r *http.Request) {
 		t := f.AnyTrack()
 		str += fmt.Sprintf("---- Anytrack: %s\n", t)
 
+		/* pos := sfo.KFixes["BRIXX"]
+		gr := geo.LatlongBoxRestrictor{LatlongBox: pos.Box(1,1) }
+		isects,debug := t.AllIntersectsGeoRestriction(gr)
+		str += fmt.Sprintf("---- Intersections\n")
+		for _,isect := range isects { str += fmt.Sprintf("  -- %s\n", isect) }
+		str += fmt.Sprintf("\n%s", debug) */
+		
 		for k,v := range f.Tracks {
 			str += fmt.Sprintf("  -- [%-7.7s] %s\n", k, v)
 			if r.FormValue("v") != "" {
@@ -72,7 +78,7 @@ func debugHandler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
-
+		
 		str += fmt.Sprintf("\n--- DebugLog:-\n%s\n", f.DebugLog)
 	}
 
