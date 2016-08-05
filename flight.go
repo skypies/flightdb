@@ -5,7 +5,6 @@ import(
 	"sort"
 	"time"
 	"github.com/skypies/geo/altitude"
-	"github.com/skypies/geo/sfo"
 	"github.com/skypies/flightdb2/metar"
 	"github.com/skypies/util/date"
 )
