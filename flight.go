@@ -202,15 +202,6 @@ func (f *Flight)PruneTrackContents() {
 	}
 }
 
-// This is all so horrid.
-func (f *Flight)AnalyseWaypoints() {
-	for _,trackName := range f.ListTracks() {
-		for wp,t := range f.Tracks[trackName].MatchWaypoints(sfo.KFixes) {
-			f.SetWaypoint(wp,t)
-		}
-	}
-}
-
 func (f *Flight)Analyse() (error, string) {
 	f.DebugLog += "-- Analyse\n"
 	

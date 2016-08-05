@@ -10,6 +10,18 @@ var(
 	KWaypointSnapKM = 1.0
 )
 
+// This is all so horrid.
+func (f *Flight)AnalyseWaypoints() {
+	// We do a full reset of the waypoints, as we're about to do a full recompute.
+	f.Waypoints = map[string]time.Time{}
+
+	for _,trackName := range f.ListTracks() {
+		for wp,t := range f.Tracks[trackName].MatchWaypoints(sfo.KFixes) {
+			f.SetWaypoint(wp,t)
+		}
+	}
+}
+
 // This is pretty dumb
 func (t Track)MatchWaypoints(waypoints map[string]geo.Latlong) (map[string]time.Time) {
 	ret := map[string]time.Time{}
