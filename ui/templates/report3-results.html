@@ -29,7 +29,7 @@
         <table>
           <tr><td colspan="10">
               <button type="submit" name="viewtype" value="vector" class="btn-link">VectorMap</button>
-              [noFurn:<input type="checkbox" name="nofurniture"/>;
+              [noFurn:<input type="checkbox" checked="yes" name="nofurniture"/>;
               colorBy:<select name="colorby">
                 <option value="source">DataSource</option>
                 <option value="altitude" selected="1">Altitude</option>
@@ -38,10 +38,10 @@
                 <option value="totalcomplaints">Total#Complaints</option>
                 <option value="explicit">ExplicitColor</option>
               </select>;
-              lineOpacity:<input type="text" name="maplineopacity" size="4" value="0.2"/>,
+              lineOpacity:<input type="text" name="maplineopacity" size="4" value="0.4"/>,
               explicitColor:<input type="text" name="explicitcolor" size="8" value=""/>,
-              minAltitude:<input type="text" name="minaltitude" size="5" value=""/>,
-              maxAltitude:<input type="text" name="maxaltitude" size="5" value=""/>,
+              minAltitude:<input type="text" name="minaltitude" size="5" value="3000"/>,
+              maxAltitude:<input type="text" name="maxaltitude" size="5" value="10000"/>,
               maxFlights:<input type="text" name="maxflights" size="4" value="1000"/>]
               <br/>
               <button type="submit" name="viewtype" value="descent" class="btn-link">AltitudeGraph</button>
