@@ -13,6 +13,7 @@ import(
 
 func init() {
 	http.HandleFunc("/fdb/debug", debugHandler) // should rename at some point ...
+	http.HandleFunc("/fdb/debug2", debug2Handler)
 	http.HandleFunc("/fdb/debug/user", debugUserHandler)
 }
 
@@ -82,6 +83,21 @@ func debugHandler(w http.ResponseWriter, r *http.Request) {
 		str += fmt.Sprintf("\n--- DebugLog:-\n%s\n", f.DebugLog)
 	}
 
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte(fmt.Sprintf("OK\n\n%s", str)))
+}
+
+// }}}
+// {{{ debug2Handler
+
+func debug2Handler(w http.ResponseWriter, r *http.Request) {
+	str := "OK!\n"
+	//c := appengine.NewContext(r)
+	//db := fgae.FlightDB{C:c}	
+	//s,e := date.WindowForYesterday()
+
+	// Projection query to retrieve tags ?
+	
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(fmt.Sprintf("OK\n\n%s", str)))
 }

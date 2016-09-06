@@ -48,7 +48,7 @@ var(
 // http://backend-dot-serfr0-fdb.appspot.com/batch/publish-all-flights?skipload=1&date=range&range_from=2016/07/01&range_to=2016/07/03
 
 // /batch/publish-all-flights?date=range&range_from=2015/08/09&range_to=2015/08/10
-//  ?skipload=1  (optional, skip loading them into bigquery
+//  ?skipload=1  (skip loading them into bigquery; it's better to bulk load all of them at once)
 
 // Writes them all into a batch queue
 func publishAllFlightsHandler(w http.ResponseWriter, r *http.Request) {
@@ -69,7 +69,7 @@ func publishAllFlightsHandler(w http.ResponseWriter, r *http.Request) {
 		
 		t := taskqueue.NewPOSTTask(thisUrl, map[string][]string{})
 
-		if _,err := taskqueue.Add(ctx, t, "batch"); err != nil {
+		if _,err := taskqueue.Add(ctx, t, "bigbatch"); err != nil {
 			log.Errorf(ctx, "publishAllFligtsHandler: enqueue: %v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -162,8 +162,8 @@ func writeBigQueryFlightsGCSFile(r *http.Request, datestring, foldername,filenam
 		// side, and so will end up showing in the results for two
 		// different days. We don't want dupes in the aggregate output, so
 		// we should only include the flight in one of them; we pick the
-		// first day. So if the flight's timeslot does not start after our
-		// start-time, skip it.
+		// first day. So if the flight's first timeslot does not start
+		// after our start-time, skip it.
 		if slots := f.Timeslots(); len(slots)>0 && slots[0].Before(s) {
 			continue
 		}

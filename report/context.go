@@ -24,6 +24,7 @@ var(
 		"raymonde.guindon@gmail.com",
 		"rguindon@alumni.stanford.edu",
 		"meekGee@gmail.com",
+		"nancyjordan650@gmail.com",
 	}
 )
 

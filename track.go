@@ -170,7 +170,7 @@ func (t Track)PostProcess() {
 		dur  := t[i].TimestampUTC.Sub(t[i-1].TimestampUTC)
 		distKM := t[i].DistKM(t[i-1].Latlong)
 
-		if t[0].DataSource == "RG-FOIA" {
+		if t[0].DataSource == "RG-FOIA" || t[0].DataSource == "EB-FOIA" {
 			// FOIA data has no groundspeed data. Compute it.
 			// 1 knot == 1 NM/hour == 1.852 KM/hour
 			t[i].GroundSpeed = (distKM/dur.Hours()) / 1.852

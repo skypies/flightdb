@@ -5,8 +5,16 @@ queue:
 # This queue is for arbitrary / oneoff batch jobs
 - name: batch
   rate: 2400/m
-  max_concurrent_requests: 32
-  bucket_size: 32
+  max_concurrent_requests: 40
+  retry_parameters:
+    min_backoff_seconds: 1
+    task_retry_limit: 2
+
+
+# This queue is for arbitrary / oneoff batch jobs
+- name: bigbatch
+  rate: 10/m
+  max_concurrent_requests: 1
   retry_parameters:
     min_backoff_seconds: 1
     task_retry_limit: 2
