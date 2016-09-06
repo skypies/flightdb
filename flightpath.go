@@ -101,23 +101,30 @@ type BoxMatcher struct {
 	geo.LatlongBox
 }
 
+// :SFO_W   for western arrivals (oceanic) to SFO.
 // :SFO_E   for eastern arrivals to SFO.
 // :SFO_N   for northen arrivals to SFO.
 // :SFO_NE  are SFO_N that loop over FINSH
 // :SFO_NW  are SFO_N that pass over BRIXX(KSFO) at >5000'
 // :SFO_S   for southern arrivals:  :SFO && 30 km box around ANJEE, WWAVE, or their midpoint)
 // SFO_S:   for southern departures:  (SFO: ||OAK:) && 30 km (TBR) box around PPEGS
+// :SJC_N   arrivals into SJC that pass through BRIXX (i.e. over KSFO)
 func (f *Flight)TagCoarseFlightpathForSFO() {
 	matchers := []BoxMatcher{}
 
 	if f.Destination == "SFO" {
-		// Various kinds of arrivals
+		// Various kinds of SFO arrivals
 		matchers = append(matchers, BoxMatcher{":SFO_S", sfo.KFixes["WWAVS"].Box(30,30)})
 		matchers = append(matchers, BoxMatcher{":SFO_E", sfo.KFixes["ALWYS"].Box(64,64)})
 		matchers = append(matchers, BoxMatcher{":SFO_N", sfo.KFixes["LOZIT"].Box(25,25)})
+		matchers = append(matchers, BoxMatcher{":SFO_W", sfo.KFixes["PIRAT"].Box(50,50)})
 
 		// This is a provisional matcher; we might remove the tag (see below)
 		matchers = append(matchers, BoxMatcher{":SFO_NE", sfo.KFixes["FINSH"].Box(6,6)})
+
+	} else if f.Destination == "SJC" {
+		// Various kinds of SJC arrivals
+		matchers = append(matchers, BoxMatcher{":SJC_N", sfo.KFixes["BRIXX"].Box(5,5)})
 
 	} else if f.Origin == "SFO" || f.Origin == "OAK" {
 		// Departures
