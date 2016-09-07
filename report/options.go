@@ -77,7 +77,7 @@ func FormValueReportOptions(r *http.Request) (Options, error) {
 
 	s,e,err := widget.FormValueDateRange(r)	
 	if err != nil { return Options{}, err }
-
+	
 //	cutoff,_ := time.Parse("2006.01.02", "2015.08.01")
 //	if s.Before(cutoff) || e.Before(cutoff) {
 //		return Options{}, fmt.Errorf("earliest date for reports is '%s'", cutoff)
@@ -112,6 +112,14 @@ func FormValueReportOptions(r *http.Request) (Options, error) {
 		RefDistanceKM: widget.FormValueFloat64EatErrs(r, "refdistancekm"),
 
 		ResultsFormat: r.FormValue("resultformat"),
+	}
+
+	// Dates sadly hardcoded for now.
+	if widget.FormValueCheckbox(r, "preferfoia") {
+		foiaEnd,_ := time.Parse("2006.01.02", "2016.06.24")
+		if e.Before(foiaEnd) {
+			opt.Tags = append(opt.Tags, "FOIA")
+		}
 	}
 	
 	switch r.FormValue("datasource") {
