@@ -42,7 +42,7 @@ func ClassBForTrack(r *report.Report, track fdb.Track) (*geo.TPClassBAnalysis,er
 			lookup := r.Archive.Lookup(tp.TimestampUTC)
 			if lookup == nil {
 				track[i].AnalysisAnnotation += fmt.Sprintf("* No Metar, using fake data (assume 29.9213)\n")
-				lookup = &metar.Report{"asd", "KSFO", tp.TimestampUTC, 29.9213}
+				lookup = &metar.Report{"asd", "fake", "KSFO", tp.TimestampUTC, 29.9213}
 			}
 			if lookup == nil || lookup.Raw == "" {
 				track[i].AnalysisAnnotation += fmt.Sprintf("* No Metar, skipping\n")

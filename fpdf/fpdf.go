@@ -274,8 +274,8 @@ func DrawWaypoints(pdf *gofpdf.Fpdf) {
 		{"SWELS",  4550,  4850},
 		{"MENLO",  3850,  4150},
 
-		{"SKUNK", 11850, 12150},
-		{"BOLDR",  9850, 10150},
+		// {"SKUNK", 11850, 12150},
+		// {"BOLDR",  9850, 10150},
 	}
 
 	for _,wp := range wpFurn {

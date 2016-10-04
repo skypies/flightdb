@@ -53,7 +53,7 @@ KSFO 292156Z 18011KT 3SM -RA BR FEW003 SCT014 OVC021 15/13 A3008 RMK AO2 RAB55 S
 )
 
 func TestParseNOAA(t *testing.T) {
-	reports,err := ParseNOAA(rawNOAA)
+	reports,err := parseNOAA(rawNOAA)
 	if err != nil {
 		t.Errorf("fetch failed: %v", err)
 	}
@@ -65,8 +65,8 @@ func TestParseNOAA(t *testing.T) {
 }
 
 func TestLookup(t *testing.T) {
-	reports,_ := ParseNOAA(rawNOAA)
-	a := AssembleNOAA(reports)
+	reports,_ := parseNOAA(rawNOAA)
+	a := assembleNOAA(reports)
 	//fmt.Printf("%s\n====\n", a)
 
 	// 58m past the hour, should return the report for that hour's slot
@@ -105,7 +105,7 @@ func TestLookup(t *testing.T) {
 
 func TestFetchNOAA(t *testing.T) {
 	now := time.Now().AddDate(0,0,-2)
-	a,err := FetchFromNOAA(nil, "KSFO", now.AddDate(0,0,-1), now)
+	a,err := fetchArchiveFromNOAA(nil, "KSFO", now.AddDate(0,0,-1), now)
 	if err != nil || a == nil {
 		t.Errorf("fetch failed: %v", err)
 	}

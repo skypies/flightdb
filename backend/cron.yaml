@@ -6,6 +6,11 @@ cron:
   schedule: every 2 minutes
   target: backend
 
+- description: Metar gathering
+  url: /metar/lookup
+  schedule: every 1 hours synchronized
+  target: ui
+
 - description: Publish flights into bigquery
   url: /batch/publish-flights?datestring=yesterday
   schedule: every day 07:00

@@ -6,12 +6,11 @@ import(
 
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/user"
-	"google.golang.org/appengine/urlfetch"
 
-	//fdb "github.com/skypies/flightdb2"
 	"github.com/skypies/flightdb2/metar"
 )
 
+// TODO: just embed / extract this data from the regular context
 type ReportingContext struct {
 	context.Context
 	metar.Archive
@@ -25,13 +24,16 @@ var(
 		"rguindon@alumni.stanford.edu",
 		"meekGee@gmail.com",
 		"nancyjordan650@gmail.com",
+		"Borg@smwlaw.com",
+		"matt@classalameda.com",
+		"jnelson@wiai.com",
 	}
 )
 
 func (r *Report)setupReportingContext(ctx context.Context) error {
 	r.ReportingContext.Context = ctx
 	
-	metar,err := metar.FetchFromNOAA(urlfetch.Client(ctx), "KSFO",
+	metar,err := metar.LookupArchive(ctx, "KSFO",
 		r.Options.Start.AddDate(0,0,-1), r.Options.End.AddDate(0,0,1))
 	if err != nil {
 		return err

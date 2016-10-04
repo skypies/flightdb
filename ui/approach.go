@@ -7,8 +7,6 @@ import(
 	"time"
 	
 	"google.golang.org/appengine"
-	"google.golang.org/appengine/urlfetch"
-	//"golang.org/x/net/context"
 
 	"github.com/skypies/geo/sfo"
 	"github.com/skypies/util/widget"
@@ -61,6 +59,72 @@ func approachHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // }}}
+// {{{ OutputApproachesAsPDF
+
+// This is the old handler, useful for Class B
+func OutputApproachesAsPDF(w http.ResponseWriter, r *http.Request, flights []*fdb.Flight) {
+	colorscheme := FormValuePDFColorScheme(r)
+
+	s,e,_ := widget.FormValueDateRange(r)
+
+	// Default to the time range of the flights
+	if time.Since(e) > time.Hour*24*365 {
+		// assume undef
+		s = time.Now().Add(30*24*time.Hour) // Implausibly in the future
+		for _,f := range flights {
+			fs,fe := f.Times()
+			if fs.Before(s) { s = fs }
+			if fe.After(e) { e = fe }
+		}
+		s = s.Add(-24*time.Hour)
+		e = s.Add(24*time.Hour)
+	}
+	
+	c := appengine.NewContext(r)
+	metars,err := metar.LookupArchive(c, "KSFO",s.AddDate(0,0,-1), e.AddDate(0,0,1))
+	if err != nil {
+		// we don't need metar for FOIA data anyhow, so stop noaa derailing things
+		// http.Error(w, err.Error(), http.StatusInternalServerError)
+		// return
+	}
+	
+	pdf := fpdf.NewApproachPdf(colorscheme)
+	fStrs := []string{}
+//outerLoop:
+	for _,f := range flights {
+		fStrs = append(fStrs, f.String())		
+
+		trackType,track := f.PreferredTrack([]string{"FOIA", "ADSB"})
+		if track == nil || trackType == "" {
+			continue
+		}
+
+		track.PostProcess() // Calculate groundspeed data for FOIA data
+		
+		if trackType == "ADSB" && metars != nil {
+			track.AdjustAltitudes(metars)
+		} else {
+			for i,_ := range track {
+				track[i].IndicatedAltitude = track[i].Altitude
+			}
+		}
+		
+		fpdf.DrawTrack(pdf, track, colorscheme)
+	}
+
+	if len(flights) == 1 {
+		fpdf.DrawTitle(pdf, fmt.Sprintf("%s", fStrs[0]))
+	}
+	
+	w.Header().Set("Content-Type", "application/pdf")
+	if err := pdf.Output(w); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// }}}
+
 // {{{ descentHandler
 
 // ?idspec=XX,YY,...    (or ?idspec=XX&idspec=YYY&...)
@@ -112,73 +176,6 @@ func descentHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // }}}
-
-// {{{ OutputApproachesAsPDF
-
-// This is the old handler, useful for Class B
-func OutputApproachesAsPDF(w http.ResponseWriter, r *http.Request, flights []*fdb.Flight) {
-	colorscheme := FormValuePDFColorScheme(r)
-
-	s,e,_ := widget.FormValueDateRange(r)
-
-	// Default to the time range of the flights
-	if time.Since(e) > time.Hour*24*365 {
-		// assume undef
-		s = time.Now().Add(30*24*time.Hour) // Implausibly in the future
-		for _,f := range flights {
-			fs,fe := f.Times()
-			if fs.Before(s) { s = fs }
-			if fe.After(e) { e = fe }
-		}
-		s = s.Add(-24*time.Hour)
-		e = s.Add(24*time.Hour)
-	}
-	
-	c := appengine.NewContext(r)
-	metars,err := metar.FetchFromNOAA(urlfetch.Client(c), "KSFO",s.AddDate(0,0,-1), e.AddDate(0,0,1))
-	if err != nil {
-		// we don't need metar for FOIA data anyhow, so stop noaa derailing things
-		// http.Error(w, err.Error(), http.StatusInternalServerError)
-		// return
-	}
-	
-	pdf := fpdf.NewApproachPdf(colorscheme)
-	fStrs := []string{}
-//outerLoop:
-	for _,f := range flights {
-		fStrs = append(fStrs, f.String())		
-
-		trackType,track := f.PreferredTrack([]string{"FOIA", "ADSB"})
-		if track == nil || trackType == "" {
-			continue
-		}
-
-		track.PostProcess() // Calculate groundspeed data for FOIA data
-		
-		if trackType == "ADSB" && metars != nil {
-			track.AdjustAltitudes(metars)
-		} else {
-			for i,_ := range track {
-				track[i].IndicatedAltitude = track[i].Altitude
-			}
-		}
-		
-		fpdf.DrawTrack(pdf, track, colorscheme)
-	}
-
-	if len(flights) == 1 {
-		fpdf.DrawTitle(pdf, fmt.Sprintf("%s", fStrs[0]))
-	}
-	
-	w.Header().Set("Content-Type", "application/pdf")
-	if err := pdf.Output(w); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-// }}}
-
 // {{{ DescentPDFInit
 
 func DescentPDFInit(w http.ResponseWriter, r *http.Request, numFlights int) *fpdf.DescentPdf {
@@ -299,11 +296,10 @@ func flightToDescentTrack(r *http.Request, f *fdb.Flight) (fdb.Track, error) {
 			e = s.Add(24*time.Hour)
 		}
 
-		m,err := metar.FetchFromNOAA(urlfetch.Client(c), "KSFO",s.AddDate(0,0,-1), e.AddDate(0,0,1))
-		if err != nil {
-			return nil, err
+		// Just swallow errors for missing Metar
+		if m,err := metar.LookupArchive(c, "KSFO",s.AddDate(0,0,-1), e.AddDate(0,0,1)); err == nil {
+			track.AdjustAltitudes(m)
 		}
-		track.AdjustAltitudes(m)
 	}
 
 	return track, nil
