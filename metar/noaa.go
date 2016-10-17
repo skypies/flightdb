@@ -4,6 +4,7 @@ package metar
 import(
 	"bufio"
 	"encoding/csv"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -42,6 +43,11 @@ func parseNOAA(s string) ([]Report, error) {
 			continue
 		}
 
+		// If this line has no altim_hg value, let's skip it
+		if vals[headers["altim_in_hg"]] == "" {
+			continue
+		}
+
 		// OK, so at last we're just parsing a regular line
 		r := Report{
 			Raw: vals[headers["raw_text"]],
@@ -49,7 +55,8 @@ func parseNOAA(s string) ([]Report, error) {
 			IcaoAirport: vals[headers["station_id"]],
 		}
 		if val,err := strconv.ParseFloat(vals[headers["altim_in_hg"]], 64); err != nil {
-			return out, err
+			return out, fmt.Errorf("parse error %v, '%v', data[%d]:%#vals", err,
+				vals[headers["altim_in_hg"]], headers["altim_in_hg"], vals)
 		} else {
 			r.AltimeterSettingInHg = val
 		}

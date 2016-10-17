@@ -35,6 +35,7 @@ var(
 
 func init() {
 	http.HandleFunc("/metar/lookup", lookupHandler)
+	http.HandleFunc("/metar/lookupall", lookupAllHandler)
 }
 
 type DayReport struct {
@@ -56,7 +57,7 @@ func (dr DayReport)String() string {
 	}
 	for _,r := range dr.Reports {
 		if r.Raw == "" {
-			str += "-"
+			str += " "
 		} else {
 			delta := StandardPressureInHg - r.AltimeterSettingInHg
 			str += fmt.Sprintf("%c", pressureDeltaToRune(delta))
@@ -123,22 +124,45 @@ func (dr *DayReport)Lookup(t time.Time) (*Report,error) {
 
 // }}}
 
-// {{{ directLookup
+// {{{ toMetarSingletonKey
 
-// This just looks up the relevant slot. No smarts about 56m past the hour.
+func toMetarSingletonKey(loc string, t time.Time) string {
+	tstamp := date.TruncateToUTCDay(t).Format("2006-01-02")
+	return fmt.Sprintf("metar:%s:%s", loc, tstamp)
+}
 
-func directLookup(ctx context.Context, loc string, t time.Time) (*Report, error) {
+// }}}
+
+// {{{ LookupDayReport
+
+// Pull an entire UTC day's worth of reports.
+func LookupDayReport(ctx context.Context, loc string, t time.Time) (*DayReport, error) {
+
 	dr := NewDayReport()
 	t = t.UTC()
 	key := toMetarSingletonKey(loc, t)
 	
 	err := gaeutil.LoadAnySingleton(ctx, key, dr)
-
 	if err != nil {
 		return nil,err
 
 	} else if ! dr.IsInitialized() {
 		return nil,ErrNotFound
+
+	} else {
+		return dr,nil
+	}
+}
+
+// }}}
+// {{{ directLookup
+
+// This just looks up the relevant slot. No smarts about 56m past the hour. Use with care.
+
+func directLookup(ctx context.Context, loc string, t time.Time) (*Report, error) {
+
+	if dr,err := LookupDayReport(ctx, loc, t); err != nil {
+		return nil, err
 
 	} else if mr,err := dr.Lookup(t); err != nil {
 		return nil,err
@@ -154,21 +178,26 @@ func directLookup(ctx context.Context, loc string, t time.Time) (*Report, error)
 // }}}
 // {{{ LookupOrFetch
 
-func toMetarSingletonKey(loc string, t time.Time) string {
-	tstamp := date.TruncateToUTCDay(t).Format("2006-01-02")
-	return fmt.Sprintf("metar:%s:%s", loc, tstamp)
-}
-
 func LookupOrFetch(ctx context.Context, loc string, t time.Time) (*Report, error, string) {
 	dr := NewDayReport()
+	prevDr := NewDayReport()  // when we're called for 00:00, we need to update 23:56 for prev day
+
 	t = t.UTC()
 	key := toMetarSingletonKey(loc, t)
 	str := fmt.Sprintf("[LookupOrFetch] key=%s\n", key)
 	
 	err := gaeutil.LoadAnySingleton(ctx, key, dr)
-	str += fmt.Sprintf("*** LoadAnySingleton\n* err: %v\n* dr : %s\n", err, dr)
+	str += fmt.Sprintf("*** LoadAnySingleton\n* err : %v\n* dr  : %s\n", err, dr)
+
+	// Try to fetch previous day; ignore errors
+	prevKey := toMetarSingletonKey(loc, t.AddDate(0,0,-1))
+	gaeutil.LoadAnySingleton(ctx, prevKey, prevDr)
+	if prevDr.IsInitialized() {
+		str += fmt.Sprintf("* prev: %s\n", prevDr)
+	}
 	
 	shouldPersistChanges := false
+	shouldPersistChangesToPrevDay := false
 	if err != nil {
 		str += fmt.Sprintf("*** DS lookup fail\n* err: %v\n", err)
 		return nil,err,str
@@ -201,7 +230,14 @@ func LookupOrFetch(ctx context.Context, loc string, t time.Time) (*Report, error
 		str += fmt.Sprintf("[fetchReportsFromNOAA]\n -- err=%v\n -- ar: %v\n", err, reps)
 
 		for _,mr := range reps {
-			err := dr.Insert(mr) // Ignore return value; 
+			if err := dr.Insert(mr); err == ErrTimeNotInDayReport {
+				if prevDr.IsInitialized() {
+					err2 := prevDr.Insert(mr)
+					str += fmt.Sprintf(" -! %s {%s} %v\n", mr, prevDr, err2)
+					shouldPersistChangesToPrevDay = true
+				}
+			}
+
 			str += fmt.Sprintf(" -- %s {%s} %v\n", mr, dr, err)
 		}
 
@@ -216,12 +252,16 @@ func LookupOrFetch(ctx context.Context, loc string, t time.Time) (*Report, error
 			return nil,err,str
 		}
 	}
-	
+	if shouldPersistChangesToPrevDay {
+		if err := gaeutil.SaveAnySingleton(ctx, prevKey, prevDr); err != nil {
+			return nil,err,str
+		}
+	}
+
 	return mr,nil,str
 }
 
 // }}}
-
 // {{{ LookupReport
 
 // This is the main API entrypoint. Does not fetch; only looks up from datastore.
@@ -296,6 +336,40 @@ func lookupHandler(w http.ResponseWriter, r *http.Request) {
 
 		ar,err := LookupArchive(ctx, loc, s,e)
 		str += fmt.Sprintf("\n********\n\nLookupArchive Result: %s\nLookup Err: %v\n\n", ar, err)		
+	}
+	
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte(str))
+}
+
+// }}}
+// {{{ lookupAllHandler
+
+// /metar/lookupall?
+//    n=17                (num days)
+//  [&t=123981723129837]
+//  [&loc=KSFO]
+func lookupAllHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
+	str := "OK\n--\n\n"
+
+	n := widget.FormValueInt64(r, "n");
+	if n == 0 { n = 1 }
+
+	loc := r.FormValue("loc")
+	if loc == "" { loc = DefaultStation }
+
+	t := time.Now().UTC()
+	if r.FormValue("t") != "" {
+		t = widget.FormValueEpochTime(r, "t")
+	}
+	
+	str += fmt.Sprintf("LookupAll for loc=%s, t=%s (%s)\n\n", loc, t, date.InPdt(t))
+
+	for ; n>0; n-- {
+		dr,err := LookupDayReport(ctx, loc, t)
+		str += fmt.Sprintf("%s [err:%v]\n", dr, err)
+		t = t.AddDate(0,0,-1)
 	}
 	
 	w.Header().Set("Content-Type", "text/plain")
