@@ -207,6 +207,61 @@ func (g DescentPdf)DrawColorSchemeKeys() {
 
 // }}}
 
+// {{{ dp.MaybeDrawSFOClassB
+
+func (g DescentPdf)MaybeDrawSFOClassB() {
+	grid,exists := g.Grids["altitude"]
+	if !exists { return }
+
+	grid.SetDrawColor(0x00, 0x00, 0x66)
+	grid.SetLineWidth(0.45)
+
+	// Should really parse this all out of geo/sfo.SFOClassBMap ...
+	grid.MoveTo( 0.0, 10000.0)
+	grid.LineTo(30.0, 10000.0)
+	grid.LineTo(30.0,  8000.0)
+	grid.LineTo(25.0,  8000.0)
+	grid.LineTo(25.0,  6000.0)
+	grid.LineTo(20.0,  6000.0)
+	grid.LineTo(20.0,  4000.0)
+	grid.LineTo(15.0,  4000.0)
+	grid.LineTo(15.0,  3000.0)
+	grid.LineTo(10.0,  3000.0)
+	grid.LineTo(10.0,  1500.0)
+	grid.LineTo( 7.0,  1500.0)
+	grid.LineTo( 7.0,     0.0)
+
+	grid.DrawPath("D")
+}
+
+// }}}
+// {{{ dp.DrawReferencePoint
+
+func (g DescentPdf)DrawReferencePoint(p geo.Latlong, label string) {	
+	// This is DistanceFromOrigin; it'll be wrong if plotted into grids that use DistAlongPath
+	nm := p.DistNM(g.OriginPoint)
+
+	//rgb := []int{0,250,250}
+
+	for name,grid := range g.Grids {
+		grid.SetDrawColor(20,220,20)
+		grid.SetLineWidth(0.3)
+		grid.MoveTo(nm, grid.MinY)
+		grid.LineTo(nm, grid.MaxY)
+		grid.DrawPath("D")
+		
+		if name == "altitude" && label != "" {
+			grid.SetTextColor(20,220,20)
+			grid.MoveTo(nm, grid.MinY)
+			grid.MoveBy(-4, 2)  // Offset in MM
+			grid.MultiCell(0, 4, label, "", "", false)
+			grid.DrawPath("D")
+		}
+	}
+}
+
+// }}}
+
 // {{{ dp.DrawTrackWithDistFunc
 
 type DistanceFunc func(tp fdb.Trackpoint) (float64, float64, []int)

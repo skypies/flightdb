@@ -8,6 +8,7 @@ import(
 	
 	"google.golang.org/appengine"
 
+	"github.com/skypies/geo"
 	"github.com/skypies/geo/sfo"
 	"github.com/skypies/util/widget"
 
@@ -135,6 +136,9 @@ func OutputApproachesAsPDF(w http.ResponseWriter, r *http.Request, flights []*fd
 //  &dist=from          (for distance axis, use dist from airport; by default, uses dist along path)
 //  &colorby=delta      (delta groundspeed, instead of groundspeed)
 
+//  &classb=1           (maybe render the SFO class B airpsace)
+//  &refpt_lat=36&refpt_long=-122&refpt_label=FOO  (render a reference point onto the graph)
+
 func descentHandler(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
 	db := fgae.FlightDB{C:c}
@@ -221,6 +225,14 @@ func DescentPDFInit(w http.ResponseWriter, r *http.Request, numFlights int) *fpd
 
 	dp.DrawFrames()
 
+	if r.FormValue("classb") != "" {
+		dp.MaybeDrawSFOClassB()
+	}
+
+	if pos := geo.FormValueLatlong(r, "refpt"); !pos.IsNil() {
+		dp.DrawReferencePoint(pos, r.FormValue("refpt_label"))
+	}
+	
 	if rep,err := getReport(r); err==nil && rep!=nil {
 		dp.Caption += fmt.Sprintf("%d flights, %s\n", numFlights, rep.DescriptionText())
 	}
