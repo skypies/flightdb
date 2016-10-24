@@ -10,6 +10,7 @@ import (
 	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/taskqueue"
 	"google.golang.org/cloud/bigquery"
+	// "cloud.google.com/go/bigquery" // different API; see ffs below.
 
 	"github.com/skypies/util/date"
 	"github.com/skypies/util/gcs"
@@ -204,6 +205,18 @@ func submitLoadJob(r *http.Request, gcsfolder, gcsfile string) error {
 		DatasetID: bigqueryDataset,
 		TableID:   bigqueryTableName,
 	}
+
+	// FFS.
+	// https://godoc.org/cloud.google.com/go/bigquery#Copier
+	/*
+	myDataset := client.Dataset(bigqueryDataset)
+	copier := myDataset.Table(bigqueryTableName).CopierFrom(myDataset.Table("src"))
+copier.WriteDisposition = bigquery.WriteTruncate
+job, err = copier.Run(ctx)
+if err != nil {
+    // TODO: Handle error.
+}
+*/
 	
 	job,err := client.Copy(ctx, tableDest, gcsSrc, bigquery.WriteAppend)
 	if err != nil {
