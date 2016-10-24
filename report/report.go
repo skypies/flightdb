@@ -4,7 +4,9 @@ import(
 	"fmt"
 	"html/template"
 	"sort"
+	"time"
 
+	"github.com/skypies/util/date"
 	"github.com/skypies/util/histogram"
 	fdb "github.com/skypies/flightdb2"
 )
@@ -131,6 +133,50 @@ func (r *Report)PreProcess(f *fdb.Flight) (bool, []fdb.TrackIntersection) {
 
 	r.I["[B] <b>Satisfied geo restrictions</b> "]++
 
+	if r.TimeOfDay.IsInitialized() {
+
+		//r.Info(fmt.Sprintf("**** ToD %s, %s\n", r.TimeOfDay, f))
+		times := []time.Time{} // Accumulate interesting timestamps in one place
+		
+		if len(intersections) > 0 {
+			for _,ti := range intersections {
+				times = append(times, ti.Start.TimestampUTC)
+				//r.Info(fmt.Sprintf("   * i.s %s\n", date.InPdt(ti.Start.TimestampUTC)))
+				if !ti.IsPointIntersection() {
+					times = append(times, ti.End.TimestampUTC)
+					//r.Info(fmt.Sprintf("   * i.e %s\n", date.InPdt(ti.End.TimestampUTC)))
+				}
+			}
+		} else if len(r.Waypoints) > 0 {
+			for _,wpName := range r.Waypoints {
+				if 	t,exists := f.Waypoints[wpName]; exists {
+					// r.Info(fmt.Sprintf("   * wp  %s (%s)\n", date.InPdt(t), wpName))
+					times = append(times, t)
+				}
+			}
+		}
+
+		meetsToD := false
+		for _,t := range times {
+			//tPdt := date.InPdt(t)
+			//s,e := r.TimeOfDay.AnchorInsideDay(tPdt)
+			//r.Info(fmt.Sprintf("  ** ToD %s {%s -- %s} %s : %v\n", r.TimeOfDay, s,e,
+			//	tPdt, r.TimeOfDay.Contains(tPdt)))
+
+			if r.TimeOfDay.Contains(date.InPdt(t)) {
+				meetsToD = true
+				break
+			}
+		}
+
+		if meetsToD {
+			r.I["[Bb] <b>Satisfied TimeOfDay restrictions</b> "]++
+		} else {
+			r.I["[Bb] Failed TimeOfDay restrictions "]++
+			return false, intersections
+		}
+	}
+	
 	dataSrc := "non-ADSB"
 	if f.HasTrack("ADSB") { dataSrc = "ADSB" }
 	r.I["[Bz] track source: "+dataSrc]++

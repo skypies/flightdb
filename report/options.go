@@ -13,6 +13,7 @@ import(
 	
 	"github.com/skypies/geo"
 	"github.com/skypies/geo/sfo"
+	"github.com/skypies/util/date"
 	"github.com/skypies/util/widget"
 
 	fdb "github.com/skypies/flightdb2"
@@ -26,6 +27,8 @@ type Options struct {
 
 	NotTags          []string  // Tags that are blacklisted from results; not efficient
 	NotWaypoints     []string  // Tags that are blacklisted from results; not efficient
+
+	TimeOfDay          date.TimeOfDayRange  // If initialized, only find flights that 'match' it
 	
 	// Geo restriction 1: Box.
 	BoxCenter          geo.NamedLatlong
@@ -114,6 +117,10 @@ func FormValueReportOptions(r *http.Request) (Options, error) {
 		ResultsFormat: r.FormValue("resultformat"),
 	}
 
+	if tod,err := date.FormValueTimeOfDayRange(r, "tod"); err == nil {
+		opt.TimeOfDay = tod
+	}
+	
 	// Dates sadly hardcoded for now.
 	if widget.FormValueCheckbox(r, "preferfoia") {
 		foiaEnd,_ := time.Parse("2006.01.02", "2016.06.24")
@@ -232,6 +239,9 @@ func (r Report)CGIArgs() template.HTML { return template.HTML(r.ToCGIArgs()) }
 // and maps can see the geometry used
 func (r *Report)ToCGIArgs() string {
 	str := fmt.Sprintf("rep=%s&%s", r.Options.Name, widget.DateRangeToCGIArgs(r.Start, r.End))
+
+	if r.TimeOfDay.IsInitialized() { str += "&"+r.TimeOfDay.ToCGIArgs("tod") }
+
 	if r.TrackDataSource != "" { str += "&datasource="+r.TrackDataSource }
 
 	if !r.BoxCenter.IsNil() {
@@ -278,6 +288,10 @@ func (o Options)DescriptionText() string {
 	s, e := o.Start.Format("Mon 2006/01/02"), o.End.Format("Mon 2006/01/02")
 	str += s
 	if s != e { str += "-"+e }
+
+	if o.TimeOfDay.IsInitialized() {
+		str += fmt.Sprintf(", TimeOfDay=%s", o.TimeOfDay)
+	}
 
 	if len(o.Tags)>0 { str += fmt.Sprintf(", tags=%v", o.Tags) }
 	if len(o.NotTags)>0 { str += fmt.Sprintf(", not-tags=%v", o.NotTags) }

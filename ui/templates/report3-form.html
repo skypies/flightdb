@@ -169,7 +169,16 @@
               {{template "widget-date-range" .}}
             </td>
           </tr>
-          
+
+          <tr>
+            <td>Time of Day</td>
+            <td>
+              Start <input type="text" name="tod_start" size="7" value="" placeholder="18:00"/>,
+              length<input type="text" name="tod_len" size="7" value="" placeholder="6h"/>
+              (length can be <code>30m</code>, <code>2h45m</code>, etc.)
+            </td>
+          </tr>
+
           <tr><td colspan="2"><hr/></td></tr>
           <tr><td colspan="2"><b>Geo restrictions (1)</b>: Define a <b>{region}</b> of interest;
               pick a center for a box. Leave

@@ -16,7 +16,9 @@ import(
 	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/taskqueue"
 	"google.golang.org/appengine/log"
+	
 	"google.golang.org/cloud/storage"
+	//"cloud.google.com/go/storage" // different API
 
 	"github.com/skypies/geo"
 	"github.com/skypies/util/date"
