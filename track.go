@@ -1,4 +1,3 @@
-
 package flightdb2
 
 import(
@@ -31,6 +30,8 @@ var(
 // A Track is a slice of Trackpoints. They are ordered in time, beginning to end.
 type Track []Trackpoint
 
+// {{{ lookups
+
 type TrackByTimestampAscending Track
 func (a TrackByTimestampAscending) Len() int           { return len(a) }
 func (a TrackByTimestampAscending) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
@@ -50,6 +51,8 @@ func (t Track)Notes() string {
 	if len(t) == 0 { return "" }
 	return t[0].Notes
 }
+
+// }}}
 
 // {{{ t.String, t.{Short|Medium|Long}String
 
@@ -491,6 +494,27 @@ func (t Track)WindowedAverageAt(i int, window time.Duration) Trackpoint {
 
 // }}}
 
+// {{{ t.ClipTo
+
+// Returns copies of the trackpoints within the timerange; or empty track if none were found.
+func (t Track)ClipTo(s,e time.Time) []Trackpoint {
+	if e.Before(s) { e,s = s,e }
+
+	ret := []Trackpoint{}
+	if e.Before(t.Start()) || s.After(t.End()) { return ret }
+
+	if iStart := t.IndexAtTime(s); iStart >= 0 {
+		for i:=iStart; i<len(t); i++ {
+			if t[i].TimestampUTC.After(e) { break }
+			if t[i].TimestampUTC.Before(s) { continue }
+			ret = append(ret, t[i])
+		}
+	}
+
+	return ret
+}
+
+// }}}
 // {{{ t.SampleEvery
 
 // Returns a track that has (more or less) one point per time.Duration.
@@ -504,7 +528,6 @@ func (t Track)SampleEvery(d time.Duration, interpolate bool) Track {
 	iLast := 0
 	for i:=1; i<len(t); i++ {
 		// i is the point we're looking at; iLast is the point at the end of the previous box.
-
 		tDelta := t[i].TimestampUTC.Sub(t[iLast].TimestampUTC)
 
 		if tDelta > d {
@@ -521,6 +544,41 @@ func (t Track)SampleEvery(d time.Duration, interpolate bool) Track {
 
 	if len(new)>0 {
 		new[0].Notes = fmt.Sprintf("(sampled every %s from %d points)", d, len(t))
+	}
+	
+	return new
+}
+
+// }}}
+// {{{ t.SampleEveryDist
+
+// Returns a track that has (more or less) one point per distance unit (as flown along the path).
+// If interpolate is true, then we interpolate through gaps that are too long; else they remain.
+// The returned track contains copies of the trackpoints.
+func (t Track)SampleEveryDist(distKM float64, interpolate bool) Track {
+	if len(t) == 0 { return []Trackpoint{} }
+
+	new := []Trackpoint{t[0]}
+
+	iLast := 0
+	for i:=1; i<len(t); i++ {
+		// i is the point we're looking at; iLast is the point at the end of the previous box.
+		distDelta := t[i].DistKM(t[iLast].Latlong)
+
+		if distDelta > distKM {
+			if interpolate && distDelta > 2*distKM {
+				// IMPLEMENT ME
+			}
+			new = append(new, t[i])
+			iLast = i
+
+		} else {
+			// Do nothing, skip to next
+		}
+	}
+
+	if len(new)>0 {
+		new[0].Notes = fmt.Sprintf("(sampled every %.2fKM from %d points)", distKM, len(t))
 	}
 	
 	return new
@@ -720,72 +778,6 @@ func (t Track)ClosestTo(ref geo.Latlong, maxAltitude float64) (int) {
 
 	return iMin
 }
-
-// }}}
-
-// What we need: a lambda sig, that maps a trackpoint to a scalar (
-// Then a function that takes a lambda and a scalar value, and finds the two points that straddle
-// ... or maybe not; there are only two monotonic such scalars anyway (time, dist travelled)
-
-// {{{ OLD
-
-/*
-func (t Track)DurationAloft() (time.Duration, error) {
-	var s time.Time
-	started := false
-	for _,tp := range t {
-		if !started {
-			if tp.Altitude>0 && tp.GroundSpeed>0 { s = tp.TimestampUTC; started=true; }
-		} else {
-			if tp.Altitude==0 || tp.GroundSpeed==0 {
-				return tp.TimestampUTC.Sub(s), nil
-			}
-		}
-	}
-	if started {
-		// Was still aloft at the end of the track ...
-		return t[len(t)-1].TimestampUTC.Sub(s), nil
-	}
-
-	return 0, fmt.Errorf("DurationAloft: too dumb for this track")
-}
-*/
-/*
-// This is not a robust function.
-func (t Track)TouchdownPDT() time.Time {
-	var s time.Time
-	// Start halfway through, and see where that gets us
-	for i:=int(len(t)/2); i<len(t); i++ {
-		s = t[i].TimestampUTC
-		if t[i].Altitude == 0 {
-			return date.InPdt(s)
-		}
-	}
-	return date.InPdt(s)
-}
-*/
-/*
-func (t Track)TimesInBox(b geo.LatlongBox) (s,e time.Time) {
-	inside := false
-
-	for _,tp := range t {
-		if tp.Altitude==0 || tp.GroundSpeed==0 { continue }
-		if !inside && b.Contains(tp.Latlong) {
-			s = tp.TimestampUTC
-			inside=true
-
-		} else if inside {
-			e = tp.TimestampUTC  // keep overwriting e until we're outside (or we've landed)
-			if !b.Contains(tp.Latlong) { break }
-		}
-	}
-	return
-}
-//func (t Track)IsFromADSB() bool {
-//	return (len(t)>0 && t[0].DataSource == "FA:TA")
-//}
-
-*/
 
 // }}}
 

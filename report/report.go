@@ -204,9 +204,11 @@ func (r *Report)MetadataTable()[][]template.HTML {
 	for k,v := range r.S { all[k] = v }
 
 	if stats,valid := r.H.Stats(); valid {
-		all["[Z] stats, <b>N</b>"] = fmt.Sprintf("%d", stats.N)
+		all["[Z] stats,  <b>N</b>"] = fmt.Sprintf("%d", stats.N)
 		all["[Z] stats, Mean"] = fmt.Sprintf("%.0f", stats.Mean)
 		all["[Z] stats, Stddev"] = fmt.Sprintf("%.0f", stats.Stddev)
+		all["[Z] stats, 50%ile"] = fmt.Sprintf("%.0d", stats.Percentile50)
+		all["[Z] stats, 90%ile"] = fmt.Sprintf("%.0d", stats.Percentile90)
 	}
 	
 	keys := []string{}

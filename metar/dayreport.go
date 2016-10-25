@@ -74,7 +74,7 @@ var upRunes = []rune{
 	'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
 	'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T'}
 func pressureDeltaToRune(delta float64) rune {
-	n := int(100.0 * delta) // typical range of delta: [-30,30]
+	n := int(50.0 * delta) // typical range of delta: [-30,30]
 
 	if n == 0 { return '.' }
 

@@ -75,7 +75,10 @@ func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 	if err != nil { return err }
 
 	prefix := fmt.Sprintf("[%s/%s]%s %s", frag.IcaoId, frag.Callsign, frag.DataSystem, time.Now())
-	
+
+	// If the fragment is strictly a suffix, this will hold the preceding point
+	var prevTP *fdb.Trackpoint
+
 	if f == nil {
 		f = fdb.NewFlightFromTrackFragment(frag)
 		f.DebugLog += "-- AddFrag "+prefix+": new IcaoID\n"
@@ -102,6 +105,14 @@ func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 				f.Identity.Callsign = frag.Callsign
 			}
 
+			// Determine whether this frag is strictly a suffix to existing track data; this is the
+			// common case. If so, keep a pointer to the trackpoint that precedes the frag 
+			n := len(*f.Tracks[trackKey])
+			if n>0 && (*f.Tracks[trackKey])[n-1].TimestampUTC.Before(frag.Track[0].TimestampUTC) {
+				db.Debugf("** new frag is strictly a suffix; prev = %d", n-1)
+				prevTP = &((*f.Tracks[trackKey])[n-1])
+			}
+			
 			db.Debugf("** pre : %s", f.Tracks[trackKey])
 			f.Tracks[trackKey].Merge(&frag.Track)
 			db.Debugf("** post: %s", f.Tracks[trackKey])
@@ -122,7 +133,16 @@ func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 			f.Airframe = *af
 		}
 	}
-	
+
+	// There could be a big gap between the previous track and this frag.
+	// If that's the case, grab the preceding trackpoint and prefix this frag with it; then
+	// the waypoint detection code (which builds lines between points) will look at the gap
+	// between the frags, and maybe find extra waypoints.
+	if prevTP != nil {
+		// a = append([]T{x}, a...)
+		frag.Track = append([]fdb.Trackpoint{*prevTP}, frag.Track...)
+	}
+
 	// Incrementally identify waypoints, frag by frag
 	for wp,t := range frag.Track.MatchWaypoints(sfo.KFixes) {
 		f.DebugLog += "-- AddFrag "+prefix+": found waypoint "+wp+"\n"

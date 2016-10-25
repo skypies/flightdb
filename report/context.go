@@ -27,6 +27,7 @@ var(
 		"Borg@smwlaw.com",
 		"matt@classalameda.com",
 		"jnelson@wiai.com",
+		"robert.holbrook@gmail.com",
 	}
 )
 

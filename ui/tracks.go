@@ -207,9 +207,10 @@ func WaypointMapVar(in map[string]geo.Latlong) template.JS {
 //  colorby=rcvr
 //  fr24=1
 //  debug=1
-//  boxes=1 boxes=fr24  (see boxes for just that track)
-//  sample=4  (sample the ADSB track every 4 seconds)
-//  track=fr24  (see dots for just that track)
+//  boxes=1 boxes=fr24       (see boxes for just that track)
+//  sample=4                 (sample the ADSB track every 4 seconds)
+//  track=fr24               (see dots for just that track)
+//  clip1=EPICK&clip2=EDDYY  (clip to points between those waypoints)
 
 func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.Flight) {
 	c := appengine.NewContext(r)
@@ -218,16 +219,9 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 	for i,_ := range flights {
 		bannerText += fmt.Sprintf("*** %s (%d) %s %s\n", flights[i].IdentityString(),
 			len(flights[i].AnyTrack()), "", "")
-		//flights[i].AnyTrack().Start(),
-		//	flights[i].GetLastUpdate())
 	}
 
-	ms := NewMapShapes()
-	
-//	points  := []MapPoint{}
-//	lines   := []MapLine{}
-//	circles := []MapCircle{}
-	
+	ms := NewMapShapes()	
 	rep,err := getReport(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -300,8 +294,24 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 					f.Tracks[trackType] = &newTrack
 				}
 			}
-			f.Tracks[trackType].PostProcess()  // Move upstream
-			ms.Points = append(ms.Points, TrackToMapPoints(f.Tracks[trackType], "", bannerText, coloring)...)
+			
+			track := f.Tracks[trackType]
+			track.PostProcess()  // Move upstream ?
+
+			// &clip1=EPICK&clip2=EDDYY
+			if r.FormValue("clip1") != "" {
+				if !f.HasWaypoint(r.FormValue("clip1")) || !f.HasWaypoint(r.FormValue("clip2")) {
+					http.Error(w,
+						fmt.Sprintf("{%s,%s} not found", r.FormValue("clip1"), r.FormValue("clip2")),
+						http.StatusInternalServerError)
+					return
+				}
+				tps := track.ClipTo(f.Waypoints[r.FormValue("clip1")], f.Waypoints[r.FormValue("clip2")])
+				t2 := fdb.Track(tps).SampleEveryDist(3.0, false)
+				track = &t2				
+			}
+
+			ms.Points = append(ms.Points, TrackToMapPoints(track, "", bannerText, coloring)...)
 		}
 
 		// &boxes=1

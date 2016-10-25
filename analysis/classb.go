@@ -17,7 +17,7 @@ import (
 )
 
 func init() {
-	report.HandleReport("sfoclassb", SFOClassBReporter, "SFO Class B excursions (use SERFR1 tag)")
+	report.HandleReport("sfoclassb", SFOClassBReporter, "SFO Class B excursions (use EDDYY tag)")
 	report.TrackSpec("sfoclassb", []string{"ADSB","FA", "FOIA"}) // That's all we'll accept
 }
 
