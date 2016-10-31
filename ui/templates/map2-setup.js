@@ -12,7 +12,7 @@ function setTextBox(boxName, legendHTML) {
 function initMap() {
     map = new google.maps.Map(document.getElementById('map'), {
         center: {lat: {{.Center.Lat}}, lng: {{.Center.Long}}},
-        mapTypeId: google.maps.MapTypeId.TERRAIN,
+        mapTypeId: {{.MapType}},
         scaleControl: true,
         zoom: {{.Zoom}}
     });
@@ -23,7 +23,7 @@ function initMap() {
     map.controls[google.maps.ControlPosition.RIGHT_CENTER].push(
         document.getElementById('details'));
     
-    classBOverlay()
+    {{if .ClassBOverlay}}classBOverlay(){{end}}
     {{if .WhiteOverlay}}
     var olay = new google.maps.Rectangle({
         strokeColor: '#ffffff',

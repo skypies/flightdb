@@ -188,6 +188,35 @@ func renderReportFurniture(rep *report.Report) *MapShapes {
 
 // }}}
 
+// {{{ getGoogleMapsParams
+
+//  &whiteveil=1         (bleach out the map, to make vecctor lines more prominent
+//  &zoom=10
+//  &center_lat=37&center_long=-122 (alternate center point)
+//  &maptype=terrain  (roadmap, satellite, hybrid)
+//  &noclassb=1                     (hide the class B overlay)
+
+func getGoogleMapsParams(r *http.Request, params map[string]interface{}) {
+	classBOverlay := ! widget.FormValueCheckbox(r, "noclassb")
+	whiteVeil := widget.FormValueCheckbox(r, "whiteveil")
+	zoom := widget.FormValueInt64(r, "zoom")
+	if zoom == 0 { zoom = 10 }	
+	center := geo.FormValueLatlong(r, "center")
+	if center.IsNil() { center = sfo.KFixes["EDDYY"] }
+	mapType := r.FormValue("maptype")
+	if mapType == "" { mapType = "terrain" }
+	
+	params["ClassBOverlay"] = classBOverlay
+	params["WhiteOverlay"] = whiteVeil
+	params["Center"] = center
+	params["Zoom"] = zoom
+	params["MapType"] = mapType
+
+	//"MapsAPIKey": "",//kGoogleMapsAPIKey,
+}
+
+// }}}
+
 // {{{ WaypointMapVar
 
 func WaypointMapVar(in map[string]geo.Latlong) template.JS {
@@ -338,11 +367,13 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 		"Points": MapPointsToJSVar(ms.Points),
 		"Lines": MapLinesToJSVar(ms.Lines),
 		"Circles": MapCirclesToJSVar(ms.Circles),
-		"MapsAPIKey": "",//kGoogleMapsAPIKey,
-		"Center": sfo.KFixes["BOLDR"], //sfo.KLatlongSFO,
 		"Waypoints": WaypointMapVar(sfo.KFixes),
-		"Zoom": 9,
+		//"MapsAPIKey": "",//kGoogleMapsAPIKey,
+		// "Center": sfo.KFixes["BOLDR"], //sfo.KLatlongSFO,
+		//"Zoom": 9,
 	}
+
+	getGoogleMapsParams(r, params)
 
 	if err := templates.ExecuteTemplate(w, "fdb2-tracks", params); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -401,8 +432,8 @@ func IdSpecsToJSVar(idspecs []string) template.JS {
 // {{{ OutputMapLinesOnAStreamingMap
 
 // ?idspec==XX,YY,...
-// &colorby=procedure   (what we tagged them as - not implemented ?)
-// &nofurniture=1       (to suppress furniture)
+//  &colorby=procedure   (what we tagged them as - not implemented ?)
+//  &nofurniture=1       (to suppress furniture)
 
 func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspecs []string, vectorURLPath string) {
 	ms := NewMapShapes()
@@ -420,7 +451,7 @@ func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspe
 		trackspec = strings.Join(rep.ListPreferredDataSources(), ",")
 		legend += ", "+rep.DescriptionText()
 	}
-
+	
 	var params = map[string]interface{}{
 		"Legend": legend,
 		"Points": MapPointsToJSVar(ms.Points),
@@ -432,11 +463,14 @@ func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspe
 		"ColorScheme": colorscheme,
 		
 		"Waypoints": WaypointMapVar(sfo.KFixes),
-		"WhiteOverlay": true,
-		"MapsAPIKey": "",//kGoogleMapsAPIKey,
-		"Center": sfo.KFixes["EDDYY"], //sfo.KLatlongSFO,
-		"Zoom": 10,
+		//"ClassBOverlay": classBOverlay,
+		//"WhiteOverlay": whiteVeil,
+		//"MapsAPIKey": "",//kGoogleMapsAPIKey,
+		//"Center": center,
+		//"Zoom": zoom,
+		//"MapType": mapType,
 	}
+	getGoogleMapsParams(r, params)
 	if err := templates.ExecuteTemplate(w, "fdb3-tracks", params); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
