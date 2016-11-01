@@ -113,21 +113,42 @@ func trackHandler(w http.ResponseWriter, r *http.Request) {
 // }}}
 // {{{ tracksetHandler
 
-// ?idspec=F12123@144001232[,...]
-//  &colorby=procedure   (what we tagged them as)
+//  ?idspec=F12123@144001232[,...]
+// [?resultset=14098123098120398091823asoidufas98d7uasodjasduaosiduasoiduasoid]
 
 func tracksetHandler(w http.ResponseWriter, r *http.Request) {
-	//colorscheme := FormValueColorScheme(r)
+	ctx := appengine.NewContext(r)
+	idstrings := []string{}
+	resultsetid := r.FormValue("resultset")
+	
+	if resultsetid != "" {
+		idspecstrings,err := fgae.IdSpecSetLoad(ctx, r.FormValue("resultset"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		idstrings = idspecstrings
 
-	// Make sure they can all be parsed ...
-	if _,err := FormValueIdSpecs(r); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	} else {
+
+		// Check we can parse the idspecs ...
+		if _,err := FormValueIdSpecs(r); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+				
+		// ... but just pass along the strings
+		idstrings = FormValueIdSpecStrings(r)
+
+		if len(idstrings) > 0 {
+			if keyid,err := fgae.IdSpecSetSave(ctx, idstrings); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				
+			} else {
+				resultsetid = keyid
+			}
+		}
 	}
 
-	// ... but just pass along the strings
-	idstrings := FormValueIdSpecStrings(r)
-	
-	OutputMapLinesOnAStreamingMap(w, r, idstrings, "/fdb/vector")
+	OutputMapLinesOnAStreamingMap(w, r, resultsetid, idstrings, "/fdb/vector")
 }
 
 // }}}
@@ -368,48 +389,10 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 		"Lines": MapLinesToJSVar(ms.Lines),
 		"Circles": MapCirclesToJSVar(ms.Circles),
 		"Waypoints": WaypointMapVar(sfo.KFixes),
-		//"MapsAPIKey": "",//kGoogleMapsAPIKey,
-		// "Center": sfo.KFixes["BOLDR"], //sfo.KLatlongSFO,
-		//"Zoom": 9,
 	}
 
 	getGoogleMapsParams(r, params)
 
-	if err := templates.ExecuteTemplate(w, "fdb2-tracks", params); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-// }}}
-// {{{ OutputMapLinesOnAMap
-
-// ?idspec==XX,YY,...
-// &colorby=procedure   (what we tagged them as)
-
-func OutputMapLinesOnAMap(w http.ResponseWriter, r *http.Request, inputLines []MapLine) {
-
-	ms := NewMapShapes()
-	ms.Lines = append(ms.Lines, inputLines...)
-	
-	if rep,err := getReport(r); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	} else if rep != nil {
-		ms.Add(renderReportFurniture(rep))
-	}
-
-	legend := fmt.Sprintf("")
-	var params = map[string]interface{}{
-		"Legend": legend,
-		"Points": MapPointsToJSVar(ms.Points),
-		"Lines": MapLinesToJSVar(ms.Lines),
-		"Circles": MapCirclesToJSVar(ms.Circles),
-		"WhiteOverlay": true,
-		"MapsAPIKey": "",//kGoogleMapsAPIKey,
-		"Center": sfo.KFixes["EPICK"], //sfo.KLatlongSFO,
-		"Waypoints": WaypointMapVar(sfo.KFixes),
-		"Zoom": 8,
-	}
 	if err := templates.ExecuteTemplate(w, "fdb2-tracks", params); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -435,12 +418,29 @@ func IdSpecsToJSVar(idspecs []string) template.JS {
 //  &colorby=procedure   (what we tagged them as - not implemented ?)
 //  &nofurniture=1       (to suppress furniture)
 
-func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspecs []string, vectorURLPath string) {
+func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, resultset string, idspecs []string, vectorURLPath string) {
 	ms := NewMapShapes()
 
 	trackspec := ""
 	colorscheme := FormValueColorScheme(r)
-	legend := fmt.Sprintf("%d flights", len(idspecs))
+
+	legend := ""
+	if resultset != "" {
+		// Rejigger all the POST and GET data into a single GET URL, then add our new field.
+		vals := r.URL.Query()
+		for k,formvals := range r.Form {
+			for _,formval := range formvals {
+				vals.Set(k,formval)
+			}
+		}
+		vals.Del("idspec")
+		vals.Set("resultset", resultset)
+		urlstr := fmt.Sprintf("%s://%s%s?%s", r.URL.Scheme, r.Host, r.URL.Path, vals.Encode())
+		legend += fmt.Sprintf("[<a target=\"_blank\" href=\"%s\">link</a>] ", urlstr)
+	}
+
+	legend += fmt.Sprintf("%d flights", len(idspecs))
+
 	if rep,err := getReport(r); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -463,14 +463,9 @@ func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, idspe
 		"ColorScheme": colorscheme,
 		
 		"Waypoints": WaypointMapVar(sfo.KFixes),
-		//"ClassBOverlay": classBOverlay,
-		//"WhiteOverlay": whiteVeil,
-		//"MapsAPIKey": "",//kGoogleMapsAPIKey,
-		//"Center": center,
-		//"Zoom": zoom,
-		//"MapType": mapType,
 	}
 	getGoogleMapsParams(r, params)
+
 	if err := templates.ExecuteTemplate(w, "fdb3-tracks", params); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
