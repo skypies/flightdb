@@ -141,7 +141,7 @@ func OutputApproachesAsPDF(w http.ResponseWriter, r *http.Request, flights []*fd
 //  &refpt_lat=36&refpt_long=-122&refpt_label=FOO  (render a reference point onto the graph)
 
 func descentHandler(w http.ResponseWriter, r *http.Request) {
-	c,_ := context.WithTimeout(appengine.NewContext(r), 180 * time.Second)
+	c,_ := context.WithTimeout(appengine.NewContext(r), 10 * time.Minute)
 	db := fgae.FlightDB{C:c}
 	
 	// This whole Airframe cache thing should be automatic, and upstream from here.
