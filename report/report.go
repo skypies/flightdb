@@ -41,7 +41,7 @@ type Report struct {
 	// Output state
 	RowsHTML  [][]template.HTML
 	RowsText  [][]string
-
+	
 	HeadersText []string
 	
 	I         map[string]int

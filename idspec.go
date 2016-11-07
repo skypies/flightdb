@@ -50,9 +50,10 @@ func StringsToInt64s(in []string) ([]int64, error) {
 
 // Parse a string into a new spec
 //     A23A23@14123123123123  (IcaoId at an epoch time)
+//     A23A23@2006-01-02T15:04:05Z07:00  (IcaoId at an RFC3339 time)
 //     A23A23@14111111111111:14222222222222  (IcaoId within time range; could be multiple matches)
-//     UAL123@14123123123123  (IATACallsign at an epoch time)
-//     N1234S@14123123123123  (Registration Callsign at an epoch time)
+//     UAL123@14123123123123  (IATACallsign instead of IcaoId)
+//     N1234S@14123123123123  (Registration Callsign instead of IcaoId)
 func NewIdSpec(idspecString string) (IdSpec,error) {
 	bits := strings.Split(idspecString, "@")
 	if len(bits) != 2 {
@@ -61,9 +62,13 @@ func NewIdSpec(idspecString string) (IdSpec,error) {
 	id, timespec := bits[0], bits[1]
 
 	idspec := IdSpec{}
-	
-	if timeInts,err := StringsToInt64s(strings.Split(timespec, ":")); err != nil {
+
+	if t,err := time.Parse(time.RFC3339, timespec); err == nil {
+		idspec.Time = t
+
+	} else if timeInts,err := StringsToInt64s(strings.Split(timespec, ":")); err != nil {
 		return IdSpec{}, fmt.Errorf("IdSpec '%s' timespec problem: %v", idspecString, err)
+
 	} else {
 		idspec.Time = time.Unix(timeInts[0], 0)
 		if len(timeInts) == 2 {

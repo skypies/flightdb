@@ -17,6 +17,7 @@ import (
 	"github.com/skypies/util/date"
 	"github.com/skypies/util/widget"
 
+	adsblib "github.com/skypies/adsb"
 	fdb "github.com/skypies/flightdb2"
 )
 
@@ -50,7 +51,7 @@ func formValueFlightByKey(r *http.Request) (*fdb.Flight, error) {
 
 // {{{ BatchFlightDateRangeHandler
 
-// /backend/fdb/batch/dates?
+// /batch/flights/dates?
 //   &job=retag
 //   &tags=FOO,BAR
 //   &date=range&range_from=2016/01/21&range_to=2016/01/26
@@ -105,7 +106,7 @@ func BatchFlightDateRangeHandler(w http.ResponseWriter, r *http.Request) {
 // }}}
 // {{{ BatchFlightDayHandler
 
-// /backend/fdb/batch/day?
+// /batch/flights/day?
 //   &day=2016/01/21
 //   &job=foo
 //   &tags=FOO,BAR
@@ -162,7 +163,7 @@ func BatchFlightDayHandler(w http.ResponseWriter, r *http.Request) {
 // }}}
 // {{{ BatchFlightHandler
 
-// To run a job directly: /backend/fdb/batch/flight?job=retag&flightkey=...&
+// To run a job directly: /batch/flights/flight?job=retag&flightkey=...&
 func BatchFlightHandler(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
 
@@ -178,6 +179,7 @@ func BatchFlightHandler(w http.ResponseWriter, r *http.Request) {
 	str := ""
 	switch job {
 	case "retag":         str,err = jobRetagHandler(r,f)
+	case "breakup":       str,err = jobMaybeBreakupFlight(r,f)
 	}
 
 	if err != nil {
@@ -225,6 +227,151 @@ func jobRetagHandler(r *http.Request, f *fdb.Flight) (string, error) {
 		db.Infof("%s", str)
 	}	
 
+	return str, nil
+}
+
+// }}}
+// {{{ jobMaybeBreakupFlight
+
+// There was a nasty bug, where a new flight could be erroneously
+// glued onto the previous flight if the track type was different
+// (e.g. ADSB vs MLAT), because it took 'absence of this track type'
+// to mean that the flight was empty. That's now fixed, but lots of
+// bad data exists in the database. This oneoff cleanup routine
+// separates these flights out, either into the 'real' flight it
+// should be in, or a new one.
+
+func jobMaybeBreakupFlight(r *http.Request, f *fdb.Flight) (string, error) {
+	db := FlightDB{C:appengine.NewContext(r)}
+
+	mlat,adsb := f.Tracks["MLAT"],f.Tracks["ADSB"]
+	if adsb == nil {
+		return "No ADSB\n", nil
+	} else if mlat == nil {
+		return "No MLAT\n", nil
+	}
+
+	// Order the two tracks based on their end-time
+	older,newer,trackKey := mlat,adsb,"ADSB"
+	if (*mlat).End().After( (*adsb).End() ) {
+		older,newer,trackKey = adsb,mlat,"MLAT"
+	}
+
+	plausible,debstr := older.PlausibleExtension(newer)
+	str := fmt.Sprintf("has both ! plausible=%v\n%s\n", plausible, debstr)
+
+	if plausible {
+		return str+"\nPLAUSIBLE, leave as is\n", nil
+	}
+
+	// Not plausible. Need to find a new home for 'newer'.
+	
+	// We can build an idpsec from the track's timestamp.
+	idspec := f.IdSpec()
+	idspec.Time = newer.End()
+	str += fmt.Sprintf("** OK, looking to breakup\n\n\n")
+	str += fmt.Sprintf("** http://fdb.serfr1.org/fdb/debug2?idspec=%s\n", idspec)
+
+	// Look it up, iterate over results.
+	results,err := db.LookupAll(db.NewQuery().ByIdSpec(idspec))
+	if err != nil { return str, err }
+
+	str += fmt.Sprintf("\n=== %s\n", f.IdentityString())
+	for k,v := range f.Tracks {
+		str += fmt.Sprintf(" == [%-7.7s] %s\n", k, v)
+	}
+	str += fmt.Sprintf(" ++ [       ] %s (TRYING TO MOVE)\n", newer)
+	
+	haveFoundNewHome := false
+	for _,maybeF := range results {
+		if f.GetDatastoreKey() == maybeF.GetDatastoreKey() {
+			str += fmt.Sprintf("\n--- %s [SKIP, this is src flight]\n", maybeF.IdentityString())
+			continue
+		}
+		str += fmt.Sprintf("\n--- %s\n", maybeF.IdentityString())
+
+		// Look for the the flight whose existing track is a plausible extension (or vice versa?)
+		for k,v := range maybeF.Tracks {
+			str += fmt.Sprintf(" -- [%-7.7s] %s\n", k, v)
+
+			p1,str1 := v.PlausibleExtension(newer)
+			p2,str2 := newer.PlausibleExtension(v)
+			if p1 {
+				str += fmt.Sprintf("  - PLAUSIBLE EXTENSION 1, Yahay !\n%s\n", str1)
+			} else if p2 {
+				str += fmt.Sprintf("  - PLAUSIBLE EXTENSION 2, Yahay !\n%s\n", str2)
+			}
+
+			// if we find one, WOWZER; add/move it over, and save both; else flag error and leave alone.
+			if p1 || p2 {
+				if !maybeF.HasTrack(trackKey) {
+					maybeF.Tracks[trackKey] = &fdb.Track{}
+				}
+				maybeF.Tracks[trackKey].Merge(newer)
+				delete(f.Tracks, trackKey)
+
+				f.Analyse()
+				maybeF.Analyse()
+
+				str += fmt.Sprintf("\n\n================{ new stuff }===========================\n\n")
+				str += fmt.Sprintf("\n--- %s\n", f.IdentityString())
+				for k,v := range f.Tracks {
+					str += fmt.Sprintf(" -- [%-7.7s] %s\n", k, v)
+				}
+				str += fmt.Sprintf("\n+++ %s\n", maybeF.IdentityString())
+				for k,v := range maybeF.Tracks {
+					str += fmt.Sprintf(" ++ [%-7.7s] %s\n", k, v)
+				}
+				
+				if err := db.PersistFlight(f); err != nil {
+					str += fmt.Sprintf("* Failed1, with: %v\n", err)	
+					db.Errorf("%s", str)
+					return str, err
+				}
+				if err := db.PersistFlight(maybeF); err != nil {
+					str += fmt.Sprintf("* Failed2, with: %v\n", err)	
+					db.Errorf("%s", str)
+					return str, err
+				}
+
+				haveFoundNewHome = true
+				break
+			}
+		}
+	}
+
+	if !haveFoundNewHome {
+		str += "\n\nNo new home found :( Should create a whole new flight for newer\n"
+		frag := &fdb.TrackFragment{
+			IcaoId: adsblib.IcaoId(f.Identity.IcaoId),
+			Callsign: f.Identity.Callsign,
+			Track: *newer,
+			DataSystem: fdb.DSADSB,
+		}
+		if trackKey == "MLAT" { frag.DataSystem = fdb.DSMLAT }
+
+		newF := fdb.NewFlightFromTrackFragment(frag)
+
+		str += "\n\nNo new home found :( Should create a whole new flight for newer\n"
+		str += fmt.Sprintf("** Done !\n** NewF: [%s] %s\n", newF.IdentityString(), newF)
+
+		delete(f.Tracks, trackKey)
+
+		f.Analyse()
+		newF.Analyse()
+		
+		if err := db.PersistFlight(f); err != nil {
+			str += fmt.Sprintf("* Failed3, with: %v\n", err)	
+			db.Errorf("%s", str)
+			return str, err
+		}
+		if err := db.PersistFlight(newF); err != nil {
+			str += fmt.Sprintf("* Failed4, with: %v\n", err)	
+			db.Errorf("%s", str)
+			return str, err
+		}
+	}
+	
 	return str, nil
 }
 

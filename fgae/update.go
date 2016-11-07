@@ -69,6 +69,24 @@ func (db *FlightDB)PersistFlight(f *fdb.Flight) error {
 	}
 }
 
+func CurrentAccumulationTrack(f *fdb.Flight) *fdb.Track {
+	if !f.HasTrack("ADSB") && !f.HasTrack("MLAT") { return nil }
+	if !f.HasTrack("ADSB") { return f.Tracks["MLAT"] }
+	if !f.HasTrack("MLAT") { return f.Tracks["ADSB"] }
+
+	mlat,adsb := f.Tracks["MLAT"],f.Tracks["ADSB"]
+
+	if len(*mlat) == 0 { return adsb }
+	if len(*adsb) == 0 { return mlat }
+
+	// Both tracks exist and are not empty ! Return most recent
+	if (*mlat).End().After( (*adsb).End() ) {
+		return mlat
+	} else {
+		return adsb
+	}
+}
+
 func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 	db.Debugf("* adding frag %s\n", frag)
 	f,err := db.LookupMostRecent(db.NewQuery().ByIcaoId(frag.IcaoId))
@@ -87,16 +105,23 @@ func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 	} else {
 		db.Debugf("* %s found %s", prefix, f)
 
-		trackKey := frag.TrackName() // ADSB, or MLAT
+		trackKey := frag.TrackName() // ADSB, or MLAT; this is the track we will accumulate into
+
+		// This is the most recent track we've accumulated into (could be ADSB, or MLAT); nil if none.
+		// Note that this doesn't have to be the same as trackKey; we might be adding ADSB, but already
+		// have some MLAT for the flight.
+		accTrack := CurrentAccumulationTrack(f)
 		
-		if track,exists := f.Tracks[trackKey]; !exists {
+		//if track,exists := f.Tracks[trackKey]; !exists {
+		if accTrack == nil {
 			f.DebugLog += "-- AddFrag "+prefix+": first frag on pre-existing flight\n"
 			db.Infof("* %s no pre-existing track; adding right in", prefix)
 			f.Tracks[trackKey] = &frag.Track
 
-		} else if plausible,debug := track.PlausibleExtension(&frag.Track); plausible==true {
+		//} else if plausible,debug := track.PlausibleExtension(&frag.Track); plausible==true {
+		} else if plausible,debug := accTrack.PlausibleExtension(&frag.Track); plausible==true {
 			f.DebugLog += fmt.Sprintf("-- AddFrag %s: extending (adding %d to %d points)\n",
-				prefix, len(frag.Track), len(*track))
+				prefix, len(frag.Track), len(*accTrack))
 			db.Debugf("* %s extending track ... debug:\n%s", prefix, debug)
 
 			// For MLAT data, callsigns can take a while to show up in the stream
@@ -105,14 +130,20 @@ func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 				f.Identity.Callsign = frag.Callsign
 			}
 
-			// Determine whether this frag is strictly a suffix to existing track data; this is the
-			// common case. If so, keep a pointer to the trackpoint that precedes the frag 
-			n := len(*f.Tracks[trackKey])
-			if n>0 && (*f.Tracks[trackKey])[n-1].TimestampUTC.Before(frag.Track[0].TimestampUTC) {
-				db.Debugf("** new frag is strictly a suffix; prev = %d", n-1)
-				prevTP = &((*f.Tracks[trackKey])[n-1])
+			if !f.HasTrack(trackKey) {
+				// If the accTrack was a different type (MLAT vs. ADSB), then we'll need to init
+				f.Tracks[trackKey] = &fdb.Track{}
+
+			} else {
+				// Determine whether this frag is strictly a suffix to existing track data; this is the
+				// common case. If so, keep a pointer to the trackpoint that precedes the frag 
+				n := len(*f.Tracks[trackKey])
+				if n>0 && (*f.Tracks[trackKey])[n-1].TimestampUTC.Before(frag.Track[0].TimestampUTC) {
+					db.Debugf("** new frag is strictly a suffix; prev = %d", n-1)
+					prevTP = &((*f.Tracks[trackKey])[n-1])
+				}
 			}
-			
+
 			db.Debugf("** pre : %s", f.Tracks[trackKey])
 			f.Tracks[trackKey].Merge(&frag.Track)
 			db.Debugf("** post: %s", f.Tracks[trackKey])
@@ -139,7 +170,7 @@ func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 	// the waypoint detection code (which builds lines between points) will look at the gap
 	// between the frags, and maybe find extra waypoints.
 	if prevTP != nil {
-		// a = append([]T{x}, a...)
+		// shift(x,a) : a = append([]T{x}, a...)
 		frag.Track = append([]fdb.Trackpoint{*prevTP}, frag.Track...)
 	}
 
@@ -151,9 +182,3 @@ func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 	
 	return db.PersistFlight(f)
 }
-
-// Say we've pulled some identity information from somewhere; if it matches something,
-// let's merge it in
-//func (db FlightDB)AddPartialIdentity(id *fdb.Identity) error {
-//	return nil
-//}

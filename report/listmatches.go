@@ -4,7 +4,6 @@ import(
 	// "encoding/json"
 	"fmt"
 	"strings"
-	//"time"
 
 	"github.com/skypies/util/date"
 	
@@ -90,7 +89,29 @@ func ListReporter(r *Report, f *fdb.Flight, intersections []fdb.TrackIntersectio
 
 	r.AddRow(&htmlrow, &textrow)
 	r.SetHeaders(ListReporterHeaders)
+/*	
+	dstr := fmt.Sprintf("*** %s\n", f.IdSpec())
+	dstr += fmt.Sprintf("    %s\n", f.IdentityString())
+	dstr += fmt.Sprintf("    %s\n", f.FullString())
+	dstr += fmt.Sprintf("    airframe: %s\n", f.Airframe.String())
+	dstr += fmt.Sprintf("    index tags: %v\n", f.IndexTagList())	
+	// s,e := f.Times()
+	dstr += fmt.Sprintf("    s: %s [%s] %d\n", s, date.InPdt(s), s.Unix())
+	dstr += fmt.Sprintf("    e: %s [%s] %d\n", e, date.InPdt(e), e.Unix())
 
+	s2,e2 := f.Tracks["ADSB"].Times()
+	dstr += fmt.Sprintf("    s2: %s [%s] %d\n", s2, date.InPdt(s2), s2.Unix())
+	dstr += fmt.Sprintf("    e2: %s [%s] %d\n", e2, date.InPdt(e2), e2.Unix())
+
+	for i,t := range f.Timeslots() {
+		dstr += fmt.Sprintf("    %d: %s [%s] %d\n", i, t, date.InPdt(t), t.Unix())
+	}
+	for i,t := range date.Timeslots(s,e,fdb.TimeslotDuration) {
+		dstr += fmt.Sprintf("   [%d] %s [%s] %d\n", i, t, date.InPdt(t), t.Unix())
+	}
+
+	r.Info(dstr+"\n\n")
+*/	
 /*
 	f.PruneTrackContents()
 	blob,_ := f.ToBlob()
@@ -102,6 +123,7 @@ func ListReporter(r *Report, f *fdb.Flight, intersections []fdb.TrackIntersectio
 		r.Info(fmt.Sprintf(" %03d] %s, %d\n", i, t, t.Unix()))
 	}
 */	
+
 	return Accepted, nil
 }
 
