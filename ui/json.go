@@ -5,7 +5,7 @@ import(
 	"fmt"
 	"net/http"
 
-	"google.golang.org/appengine"
+	"golang.org/x/net/context"
 	"google.golang.org/appengine/urlfetch"
 
 	fdb "github.com/skypies/flightdb2"
@@ -14,8 +14,8 @@ import(
 )
 
 func init() {
-	http.HandleFunc("/fdb/json", jsonHandler)
-	http.HandleFunc("/fdb/snarf", snarfHandler)
+	http.HandleFunc("/fdb/json", UIOptionsHandler(jsonHandler))
+		http.HandleFunc("/fdb/snarf", UIOptionsHandler(snarfHandler))
 }
 
 // {{{ LookupIdspec
@@ -46,19 +46,19 @@ func LookupIdspec(db fgae.FlightDB, idspec fdb.IdSpec) ([]*fdb.Flight, error) {
 
 // {{{ jsonHandler
 
-func jsonHandler(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
+func jsonHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	opt,_ := GetUIOptions(ctx)
+	db := fgae.FlightDB{C:ctx}
 
 	// This whole Airframe cache thing should be automatic, and upstream from here.
-	airframes := ref.NewAirframeCache(c)
+	airframes := ref.NewAirframeCache(ctx)
 
-	idspecs,err := FormValueIdSpecs(r)
+	idspecs,err := opt.IdSpecs()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	db := fgae.FlightDB{C:c}
 	flights := []*fdb.Flight{}
 	for _,idspec := range idspecs {
 		if results,err := LookupIdspec(db, idspec); err != nil {
@@ -95,12 +95,12 @@ func jsonHandler(w http.ResponseWriter, r *http.Request) {
 // }}}
 // {{{ snarfHandler
 
-func snarfHandler(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
-	client := urlfetch.Client(c)
-	db := fgae.FlightDB{C:c}
+func snarfHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	// opt,_ := GetUIOptions(ctx)
+	client := urlfetch.Client(ctx)
+	db := fgae.FlightDB{C:ctx}
 
-	//url := "http://stop.jetnoise.net/fdb/json2?idspec=" + r.FormValue("idspec")
+	// This might well be broken nowadays; consider opt.Idspecs()[0]
 	url := "http://fdb.serfr1.org/fdb/json?idspec=" + r.FormValue("idspec")
 
 	str := fmt.Sprintf("Snarfer!\n--\n%s\n--\n", url)

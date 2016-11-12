@@ -5,22 +5,21 @@ import(
 	"fmt"
 	"net/http"
 
-	"google.golang.org/appengine"
+	"golang.org/x/net/context"
 	"google.golang.org/appengine/user"
 
 	"github.com/skypies/flightdb2/fgae"
 )
 
 func init() {
-	http.HandleFunc("/fdb/debug", debugHandler) // should rename at some point ...
-	http.HandleFunc("/fdb/debug/user", debugUserHandler)
+	http.HandleFunc("/fdb/debug", UIOptionsHandler(debugHandler)) // should rename at some point ...
+	http.HandleFunc("/fdb/debug/user", UIOptionsHandler(debugUserHandler))
 }
 
 // {{{ debugUserHandler
 
-func debugUserHandler(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
-	user := user.Current(c)
+func debugUserHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	user := user.Current(ctx)
 	json,_ := json.MarshalIndent(user, "", "  ")
 
 	w.Header().Set("Content-Type", "text/plain")
@@ -30,19 +29,19 @@ func debugUserHandler(w http.ResponseWriter, r *http.Request) {
 // }}}
 // {{{ debugHandler
 
-func debugHandler(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
-
+func debugHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	opt,_ := GetUIOptions(ctx)
+	db := fgae.FlightDB{C:ctx}
 	str := ""
-	
-	idspecs,err := FormValueIdSpecs(r)
+
+	//str += fmt.Sprintf("** Idspecs:-\n%#v\n\n", opt.IdSpecs())
+
+	idspecs,err := opt.IdSpecs()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	//str += fmt.Sprintf("** Idspecs:-\n%#v\n\n", idspecs)
 
-	db := fgae.FlightDB{C:c}	
 	for _,idspec := range idspecs {
 		str += fmt.Sprintf("*** %s [%v]\n", idspec, idspec)
 

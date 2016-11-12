@@ -3,10 +3,11 @@ package ui
 import(
 	"fmt"
 	"net/http"
+	"golang.org/x/net/context"
 )
 
 func init() {
-	http.HandleFunc("/fdb/visualize", visualizeHandler)
+	http.HandleFunc("/fdb/visualize", UIOptionsHandler(visualizeHandler))
 }
 
 // ?idspec=XX,YY,...  (or ?idspec=XX&idspec=YYY&...)
@@ -16,9 +17,7 @@ func init() {
 //  &dist=from       (for distance axis, use dist from airport; by default, uses dist along path)
 //  &colorby=delta   (delta groundspeed, instead of groundspeed)
 
-func visualizeHandler(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-
+func visualizeHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	if r.FormValue("debug") != "" {
 		str := "OK\n"
 		for k, v := range r.Form {
@@ -29,9 +28,9 @@ func visualizeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	switch r.FormValue("viewtype") {
-	case "vector":   tracksetHandler(w,r)
-	case "descent":  descentHandler(w,r)
-	case "track":    trackHandler(w,r)
+	case "vector":   tracksetHandler(ctx,w,r)
+	case "descent":  descentHandler(ctx,w,r)
+	case "track":    trackHandler(ctx,w,r)
 	default:         http.Error(w, "Specify viewtype={vector|descent|track}", http.StatusBadRequest)
 	}		
 }

@@ -20,10 +20,10 @@ import(
 )
 
 func init() {
-	http.HandleFunc("/fdb/vector", vectorHandler)  // Returns an idpsec as vector lines in JSON
+	http.HandleFunc("/fdb/vector", UIOptionsHandler(vectorHandler))  // Returns an idpsec as vector lines in JSON
 
-	http.HandleFunc("/api/flight/lookup", flightLookupHandler)
-	http.HandleFunc("/api/procedures", ProcedureHandler)
+	http.HandleFunc("/api/flight/lookup", UIOptionsHandler(flightLookupHandler))
+	http.HandleFunc("/api/procedures", UIOptionsHandler(ProcedureHandler))
 }
 
 // {{{ vectorHandler
@@ -31,20 +31,19 @@ func init() {
 // ?idspec=F12123@144001232[,...]
 // &json=1
 
-func vectorHandler(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
-	db := fgae.FlightDB{C:c}
-	
-	var idspec fdb.IdSpec
-	if idspecs,err := FormValueIdSpecs(r); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+func vectorHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	opt,_ := GetUIOptions(ctx)
+	db := fgae.FlightDB{C:ctx}
+
+	idspecs,err := opt.IdSpecs()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}	else if len(idspecs) != 1 {
+	} else if len(idspecs) != 1 {
 		http.Error(w, "wanted just one idspec arg", http.StatusBadRequest)
 		return
-	} else {
-		idspec = idspecs[0]
 	}
+	idspec := idspecs[0]
 
 	if r.FormValue("json") == "" {
 		http.Error(w, "vectorHandler is json only at the moment", http.StatusBadRequest)
@@ -203,15 +202,6 @@ func FlightToMapLines(f *fdb.Flight, trackName string, colorscheme ColorScheme, 
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-// {{{ GetContext
-
-// GetContext preps the context with ACL / data-access tokens (some day ...)
-func GetContext(r *http.Request) context.Context {
-	c,_ := context.WithTimeout(appengine.NewContext(r), 10 * time.Minute)
-	return c //appengine.NewContext(r)
-}
-
-// }}}
 // {{{ flightLookupHandler
 
 // http://fdb.serfr1.org/api/flight/lookup?idspec=A3C3E6@1464046200:1464046200
@@ -219,19 +209,17 @@ func GetContext(r *http.Request) context.Context {
 // ?idspec=F12123@144001232:155001232   (note - time range - may return multiple matches)
 //   &trackdata=1                       (include trackdata; omitted by default)
 
-func flightLookupHandler(w http.ResponseWriter, r *http.Request) {
-	c := GetContext(r)
-	db := fgae.FlightDB{C:c}
-
-	_=db
+func flightLookupHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	db := fgae.FlightDB{C:ctx}
+	opt,_ := GetUIOptions(ctx)
 	str := "OK\n"
 
-	idspecs,err := FormValueIdSpecs(r)
+	idspecs,err := opt.IdSpecs()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
+	
 	for _,idspec := range idspecs {
 		str += fmt.Sprintf("* %s\n", idspec)
 
@@ -272,12 +260,11 @@ func WriteEncodedData(w http.ResponseWriter, r *http.Request, data interface{}) 
 	}
 }
 
-// }}}
-	
+// }}}	
 // {{{ ProcedureHandler
 
-func ProcedureHandler(w http.ResponseWriter, r *http.Request) {
-	db := fgae.FlightDB{C:GetContext(r)}
+func ProcedureHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	db := fgae.FlightDB{C:ctx}
 
 	tags := widget.FormValueCommaSpaceSepStrings(r,"tags")
 	s,e := widget.FormValueEpochTime(r,"s"), widget.FormValueEpochTime(r,"e")
@@ -302,41 +289,6 @@ func ProcedureHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	WriteEncodedData(w,r,cfs)
-}
-
-// }}}
-// {{{ ProcedureHandlerOld
-
-func ProcedureHandlerOld(w http.ResponseWriter, r *http.Request) {
-	db := fgae.FlightDB{C:GetContext(r)}
-
-	// s,e := widget.FormValueEpochTime(r,"s"), widget.FormValueEpochTime(r,"e")
-	s,e := date.WindowForYesterday()
-
-	str := fmt.Sprintf("* s: %s\n* e: %s\n", s, e)
-	tStart := time.Now()
-	
-	tags := widget.FormValueCommaSpaceSepStrings(r,"tags")
-	q := db.QueryForTimeRange(tags, s, e)
-	iter := db.NewIterator(q)
-	i := 0
-	for iter.Iterate() {
-		if iter.Err() != nil { break }
-		f := iter.Flight()
-		if i<1000 {
-			str += fmt.Sprintf(" [%3d] %s %v\n", i, f.BestFlightNumber(), f.WaypointList())
-		}
-		i++
-	}
-	if iter.Err() != nil {
-		http.Error(w, iter.Err().Error(), http.StatusInternalServerError)
-		return
-	}
-
-	str += fmt.Sprintf("\nAll done ! %d results, took %s\n", i, time.Since(tStart))
-	
-	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(str))	
 }
 
 // }}}

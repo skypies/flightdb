@@ -2,65 +2,91 @@ package ui
 
 import(
 	"fmt"
-	"math/rand"
+	"time"
 	"net/http"
-	
-	"github.com/skypies/geo"
-	"github.com/skypies/geo/sfo"
-	"github.com/skypies/util/widget"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine"
 
-	fdb "github.com/skypies/flightdb2"
-	"github.com/skypies/flightdb2/fpdf"
-	_ "github.com/skypies/flightdb2/analysis" // Populate the report registry
+	"github.com/skypies/flightdb2/fgae"
 )
 
-func FormValuePDFColorScheme(r *http.Request) fpdf.ColorScheme {
-	switch r.FormValue("colorby") {
-	case "delta": return fpdf.ByDeltaGroundspeed
-	case "plot": return fpdf.ByPlotKind
-	default: return fpdf.ByGroundspeed
-	}
+// A 'middleware' handler to parse out common fields, and stuff them into a context
+
+/* Common code for pulling out a user session cookie, populating a Context, etc.
+ * Users that aren't logged in will be redirected to the specified URL.
+
+func init() {
+  http.HandleFunc("/deb", UIOptionsHandler(debHandler))
 }
 
-// Presumes a form field 'idspec', as per identity.go, and also maxflights (as a cap)
-func FormValueIdSpecStrings(r *http.Request) ([]string) {
-	idspecs := widget.FormValueCommaSepStrings(r, "idspec")
+func debHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	opt,ok := GetUIOptions(ctx)
+	str := fmt.Sprintf("OK\nresultsetid=%s, ok=%v\n", opt.ResultsetID, ok) 
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte(str))
+}
 
-	// If asked for a random subset, go get 'em
-	maxFlights := widget.FormValueInt64(r, "maxflights")	
-	if maxFlights > 0 && len(idspecs) > int(maxFlights) {
-		randomSubset := map[string]int{}
+ */
 
-		for i:=0; i<int(maxFlights * 10); i++ {
-			if len(randomSubset) >= int(maxFlights) { break }
-			randomSubset[idspecs[rand.Intn(len(idspecs))]]++
+// To prevent other libs colliding in the context.Value keyspace, use this private key
+type contextKey int
+const uiOptionsKey contextKey = 0
+
+type baseHandler    func(http.ResponseWriter, *http.Request)
+type contextHandler func(context.Context, http.ResponseWriter, *http.Request)
+
+func UIOptionsHandler(ch contextHandler) baseHandler {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx,_ := context.WithTimeout(appengine.NewContext(r), 55 * time.Second)
+		r.ParseForm()
+
+		opt,err := FormValueUIOptions(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
-		
-		idspecs = []string{}
-		for id,_ := range randomSubset {
-			idspecs = append(idspecs, id)
+
+		if err := opt.MaybeLoadSaveResultset(ctx); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if r.FormValue("debugoptions") != "" {
+			w.Header().Set("Content-Type", "text/plain")
+			w.Write([]byte(fmt.Sprintf("OK\n%#v\n", opt)))
+			return
+		}
+
+		// Call the underlying handler, with our shiny context
+		ctx = context.WithValue(ctx, uiOptionsKey, opt)		
+		ch(ctx, w, r)
+	}
+}
+
+// Maybe load, or maybe save, all the idspecs as a resultset in datastore.
+func (opt *UIOptions)MaybeLoadSaveResultset(ctx context.Context) error {
+
+	// We have a stub resultsetid, and some idstrings - store them.
+	if opt.ResultsetID == "saveme" && len(opt.IdSpecStrings) > 0 {
+		if keyid,err := fgae.IdSpecSetSave(ctx, opt.IdSpecStrings); err != nil {
+			return err
+		} else {
+			opt.ResultsetID = keyid
+		}
+
+	} else if opt.ResultsetID != "" && len(opt.IdSpecStrings) == 0 {
+		if idspecstrings,err := fgae.IdSpecSetLoad(ctx, opt.ResultsetID); err != nil {
+			return err
+		} else {
+			opt.IdSpecStrings = idspecstrings
 		}
 	}
 
-	return idspecs
+	return nil
 }
 
-// Presumes a form field 'idspec', as per identity.go, and also maxflights (as a cap)
-func FormValueIdSpecs(r *http.Request) ([]fdb.IdSpec, error) {
-	ret := []fdb.IdSpec{}
-	for _,str := range FormValueIdSpecStrings(r) {
-		id,err := fdb.NewIdSpec(str)
-		if err != nil { continue } // FIXME - why does this happen ? e.g. ACA564@1389250800
-		//if err != nil { return nil, err }
-		ret = append(ret, id)
-	}
-	
-	return ret, nil
-}
-
-func FormValueAirportLocation(r *http.Request, name string) (geo.Latlong, error) {
-	if pos,exists := sfo.KAirports[r.FormValue(name)]; exists {
-		return pos, nil
-	}
-	return geo.Latlong{}, fmt.Errorf("airport '%s' not known; try KSFO,KOAK etc", r.FormValue(name))
+// Underlying handlers should call this to get their session object
+func GetUIOptions(ctx context.Context) (UIOptions,bool) {
+	opt, ok := ctx.Value(uiOptionsKey).(UIOptions)
+	return opt, ok
 }

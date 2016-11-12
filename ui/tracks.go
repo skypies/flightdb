@@ -8,9 +8,8 @@ import(
 	"strings"
 	"time"
 	
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/urlfetch"
 	"golang.org/x/net/context"
+	"google.golang.org/appengine/urlfetch"
 
 	"github.com/skypies/geo"
 	"github.com/skypies/geo/sfo"
@@ -24,8 +23,8 @@ import(
 
 func init() {
 	http.HandleFunc("/fdb/map", MapHandler)
-	http.HandleFunc("/fdb/tracks", trackHandler)
-	http.HandleFunc("/fdb/trackset", tracksetHandler)
+	http.HandleFunc("/fdb/tracks", UIOptionsHandler(trackHandler))
+	http.HandleFunc("/fdb/trackset", UIOptionsHandler(tracksetHandler))
 }
 
 // {{{ maybeAddFr24Track
@@ -67,19 +66,18 @@ func MaybeAddFr24Track(c context.Context, f *fdb.Flight) string {
 
 //  &all=1  - show all instances of the IdSpec
 
-func trackHandler(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
-
+func trackHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	// This whole Airframe cache thing should be automatic, and upstream from here.
-	airframes := ref.NewAirframeCache(c)
+	airframes := ref.NewAirframeCache(ctx)
+	opt,_ := GetUIOptions(ctx)
 
-	idspecs,err := FormValueIdSpecs(r)
+	idspecs,err := opt.IdSpecs()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	db := fgae.FlightDB{C:c}
+	db := fgae.FlightDB{C:ctx}
 	flights := []*fdb.Flight{}
 	for _,idspec := range idspecs {
 		if r.FormValue("all") != "" {
@@ -107,48 +105,22 @@ func trackHandler(w http.ResponseWriter, r *http.Request) {
 		}			
 	}
 	
-	OutputTracksOnAMap(w, r, flights)
+	OutputTracksOnAMap(ctx, w, r, flights)
 }
 
 // }}}
 // {{{ tracksetHandler
 
-//  ?idspec=F12123@144001232[,...]
-// [?resultset=14098123098120398091823asoidufas98d7uasodjasduaosiduasoiduasoid]
+func tracksetHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	opt,_ := GetUIOptions(ctx)
 
-func tracksetHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
-	idstrings := []string{}
-	resultsetid := r.FormValue("resultset")
-	
-	if resultsetid != "" {
-		idspecstrings,err := fgae.IdSpecSetLoad(ctx, r.FormValue("resultset"))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		idstrings = idspecstrings
-
-	} else {
-
-		// Check we can parse the idspecs ...
-		if _,err := FormValueIdSpecs(r); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-				
-		// ... but just pass along the strings
-		idstrings = FormValueIdSpecStrings(r)
-
-		if len(idstrings) > 0 {
-			if keyid,err := fgae.IdSpecSetSave(ctx, idstrings); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				
-			} else {
-				resultsetid = keyid
-			}
-		}
+	// Check we can parse them up-front, so we can return an ascii error
+	if _,err := opt.IdSpecs(); err != nil {
+		http.Error(w, fmt.Sprintf("idspec parsing: %v", err.Error()), http.StatusInternalServerError)
+		return
 	}
 
-	OutputMapLinesOnAStreamingMap(w, r, resultsetid, idstrings, "/fdb/vector")
+	OutputMapLinesOnAStreamingMap(ctx, w, r, "/fdb/vector")
 }
 
 // }}}
@@ -177,18 +149,6 @@ func MapHandler(w http.ResponseWriter, r *http.Request) {
 
 // }}}
 
-// {{{ getReport
-
-func getReport(r *http.Request) (*report.Report, error) {
-	if r.FormValue("rep") == "" {
-		// No report to run
-		return nil,nil
-	}
-	rep,err := report.SetupReport(r)
-	return &rep,err
-}
-
-// }}}
 // {{{ renderReportFurniture
 
 func renderReportFurniture(rep *report.Report) *MapShapes {
@@ -262,9 +222,9 @@ func WaypointMapVar(in map[string]geo.Latlong) template.JS {
 //  track=fr24               (see dots for just that track)
 //  clip1=EPICK&clip2=EDDYY  (clip to points between those waypoints)
 
-func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.Flight) {
-	c := appengine.NewContext(r)
-	
+func OutputTracksOnAMap(ctx context.Context, w http.ResponseWriter, r *http.Request, flights []*fdb.Flight) {
+	opt,_ := GetUIOptions(ctx)
+
 	bannerText := ""
 	for i,_ := range flights {
 		bannerText += fmt.Sprintf("*** %s (%d) %s %s\n", flights[i].IdentityString(),
@@ -272,24 +232,21 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 	}
 
 	ms := NewMapShapes()	
-	rep,err := getReport(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	} else if rep != nil {
-		ms.Add(renderReportFurniture(rep))
+
+	if opt.Report != nil {
+		ms.Add(renderReportFurniture(opt.Report))
 	}
 	
 	// This whole Airframe cache thing should be automatic, and upstream from here.
-	airframes := ref.NewAirframeCache(c)
+	airframes := ref.NewAirframeCache(ctx)
 
 	// Preprocess; get airframe data, and run reports (to annotate tracks)
 	for i,_ := range flights {
 		if af := airframes.Get(flights[i].IcaoId); af != nil {
 			flights[i].OverlayAirframe(*af)
 		}
-		if rep != nil {
-			if _,err := rep.Process(flights[i]); err != nil {
+		if opt.Report != nil {
+			if _,err := opt.Report.Process(flights[i]); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -307,16 +264,16 @@ func OutputTracksOnAMap(w http.ResponseWriter, r *http.Request, flights []*fdb.F
 	if r.FormValue("fr24") != "" {
 		coloring = ByData
 		//bannerText += MaybeAddFr24Track(c, flights[0])
-		MaybeAddFr24Track(c, flights[0])
+		MaybeAddFr24Track(ctx, flights[0])
 	}
 		
 	if r.FormValue("debug") != "" {
 		w.Header().Set("Content-Type", "text/plain")
-		if rep != nil {
-			for reg,_ := range rep.ListGeoRestrictors() {
+		if opt.Report != nil {
+			for reg,_ := range opt.Report.ListGeoRestrictors() {
 				bannerText += fmt.Sprintf(" * GeoRestriction: %s\n", reg)
 			}
-			bannerText += "\n--- report.Log:-\n" + rep.Log
+			bannerText += "\n--- report.Log:-\n" + opt.Report.Log
 		}
 		w.Write([]byte(fmt.Sprintf("OK\n\n%s", bannerText)))
 		return
@@ -418,38 +375,31 @@ func IdSpecsToJSVar(idspecs []string) template.JS {
 //  &colorby=procedure   (what we tagged them as - not implemented ?)
 //  &nofurniture=1       (to suppress furniture)
 
-func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, resultset string, idspecs []string, vectorURLPath string) {
+func OutputMapLinesOnAStreamingMap(ctx context.Context, w http.ResponseWriter, r *http.Request, vectorURLPath string) {
+	opt,_ := GetUIOptions(ctx)
 	ms := NewMapShapes()
-
-	trackspec := ""
-	colorscheme := FormValueColorScheme(r)
-
 	legend := ""
-	if resultset != "" {
+
+	// Add a permalink, if we can
+	if opt.ResultsetID != "" {
 		// Rejigger all the POST and GET data into a single GET URL, then add our new field.
-		vals := r.URL.Query()
-		for k,formvals := range r.Form {
-			for _,formval := range formvals {
-				vals.Set(k,formval)
-			}
-		}
+		vals := widget.ExtractAllCGIArgs(r)
 		vals.Del("idspec")
-		vals.Set("resultset", resultset)
-		urlstr := fmt.Sprintf("%s://%s%s?%s", r.URL.Scheme, r.Host, r.URL.Path, vals.Encode())
-		legend += fmt.Sprintf("[<a target=\"_blank\" href=\"%s\">link</a>] ", urlstr)
+		vals.Set("resultset", opt.ResultsetID)
+
+		urlstr := widget.URLStringReplacingGETArgs(r,&vals)
+		legend += fmt.Sprintf("[<a target=\"_blank\" href=\"%s\">permalink</a>] ", urlstr)
 	}
 
-	legend += fmt.Sprintf("%d flights", len(idspecs))
+	legend += fmt.Sprintf("%d flights", len(opt.IdSpecStrings))
 
-	if rep,err := getReport(r); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	} else if rep != nil {
+	trackspec := ""
+	if opt.Report != nil {
 		if r.FormValue("nofurniture") == "" {
-			ms.Add(renderReportFurniture(rep))
+			ms.Add(renderReportFurniture(opt.Report))
 		}
-		trackspec = strings.Join(rep.ListPreferredDataSources(), ",")
-		legend += ", "+rep.DescriptionText()
+		trackspec = strings.Join(opt.Report.ListPreferredDataSources(), ",")
+		legend += ", "+opt.Report.DescriptionText()
 	}
 	
 	var params = map[string]interface{}{
@@ -457,10 +407,10 @@ func OutputMapLinesOnAStreamingMap(w http.ResponseWriter, r *http.Request, resul
 		"Points": MapPointsToJSVar(ms.Points),
 		"Lines": MapLinesToJSVar(ms.Lines),
 		"Circles": MapCirclesToJSVar(ms.Circles),
-		"IdSpecs": IdSpecsToJSVar(idspecs),
+		"IdSpecs": IdSpecsToJSVar(opt.IdSpecStrings),
 		"VectorURLPath": vectorURLPath,  // retire this when DBv1/v2ui.go and friends are gone
 		"TrackSpec": trackspec,
-		"ColorScheme": colorscheme,
+		"ColorScheme": opt.ColorScheme,
 		
 		"Waypoints": WaypointMapVar(sfo.KFixes),
 	}
