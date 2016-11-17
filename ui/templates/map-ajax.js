@@ -1,4 +1,6 @@
-{{define "js-map2-streams"}}
+{{define "js-map-ajax"}}
+
+// StreamVectors()   - Looks for .IdSpecs
 
 function generateDetailsClickClosure(detailsText) {
     //console.log('closure on "'+detailsText+'" generated')
@@ -43,7 +45,7 @@ function generateUrlConsumingFunction(detailsText) {
     }
 }
 
-function streamVectors() {
+function StreamVectors() {
     var idspecs = {{.IdSpecs}}
 
     for (var i in idspecs) {
@@ -55,17 +57,6 @@ function streamVectors() {
             idspec+'</a>';
 
         $.getJSON( url, generateUrlConsumingFunction(detailsText) );
-        
-        // The older, simpler inline loop. By the time the inner
-        // callbacks are executing, the loop above has terminated, so
-        // i is the final index, url the final URL, and idspec the
-        // final idspec.
-        //
-        //$.getJSON( url, function( data ) {
-        //    $.each( data, function( key, val ) {
-        //       // val is our hash of values to manipulate
-        //    });
-        //});
     }
 }
 

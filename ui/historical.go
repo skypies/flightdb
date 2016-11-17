@@ -2,7 +2,7 @@ package ui
 
 import(
 	"encoding/json"
-	//"html/template"
+	"html/template"
 	"fmt"
 	"net/http"
 	"time"
@@ -82,46 +82,37 @@ func historicalHandler(w http.ResponseWriter, r *http.Request) {
 
 	refPoint := geo.FormValueLatlong(r, "pos")
 	
-	if as, err := db.LookupHistoricalAirspace(t.UTC(), refPoint, 1000); err != nil {
+	as,err := db.LookupHistoricalAirspace(t.UTC(), refPoint, 1000)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-	} else {
-		/*
-		str := fmt.Sprintf("OK!\n%s", as.ToJSVar(r.URL.Host))
-		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte(fmt.Sprintf("OK\n\n%s", str)))
 		return
-*/
-		var params = map[string]interface{}{
-			"Legend": buildLegend(t),
-			"SearchTimeUTC": t.UTC(),
-			"SearchTime": date.InPdt(t),
-			"AirspaceJS": as.ToJSVar(r.URL.Host, t),
-			"MapsAPIKey": "",
-			"Center": sfo.KFixes["YADUT"],
-			"Waypoints": WaypointMapVar(sfo.KFixes),
-			"Zoom": 9,
-		}
+	}
+	aircraftJSON,err := json.MarshalIndent(as, "", "  ")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-		if r.FormValue("resultformat") == "json" {
-			//for id,_ := range as.Aircraft {
-			//	as.Aircraft[id].Tracks = nil
-			//}
-			js, err := json.Marshal(as)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(js)
-
-		} else {
-			templateName := "fdb-historical-results-map"
-			//if r.FormValue("resultformat") == "list" { templateName = "fdb-queryresults-list" }
+	if r.FormValue("resultformat") == "json" {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(aircraftJSON)
+		return
+	}
 		
-			if err := templates.ExecuteTemplate(w, templateName, params); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		}
+	var params = map[string]interface{}{
+		"Legend": buildLegend(t),
+		"SearchTimeUTC": t.UTC(),
+		"SearchTime": date.InPdt(t),
+		//"AirspaceJS": as.ToJSVar(r.URL.Host, t),
+		"AircraftJSON": template.JS(aircraftJSON),
+		"MapsAPIKey": "",
+		"Center": sfo.KFixes["YADUT"],
+		"Waypoints": WaypointMapVar(sfo.KFixes),
+		"Zoom": 9,
+	}
+
+	if err := templates.ExecuteTemplate(w, "fdb-historical-map", params); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 

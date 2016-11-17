@@ -105,7 +105,7 @@ func trackHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		}			
 	}
 	
-	OutputTracksOnAMap(ctx, w, r, flights)
+	OutputTrackpointsOnAMap(ctx, w, r, flights)
 }
 
 // }}}
@@ -142,7 +142,7 @@ func MapHandler(w http.ResponseWriter, r *http.Request) {
 		"Zoom": 9,
 	}
 
-	if err := templates.ExecuteTemplate(w, "fdb2-tracks", params); err != nil {
+	if err := templates.ExecuteTemplate(w, "map", params); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -211,7 +211,7 @@ func WaypointMapVar(in map[string]geo.Latlong) template.JS {
 
 // }}}
 
-// {{{ OutputTracksOnAMap
+// {{{ OutputTrackpointsOnAMap
 
 // ?idspec=F12123@144001232[,...]
 //  colorby=rcvr
@@ -222,7 +222,7 @@ func WaypointMapVar(in map[string]geo.Latlong) template.JS {
 //  track=fr24               (see dots for just that track)
 //  clip1=EPICK&clip2=EDDYY  (clip to points between those waypoints)
 
-func OutputTracksOnAMap(ctx context.Context, w http.ResponseWriter, r *http.Request, flights []*fdb.Flight) {
+func OutputTrackpointsOnAMap(ctx context.Context, w http.ResponseWriter, r *http.Request, flights []*fdb.Flight) {
 	opt,_ := GetUIOptions(ctx)
 
 	bannerText := ""
@@ -337,7 +337,8 @@ func OutputTracksOnAMap(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	legend := flights[0].Legend()
+	legend := ""
+	if len(flights)>0 { legend += flights[0].Legend() }
 	if len(flights)>1 { legend += fmt.Sprintf(" (%d instances)", len(flights)) }
 	
 	var params = map[string]interface{}{
@@ -350,7 +351,7 @@ func OutputTracksOnAMap(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	getGoogleMapsParams(r, params)
 
-	if err := templates.ExecuteTemplate(w, "fdb2-tracks", params); err != nil {
+	if err := templates.ExecuteTemplate(w, "map", params); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -416,7 +417,7 @@ func OutputMapLinesOnAStreamingMap(ctx context.Context, w http.ResponseWriter, r
 	}
 	getGoogleMapsParams(r, params)
 
-	if err := templates.ExecuteTemplate(w, "fdb3-tracks", params); err != nil {
+	if err := templates.ExecuteTemplate(w, "map", params); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

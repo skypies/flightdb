@@ -1,6 +1,6 @@
-{{define "js-map2-points"}} // Depends on: .Center (geo.Latlong), and .Zoom (int)
+{{define "js-map-shapes"}} // Depends on: .Center (geo.Latlong), and .Zoom (int)
 
-function pointsOverlay() {
+function ShapesOverlay() {
     var infowindow = new google.maps.InfoWindow({ content: "holding..." });
 
     points = {{.Points}}

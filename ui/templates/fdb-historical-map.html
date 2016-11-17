@@ -1,13 +1,13 @@
-{{define "fdb-historical-results-map"}}
+{{define "fdb-historical-map"}}
 
 <html>
   {{template "header-map"}}
   <body>
     <div id="map"></div>
     <div id="legend"></div>
+    <div id="details"></div>
     <script type="text/javascript">
-      {{template "js-map2-setup" . }}
-      {{template "js-map-airspace" . }}
+      {{template "js-map-historical" . }}
     </script>
     <script async defer
       src="https://maps.googleapis.com/maps/api/js?key={{.MapsAPIKey}}&callback=initMap">
