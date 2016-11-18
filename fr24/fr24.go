@@ -242,6 +242,9 @@ func (db *Fr24)ParseCurrentList(body []byte) ([]fdb.FlightSnapshot, error) {
 	jsonMap := map[string]interface{}{}
 	if err := json.Unmarshal(body, &jsonMap); err != nil { return nil, err }
 
+	// So: treat v[8] (the T-MLAT field) as we treat compmsg.ReceiverName
+	// And leave datasource as a bare 'fr24', so the arrows go green again
+	
 	// Unpack the aircraft summary object
 	ret := []fdb.FlightSnapshot{}
 	for _,vRaw := range jsonMap["aircraft"].([]interface{}) {
@@ -254,7 +257,8 @@ func (db *Fr24)ParseCurrentList(body []byte) ([]fdb.FlightSnapshot, error) {
 				},
 			},
 			Trackpoint: fdb.Trackpoint{
-				DataSource:    "fr24:"+v[8].(string),
+				DataSource:    "fr24",
+				ReceiverName:  v[8].(string),
 				TimestampUTC:  time.Unix(int64(v[11].(float64)), 0).UTC(),
 				Heading:       v[4].(float64),
 				Latlong:       geo.Latlong{v[2].(float64), v[3].(float64)},

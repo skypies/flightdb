@@ -15,6 +15,7 @@ import(
 func snapshot2AircraftData(fs fdb.FlightSnapshot, id adsb.IcaoId) airspace.AircraftData {	
 	msg := adsb.CompositeMsg{
 		Msg: adsb.Msg{
+			Type: "MSG", // ADSB
 			Icao24: id,
 			GeneratedTimestampUTC: fs.Trackpoint.TimestampUTC,
 			Callsign: fs.Flight.NormalizedCallsignString(),
@@ -28,12 +29,14 @@ func snapshot2AircraftData(fs fdb.FlightSnapshot, id adsb.IcaoId) airspace.Aircr
 
 	af := fs.Flight.Airframe
 	af.Icao24 = string(id)
+
+	if fs.Trackpoint.DataSource == "MLAT" { msg.Type = "MLAT" }
 	
 	return airspace.AircraftData{
  		Msg: &msg,
 		Airframe: af,
 		NumMessagesSeen: 1,
-		Source: "fr24",
+		Source: "SkyPi",
 	}
 }
 
