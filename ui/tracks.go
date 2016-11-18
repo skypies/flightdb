@@ -126,22 +126,14 @@ func tracksetHandler(ctx context.Context, w http.ResponseWriter, r *http.Request
 // }}}
 // {{{ MapHandler
 
-func MapHandler(w http.ResponseWriter, r *http.Request) {
-	points  := []MapPoint{}
-	lines   := []MapLine{}
-	circles := []MapCircle{}
-	
+func MapHandler(w http.ResponseWriter, r *http.Request) {	
 	var params = map[string]interface{}{
-		"Legend": "purple={SERFR2,BRIXX1,WWAVS1}; cyan={BIGSUR2}",
-		"Points": MapPointsToJSVar(points),
-		"Lines": MapLinesToJSVar(lines),
-		"Circles": MapCirclesToJSVar(circles),
-		"MapsAPIKey": "",//kGoogleMapsAPIKey,
-		"Center": sfo.KFixes["EDDYY"], //sfo.KLatlongSFO,
+		"Legend": "purple={SERFR2,BRIXX1,WWAVS1}; cyan={BIGSUR3}",
 		"Waypoints": WaypointMapVar(sfo.KFixes),
-		"Zoom": 9,
 	}
-
+	getGoogleMapsParams(r, params)
+	params["Zoom"] = 9
+	
 	if err := templates.ExecuteTemplate(w, "map", params); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -168,7 +160,6 @@ func renderReportFurniture(rep *report.Report) *MapShapes {
 }
 
 // }}}
-
 // {{{ getGoogleMapsParams
 
 //  &whiteveil=1         (bleach out the map, to make vecctor lines more prominent
@@ -180,10 +171,13 @@ func renderReportFurniture(rep *report.Report) *MapShapes {
 func getGoogleMapsParams(r *http.Request, params map[string]interface{}) {
 	classBOverlay := ! widget.FormValueCheckbox(r, "noclassb")
 	whiteVeil := widget.FormValueCheckbox(r, "whiteveil")
+
 	zoom := widget.FormValueInt64(r, "zoom")
 	if zoom == 0 { zoom = 10 }	
+
 	center := geo.FormValueLatlong(r, "center")
 	if center.IsNil() { center = sfo.KFixes["EDDYY"] }
+
 	mapType := r.FormValue("maptype")
 	if mapType == "" { mapType = "terrain" }
 	
@@ -192,12 +186,10 @@ func getGoogleMapsParams(r *http.Request, params map[string]interface{}) {
 	params["Center"] = center
 	params["Zoom"] = zoom
 	params["MapType"] = mapType
-
-	//"MapsAPIKey": "",//kGoogleMapsAPIKey,
+	params["MapsAPIKey"] = ""//kGoogleMapsAPIKey,
 }
 
 // }}}
-
 // {{{ WaypointMapVar
 
 func WaypointMapVar(in map[string]geo.Latlong) template.JS {
@@ -205,6 +197,18 @@ func WaypointMapVar(in map[string]geo.Latlong) template.JS {
 	for name,pos := range in {
 		if len(name)>2 && name[0] == 'X' && name[1] == '_' { continue }
 		str += fmt.Sprintf("    %q: {pos:{lat:%.6f,lng:%.6f}},\n", name, pos.Lat, pos.Long)
+	}
+	return template.JS(str + "  }\n")		
+}
+
+// }}}
+// {{{ IdSpecsToJSVar
+
+// Should be a simple list, really
+func IdSpecsToJSVar(idspecs []string) template.JS {
+	str := "{\n"
+	for i,id := range idspecs {
+		str += fmt.Sprintf("    %d: {idspec:%q},\n", i, id)
 	}
 	return template.JS(str + "  }\n")		
 }
@@ -354,19 +358,6 @@ func OutputTrackpointsOnAMap(ctx context.Context, w http.ResponseWriter, r *http
 	if err := templates.ExecuteTemplate(w, "map", params); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-}
-
-// }}}
-
-// {{{ IdSpecsToJSVar
-
-// Should be a simple list, really
-func IdSpecsToJSVar(idspecs []string) template.JS {
-	str := "{\n"
-	for i,id := range idspecs {
-		str += fmt.Sprintf("    %d: {idspec:%q},\n", i, id)
-	}
-	return template.JS(str + "  }\n")		
 }
 
 // }}}
