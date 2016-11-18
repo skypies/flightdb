@@ -58,6 +58,6 @@ function ShapesOverlay() {
             radius: circles[i].radiusmeters
         });
     }
-   
 }
+
 {{end}}

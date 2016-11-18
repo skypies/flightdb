@@ -1,6 +1,6 @@
 {{define "js-map"}} // Depends on: .Center (geo.Latlong), and .Zoom (int)
 
-{{template "js-overlays"}}
+{{template "js-overlays" . }}
 {{template "js-textboxes"}}
 
 {{template "js-map-shapes" . }}
@@ -18,8 +18,6 @@ function initMap() {
 
     map.controls[google.maps.ControlPosition.RIGHT_TOP].push(
         document.getElementById('legend'));
-    map.controls[google.maps.ControlPosition.RIGHT_CENTER].push(
-        document.getElementById('details'));
     
     {{if .WhiteOverlay}}
     var olay = new google.maps.Rectangle({
