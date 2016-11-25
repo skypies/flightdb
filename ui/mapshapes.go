@@ -144,10 +144,14 @@ func TrackToMapPoints(t *fdb.Track, icon, banner string, coloring ColoringStrate
 		"FA:TZ": "blue",
 	}
 	receiverColors := map[string]string{
+		"NorthPi":       "green",
+		"BlankPi":       "green",
+		
 		"ScottsValley":  "yellow",
-		"NorthPi":       "pink",
-		"LosAltosHills": "blue",
+		"ScottsValley3": "yellow",
+		"ScottsValleyLite": "green",
 		"Saratoga":      "red",
+		"Saratoga2":     "blue",
 	}
 
 	points := []MapPoint{}
