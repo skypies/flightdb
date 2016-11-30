@@ -18,6 +18,8 @@ function initMap() {
 
     map.controls[google.maps.ControlPosition.RIGHT_TOP].push(
         document.getElementById('legend'));
+    map.controls[google.maps.ControlPosition.RIGHT_CENTER].push(
+        document.getElementById('notes'));
     
     {{if .WhiteOverlay}}
     var olay = new google.maps.Rectangle({

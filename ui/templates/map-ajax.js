@@ -1,5 +1,7 @@
 {{define "js-map-ajax"}}
 
+// depends on "js-textboxes"
+
 // StreamVectors()   - Looks for .IdSpecs
 
 function generateDetailsClickClosure(detailsText) {
@@ -30,7 +32,7 @@ function addLineFrag( key, val, detailsText ) {
     });
 
     line.setMap(map);
-    line.addListener('click', function(){ setTextBox('details', detailsText) })
+    line.addListener('click', function(){ AddNote(detailsText) })
 }
 
 function generateKeyValConsumingFunction(detailsText) {
