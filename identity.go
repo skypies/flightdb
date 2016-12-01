@@ -95,14 +95,19 @@ func (id Identity)IsScheduled() bool {
 	return (id.Number > 0 && (id.IATA != "" || id.ICAO != ""))
 }
 
-// Also: faUrl := fmt.Sprintf("http://flightaware.com/live/flight/%s", m.Callsign)
 func (f Flight)TrackUrl() string {
-	u := fmt.Sprintf("/fdb/tracks?idspec=%s", f.IdSpec())
-	return u
+	return fmt.Sprintf("/fdb/tracks?idspec=%s", f.IdSpec())
 }
 
+func (f Flight)FlightawareUrl() string {
+	return fmt.Sprintf("http://flightaware.com/live/modes/%s/ident/%s/redirect",
+		f.IcaoId, f.Callsign),
+}
 
 func (id *Identity)ParseIata(s string) error {
+	if regexp.MustCompile("^N[0-9]+$").MatchString(s) {
+		return fmt.Errorf("ParseIata: '%s' looks like a US registration, not an IATA code", s)
+	}
 	iata := regexp.MustCompile("^([A-Z][0-9A-Z])([0-9]{1,4})$").FindStringSubmatch(s)
 	if iata != nil && len(iata)==3 {
 		id.Schedule.Number,_ = strconv.ParseInt(iata[2], 10, 64) // no errors here :)
