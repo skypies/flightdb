@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"time"
 
+	"github.com/skypies/adsb"
 	fdb "github.com/skypies/flightdb2"
+	"github.com/skypies/pi/airspace"
 	"github.com/skypies/geo"
 )
 
@@ -30,18 +33,12 @@ type Fr24 struct {
 	Prefix  string
 }
 
-func (db *Fr24)Init() error {
-	//if err := db.EnsureHostname(); err != nil {	return err }
-	return nil
-}
-
 func NewFr24(c *http.Client) (*Fr24, error) {
 	if c == nil {
 		c = &http.Client{}
 	}
-	db := Fr24{Client: c, host:"krk.data.fr24.com"}
-	err := db.Init()
-	return &db, err
+	db := Fr24{Client: c, host:"data-live.flightradar24.com"}
+	return &db, nil
 }
 
 // }}}
@@ -53,8 +50,9 @@ func (fr *Fr24) GetPlaybackTrackUrl(id string) string {
 }
 
 // adsb=1&mlat=1&flarm=1&faa=1&estimated=1&air=1&gnd=1&vehicles=1&gliders=1&array=1
+//  faa=1 - includes T-F5M flights, which aren't always FAA; use epoch to judge freshness
 func (fr *Fr24) GetCurrentListUrl(bounds string) string {
-	return fmt.Sprintf("%s/zones/fcgi/feed.json?array=1&bounds=%s", fr.host, bounds)
+	return fmt.Sprintf("%s/zones/fcgi/feed.json?array=1&bounds=%s&faa=1", fr.host, bounds)
 }
 func (fr *Fr24) GetCurrentDetailsUrl(id string) string {
 	return fmt.Sprintf("%s/_external/planedata_json.1.3.php?f=%s", fr.host, id)
@@ -75,7 +73,7 @@ func (fr *Fr24) GetLookupHistoryUrl(reg, iataFlightNumber string) string {
 // {{{ fr24.url2{resp,body,jsonMap}
 
 func (fr *Fr24) url2resp(url string) (resp *http.Response, err error) {
-	if resp,err = fr.Client.Get("http://" + url); err != nil {
+	if resp,err = fr.Client.Get("https://" + url); err != nil {
 		return
 	}
 	if resp.StatusCode != http.StatusOK {
@@ -84,7 +82,7 @@ func (fr *Fr24) url2resp(url string) (resp *http.Response, err error) {
 	return
 }
 
-func (fr *Fr24) url2body(url string) (body []byte, err error) {
+func (fr *Fr24) Url2Body(url string) (body []byte, err error) {
 	if resp,err := fr.url2resp(url); err != nil {
 		return nil, err
 	} else {
@@ -100,41 +98,6 @@ func (fr *Fr24) url2jsonMap(url string) (jsonMap map[string]interface{}, err err
 
 	err = json.NewDecoder(resp.Body).Decode(&jsonMap)
 	return
-}
-
-// }}}
-// {{{ fr24.{Ensure,get}Hostname
-
-// Ask the load balancer which host to use
-// http://blog.cykey.ca/post/88174516880/analyzing-flightradar24s-internal-api-structure
-func (fr *Fr24) getHostname() error {
-	jsonMap,err := fr.url2jsonMap(kURLBalancers)
-	if err != nil { return err }
-
-	min := 99999.0
-	fr.host = ""
-	for k,v := range jsonMap {
-		score := v.(float64)
-		if (score < min) {
-			fr.host,min = k,score
-		}
-	}
-
-	return nil
-}
-
-// {"krk.data.fr24.com":250,"bma.data.fr24.com":250,"arn.data.fr24.com":250,"lhr.data.fr24.com":250}
-func (fr *Fr24) EnsureHostname() error {
-	if fr.host == "" {
-		fr.host = "krk.data.fr24.com"
-		return nil
-		/*
-		if err := fr.getHostname(); err != nil {
-			return err
-		}
-*/
-	}
-	return nil
 }
 
 // }}}
@@ -174,25 +137,21 @@ func playbackTrack2FlightIdentity(r FlightPlaybackResponse, i *fdb.Identity) err
 // }}}
 // {{{ currentListEntry2FlightIdentity
 
-func currentListEntry2FlightIdentity(v []interface{}, id *fdb.Identity) error {
-	id.Origin,id.Destination = v[12].(string), v[13].(string)
+func currentListEntry2FlightIdentity(v []interface{}, id *fdb.Identity) {
+	id.Origin, id.Destination = v[12].(string), v[13].(string)
 
 	if id.ForeignKeys == nil { id.ForeignKeys = map[string]string{} }
 	id.ForeignKeys["fr24"] = v[0].(string)
 
-	// id.Registration = v[10].(string)
   id.IcaoId = v[1].(string)
 	id.Callsign = fdb.NewCallsign(v[17].(string)).String()
 
-	id.Schedule.PlannedDepartureUTC = time.Unix(int64(v[11].(float64)), 0)
-
-	if v[14].(string) != "" {
-		if err := id.ParseIata(v[14].(string)); err != nil {
-			//return err
+	if flightnumber := v[14].(string); flightnumber != "" {	
+		// FR24 copies callsigns of the form {[A-Z][0-9]+} into the flightnumber field. Undo that.
+		if ! regexp.MustCompile("^[CN][0-9]+$").MatchString(flightnumber) {
+			id.ParseIata(flightnumber) // Ignore errors
 		}
 	}
-	
-	return nil
 }
 
 /* We see three different flavors of record:
@@ -241,9 +200,6 @@ func currentListEntry2FlightIdentity(v []interface{}, id *fdb.Identity) error {
 func (db *Fr24)ParseCurrentList(body []byte) ([]fdb.FlightSnapshot, error) {
 	jsonMap := map[string]interface{}{}
 	if err := json.Unmarshal(body, &jsonMap); err != nil { return nil, err }
-
-	// So: treat v[8] (the T-MLAT field) as we treat compmsg.ReceiverName
-	// And leave datasource as a bare 'fr24', so the arrows go green again
 	
 	// Unpack the aircraft summary object
 	ret := []fdb.FlightSnapshot{}
@@ -258,7 +214,7 @@ func (db *Fr24)ParseCurrentList(body []byte) ([]fdb.FlightSnapshot, error) {
 			},
 			Trackpoint: fdb.Trackpoint{
 				DataSource:    "fr24",
-				ReceiverName:  v[8].(string),
+				ReceiverName:  v[8].(string),  // e.g. "T-MLAT", or "T-F5M"
 				TimestampUTC:  time.Unix(int64(v[11].(float64)), 0).UTC(),
 				Heading:       v[4].(float64),
 				Latlong:       geo.Latlong{v[2].(float64), v[3].(float64)},
@@ -268,8 +224,9 @@ func (db *Fr24)ParseCurrentList(body []byte) ([]fdb.FlightSnapshot, error) {
 			},
 		}
 
-		if err := currentListEntry2FlightIdentity(v,&fs.Flight.Identity); err != nil { return nil, err }
-
+		// The flightnumber, if present, takes precedence over any number we parse out of the
+		// callsign.
+		currentListEntry2FlightIdentity(v,&fs.Flight.Identity)
 		fs.Flight.ParseCallsign()
 		
 		ret = append(ret, fs)
@@ -352,10 +309,9 @@ func (db *Fr24)ParsePlaybackTrack(body []byte) (*fdb.Flight, error) {
 // LookCurrentList returns a snapshot of what's currently in the box.
 // This is used to populate the mapview, with just enough info for tooltips on the aircraft.
 func (db *Fr24)LookupCurrentList(box geo.LatlongBox) ([]fdb.FlightSnapshot, error) {
-	if err := db.EnsureHostname(); err != nil {	return nil, err }
 	bounds := fmt.Sprintf("%.3f,%.3f,%.3f,%.3f", box.NE.Lat, box.SW.Lat, box.SW.Long, box.NE.Long)
 
-	if body,err := db.url2body(db.GetCurrentListUrl(bounds)); err != nil {
+	if body,err := db.Url2Body(db.GetCurrentListUrl(bounds)); err != nil {
 		return nil, err
 	} else {
 		//fmt.Printf("---Body---\n%s\n-------\n", body)
@@ -369,7 +325,7 @@ func (db *Fr24)LookupCurrentList(box geo.LatlongBox) ([]fdb.FlightSnapshot, erro
 // LookupCurrentDetails gets just a few details about a flight currently in the air.
 // It's what pops up in the panel when you click on a plane on the map.
 func (db *Fr24)LookupCurrentDetails(fr24Id string) (*CurrentDetailsResponse, error) {
-	if body,err := db.url2body(db.GetCurrentDetailsUrl(fr24Id)); err != nil {
+	if body,err := db.Url2Body(db.GetCurrentDetailsUrl(fr24Id)); err != nil {
 		return nil, err
 	} else {
 		return db.ParseCurrentDetails(body)
@@ -381,7 +337,7 @@ func (db *Fr24)LookupCurrentDetails(fr24Id string) (*CurrentDetailsResponse, err
 
 // Given an fr24Id, this call fetches its flight track.
 func (db *Fr24)LookupPlaybackTrack(fr24Id string) (*fdb.Flight, error) {
-	if body,err := db.url2body(db.GetPlaybackTrackUrl(fr24Id)); err != nil {
+	if body,err := db.Url2Body(db.GetPlaybackTrackUrl(fr24Id)); err != nil {
 		return nil, err
 	} else {
 		return db.ParsePlaybackTrack(body)
@@ -395,7 +351,7 @@ func (db *Fr24)LookupPlaybackTrack(fr24Id string) (*fdb.Flight, error) {
 // If you're searching for a callsign/flightnumber/registration that is "live", you can get
 // the fr24Id foriegn key. Things are only live for up to 10m after they land though.
 func (db *Fr24)LookupQuery(q string) (Identifier, error) {
-	body,err := db.url2body(db.GetQueryUrl(q))
+	body,err := db.Url2Body(db.GetQueryUrl(q))
 	if err != nil { return Identifier{},err }
 
 	resp := QueryResponse{}
@@ -429,7 +385,7 @@ func (db *Fr24)LookupQuery(q string) (Identifier, error) {
 func (db *Fr24)LookupHistory(reg,iataflightnumber string) ([]Identifier, error) {
 	resp := LookupHistoryResponse{}
 
-	if body,err := db.url2body(db.GetLookupHistoryUrl(reg,iataflightnumber)); err != nil {
+	if body,err := db.Url2Body(db.GetLookupHistoryUrl(reg,iataflightnumber)); err != nil {
 		return nil, err
 	} else if err := json.Unmarshal(body, &resp); err != nil {
 		return nil, err
@@ -496,6 +452,89 @@ func (db *Fr24)GetFr24Id(f *fdb.Flight) (string, string, error) {
 		}
 	}
 	return "", str+fmt.Sprintf("** not found at all"), ErrNotFound
+}
+
+// }}}
+
+// {{{ SnapshotToAircraftData
+
+// This would ideally be in flightdb2/snapshot.go, but pi/airspace depends on fdb
+func SnapshotToAircraftData(fs fdb.FlightSnapshot) airspace.AircraftData {	
+	msg := adsb.CompositeMsg{
+		Msg: adsb.Msg{
+			Type: "MSG", // Default; ADSB.
+			Icao24: adsb.IcaoId(fs.IcaoId),
+			GeneratedTimestampUTC: fs.Trackpoint.TimestampUTC,
+			Callsign: fs.Flight.NormalizedCallsignString(),
+			Altitude: int64(fs.Trackpoint.Altitude),
+			GroundSpeed: int64(fs.Trackpoint.GroundSpeed),
+			Track: int64(fs.Trackpoint.Heading),
+			Position: fs.Trackpoint.Latlong,
+		},
+		ReceiverName: fs.Trackpoint.ReceiverName,
+	}
+
+	af := fs.Flight.Airframe
+	af.Icao24 = string(fs.IcaoId)
+
+	// Hack up some fake 'message types' ...
+	if fs.Trackpoint.DataSource == "fr24" {
+		if tf5m := regexp.MustCompile("T-F5M").FindString(msg.ReceiverName); tf5m != "" {
+			msg.Type = "T-F5M"
+		} else if mlat := regexp.MustCompile("MLAT").FindString(msg.ReceiverName); mlat != "" {
+			msg.Type = "MLAT"
+		}
+	}
+	
+	return airspace.AircraftData{
+ 		Msg: &msg,
+		Airframe: af,
+		Schedule: fs.Schedule,
+		NumMessagesSeen: 1,
+		Source: fs.Trackpoint.DataSource,
+	}
+}
+
+// }}}
+// {{{ db.FetchAirspace, FetchAirspace
+
+func FetchAirspace(client *http.Client, box geo.LatlongBox) (*airspace.Airspace, error) {
+	db,err := NewFr24(client)
+	if err != nil {
+		return nil,err
+	}
+	return db.FetchAirspace(box)
+}
+
+func (db *Fr24)FetchAirspace(box geo.LatlongBox) (*airspace.Airspace, error) {
+	as := airspace.NewAirspace()
+
+	snapshots,err := db.LookupCurrentList(box)
+	if err != nil {
+		return nil,err
+	}
+
+	counts := map[string]int{}
+	for _,snap := range snapshots {
+		if snap.Altitude < 10 { continue } // fr24 has lots of aircraft on the ground
+
+		// An airspace usually uses IcaoID as a key. But we want to be able to support
+		// an airspace containing skypi & fr24 data; so we prefix the fr24 data.
+		// Plus, for fr24, we need to be able to support FAA data which has no IcaoID.
+		// So, we use a distinct key, and pretend it is an IcaoID.
+		key := snap.IcaoId
+		if key == "" {
+			// E.g. BC7[HWD:FUK]. Comes via fr24/T-F5M, so no IcaoID. Callsign is often equip type :/
+			counts[snap.Callsign]++
+			key = fmt.Sprintf("X%s%02d", snap.Callsign, counts[snap.Callsign])
+		}
+		key = "EE"+key // Prefix, to avoid collisions
+
+		
+		as.Aircraft[adsb.IcaoId(key)] = SnapshotToAircraftData(snap)
+	}
+	
+	return &as,nil
 }
 
 // }}}

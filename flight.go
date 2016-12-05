@@ -59,17 +59,25 @@ func (f Flight)Legend() string {
 // This happens at the flight level, as we shuffle data between identity & airframe
 func (f *Flight)ParseCallsign() CallsignType {
 	c := NewCallsign(f.Identity.Callsign)
+	newScheduleNumber := int64(0)
+
 	// Upate the identity with any useful data
 	switch c.CallsignType {
 	case Registration:
 		f.Airframe.Registration = f.Identity.Callsign
 	case IcaoFlightNumber:
-		f.Identity.Schedule.ICAO, f.Identity.Schedule.Number = c.IcaoPrefix, c.Number
+		f.Identity.Schedule.ICAO, newScheduleNumber = c.IcaoPrefix, c.Number
 	case BareFlightNumber:
-		f.Identity.Schedule.Number = c.Number
+		newScheduleNumber = c.Number
 		if f.Airframe.CallsignPrefix != "" {
 			f.Identity.Schedule.ICAO = f.Airframe.CallsignPrefix
 		}
+	}
+
+	// Don't overwrite pre-existing schedule numbers; they're likely more correct than what we're
+	// pulling out of the callsign, as callsigns can be slow to be updated as aircraft change routes
+	if f.Identity.Schedule.Number == 0 && newScheduleNumber != 0 {
+		f.Identity.Schedule.Number = newScheduleNumber
 	}
 
 	return c.CallsignType

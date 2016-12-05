@@ -9,7 +9,11 @@ import (
 	"net/url"
 	"time"
 
+	//"github.com/skypies/adsb"
 	"github.com/skypies/geo"
+	//"github.com/skypies/pi/airspace"
+
+	//fdb "github.com/skypies/flightdb2"
 )
 
 type Flightaware struct {
@@ -372,6 +376,61 @@ func (fa Flightaware)LookupLastTrackByFlightnumber(flightnumber string) ([]Track
 }
 
 // }}}
+
+/*
+// {{{ faFlight2AircraftData
+
+func faFlight2AircraftData(in InFlightStruct, id adsb.IcaoId) airspace.AircraftData {
+	msg := adsb.CompositeMsg{
+		Msg: adsb.Msg{
+			Icao24: id,
+			GeneratedTimestampUTC: time.Unix(int64(in.Timestamp),0).UTC(),
+			Callsign: in.Ident,
+			Altitude: int64(in.Altitude)*100,
+			GroundSpeed: int64(in.Groundspeed),
+			Track: int64(in.Heading),
+			Position: geo.Latlong{in.Latitude, in.Longitude},
+		},
+		ReceiverName: "FlightAware",
+	}
+
+	return airspace.AircraftData{
+ 		Msg: &msg,
+
+		Airframe: fdb.Airframe{
+			Icao24: string(id),
+			EquipmentType: in.EquipType,
+		},
+
+		NumMessagesSeen: 1,
+		Source: "fa",
+	}
+}
+
+// }}}
+// {{{ fa.FetchAirspace
+
+// Overlays the flightaware 'Search' results into the airspace
+func  (fa Flightaware)FetchAirspace(box geo.LatlongBox) (*airspace.Airspace, error) {
+
+	// http://flightaware.com/commercial/flightxml/explorer/#op_Search
+	//q := "-filter airline -inAir 1 -aboveAltitude 2"	
+	q := "-inAir 1"	
+	ret,err := fa.CallSearch(q, box)
+	if err != nil {
+		return nil,err
+	}
+	
+	as := airspace.NewAirspace()
+	for i,f := range ret {
+		id := adsb.IcaoId(fmt.Sprintf("FF%04x", i))  // They might actually have an IcaoID ?
+		as.Aircraft[id] = faFlight2AircraftData(f, id)
+	}
+	return &as, nil
+}
+
+// }}}
+*/
 
 /* Costs (https://flightaware.com/commercial/flightxml/pricing_class.rvt)
 

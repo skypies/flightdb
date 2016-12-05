@@ -101,22 +101,31 @@ func (f Flight)TrackUrl() string {
 
 func (f Flight)FlightawareUrl() string {
 	return fmt.Sprintf("http://flightaware.com/live/modes/%s/ident/%s/redirect",
-		f.IcaoId, f.Callsign),
+		f.IcaoId, f.Callsign)
 }
 
 func (id *Identity)ParseIata(s string) error {
-	if regexp.MustCompile("^N[0-9]+$").MatchString(s) {
-		return fmt.Errorf("ParseIata: '%s' looks like a US registration, not an IATA code", s)
+	if code,num,err := ParseIata(s); err != nil {
+		return err
+	} else {
+		id.Schedule.Number = num
+		id.Schedule.IATA = code
+		return nil
+	}
+}
+
+func ParseIata(s string) (string, int64, error) {
+	if regexp.MustCompile("^[CN][0-9]+$").MatchString(s) {
+		return "",0,fmt.Errorf("ParseIata: '%s' looks like a registration, not an IATA code", s)
 	}
 	iata := regexp.MustCompile("^([A-Z][0-9A-Z])([0-9]{1,4})$").FindStringSubmatch(s)
 	if iata != nil && len(iata)==3 {
-		id.Schedule.Number,_ = strconv.ParseInt(iata[2], 10, 64) // no errors here :)
-		id.Schedule.IATA = iata[1]
-		return nil
+		num,_ := strconv.ParseInt(iata[2], 10, 64) // no errors here :)
+		code := iata[1]
+		return code,num,nil
 	}
-	return fmt.Errorf("ParseIata: could not parse '%s'", s)
+	return "",0,fmt.Errorf("ParseIata: could not parse '%s'", s)
 }
-
 
 /* Some notes on identifiers for aircraft
 

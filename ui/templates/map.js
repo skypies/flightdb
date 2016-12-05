@@ -3,8 +3,9 @@
 {{template "js-overlays" . }}
 {{template "js-textboxes"}}
 
-{{template "js-map-shapes" . }}
-{{template "js-map-ajax" . }}
+{{if .Points}}  {{template "js-map-shapes" . }} {{end}}
+{{if .IdSpecs}} {{template "js-map-ajax" . }}   {{end}}
+{{if .Heatmap}} {{template "js-heatmap"}}       {{end}}
 
 var map;
 
@@ -41,6 +42,7 @@ function initMap() {
     PaintLegend( {{.Legend}} );
     {{if .Points}}ShapesOverlay();{{end}}
     {{if .IdSpecs}}StreamVectors();{{end}}
+    {{if .Heatmap}}FetchAndPaintHeatmap({{.Heatmap}});{{end}}
 }
 
 {{end}}

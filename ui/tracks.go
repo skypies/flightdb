@@ -133,6 +133,10 @@ func MapHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	getGoogleMapsParams(r, params)
 	params["Zoom"] = 9
+
+	if r.FormValue("heatmap") != "" {
+		params["Heatmap"] = r.FormValue("heatmap")
+	}
 	
 	if err := templates.ExecuteTemplate(w, "map", params); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
