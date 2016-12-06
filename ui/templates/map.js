@@ -10,13 +10,22 @@
 var map;
 
 function initMap() {
+    {{template "js-map-styles"}}
+
     map = new google.maps.Map(document.getElementById('map'), {
         center: {lat: {{.Center.Lat}}, lng: {{.Center.Long}}},
-        mapTypeId: {{.MapType}},
         scaleControl: true,
-        zoom: {{.Zoom}}
+        zoom: {{.Zoom}},
+        mapTypeControlOptions: {
+            mapTypeIds: ['roadmap', 'satellite', 'hybrid', 'terrain',
+                         'Silver']
+        }
     });
 
+    map.mapTypes.set('Silver', styledMapSilver);
+    map.setMapTypeId({{.MapType}});
+
+    
     map.controls[google.maps.ControlPosition.RIGHT_TOP].push(
         document.getElementById('legend'));
     map.controls[google.maps.ControlPosition.RIGHT_CENTER].push(

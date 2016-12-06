@@ -183,7 +183,7 @@ func getGoogleMapsParams(r *http.Request, params map[string]interface{}) {
 	if center.IsNil() { center = sfo.KFixes["EDDYY"] }
 
 	mapType := r.FormValue("maptype")
-	if mapType == "" { mapType = "terrain" }
+	if mapType == "" { mapType = "Silver" }
 	
 	params["ClassBOverlay"] = classBOverlay
 	params["WhiteOverlay"] = whiteVeil
