@@ -28,7 +28,7 @@ function initMap() {
     
     map.controls[google.maps.ControlPosition.RIGHT_TOP].push(
         document.getElementById('legend'));
-    map.controls[google.maps.ControlPosition.RIGHT_CENTER].push(
+    map.controls[google.maps.ControlPosition.LEFT_BOTTOM].push(
         document.getElementById('notes'));
     
     {{if .WhiteOverlay}}
@@ -51,7 +51,10 @@ function initMap() {
     PaintLegend( {{.Legend}} );
     {{if .Points}}ShapesOverlay();{{end}}
     {{if .IdSpecs}}StreamVectors();{{end}}
-    {{if .Heatmap}}FetchAndPaintHeatmap({{.Heatmap}});{{end}}
+    {{if .Heatmap}}
+    InitHeatmap();
+    FetchAndPaintHeatmap({{.Heatmap}});
+    {{end}}
 }
 
 {{end}}

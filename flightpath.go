@@ -106,7 +106,7 @@ type BoxMatcher struct {
 // :SFO_N   for northen arrivals to SFO.
 // :SFO_NE  are SFO_N that loop over FINSH
 // :SFO_NW  are SFO_N that pass over BRIXX(KSFO) at >5000'
-// :SFO_S   for southern arrivals:  :SFO && 30 km box around ANJEE, WWAVE, or their midpoint)
+// :SFO_S   for southern arrivals:  :SFO && 30 km box around ANJEE, WWAVS, or their midpoint)
 // SFO_S:   for southern departures:  (SFO: ||OAK:) && 30 km (TBR) box around PPEGS
 // :SJC_N   arrivals into SJC that pass through BRIXX (i.e. over KSFO)
 func (f *Flight)TagCoarseFlightpathForSFO() {

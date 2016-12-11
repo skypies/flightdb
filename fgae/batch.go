@@ -3,6 +3,8 @@ package fgae
 
 // http://fdb.serfr1.org/batch/flights/dates?job=retag&date=range&range_from=2014/01/01&range_to=2015/12/31&tags=FOIA
 
+// http://fdb.serfr1.org/batch/flights/dates?job=retag&date=yesterday&tags=:SFO
+
 import (
 	"fmt"
 	"net/http"
