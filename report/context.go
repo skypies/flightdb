@@ -1,6 +1,8 @@
 package report
 
 import(
+	"strings"
+
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/user"
 
