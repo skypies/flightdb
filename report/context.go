@@ -54,14 +54,14 @@ func (r *Report)setupReportingContext(ctx context.Context) error {
 
 func (r *Report)AddACLs() {
 	email := r.ReportingContext.UserEmail
-	if userInList(strings.ToLower(email), ACLFOIA) {
+	if userInList(email, ACLFOIA) {
 		r.Options.CanSeeFOIA = true
 	}
 }
 
 func userInList(user string, acl []string) bool {
 	for _,e := range acl {
-		if user == e { return true }
+		if strings.ToLower(user) == strings.ToLower(e) { return true }
 	}
 	return false
 }
