@@ -89,7 +89,7 @@
         <h3>Notes</h3>
         {{if .R.ReportingContext.UserEmail}}
         <p>User <code>{{.R.ReportingContext.UserEmail}}</code>
-          {{if .R.ReportingContext.CanSeeFOIA}} (can see FOIA data)
+          {{if .R.Options.CanSeeFOIA}} (can see FOIA data)
           {{else}} (no FOIA access){{end}}
         </p>
         {{else}}

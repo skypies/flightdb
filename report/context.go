@@ -15,13 +15,14 @@ type ReportingContext struct {
 }
 
 var(
+	// Lower case everything
 	ACLFOIA = []string{
 		"adam@worrall.cc",
 		"raymonde.guindon@gmail.com",
 		"rguindon@alumni.stanford.edu",
-		"meekGee@gmail.com",
+		"meekgee@gmail.com",
 		"nancyjordan650@gmail.com",
-		"Borg@smwlaw.com",
+		"borg@smwlaw.com",
 		"matt@classalameda.com",
 		"jnelson@wiai.com",
 		"robert.holbrook@gmail.com",
@@ -53,8 +54,7 @@ func (r *Report)setupReportingContext(ctx context.Context) error {
 
 func (r *Report)AddACLs() {
 	email := r.ReportingContext.UserEmail
-	if userInList(email, ACLFOIA) {
-		r.Info("Can see FOIA !! ("+email+")\n")
+	if userInList(strings.ToLower(email), ACLFOIA) {
 		r.Options.CanSeeFOIA = true
 	}
 }
