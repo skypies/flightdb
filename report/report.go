@@ -107,6 +107,11 @@ func (r *Report)PreProcess(f *fdb.Flight) (bool, []fdb.TrackIntersection) {
 		}
 	}
 
+	if f.HasTag("FOIA") && ! r.Options.CanSeeFOIA {
+		r.I[fmt.Sprintf("[B] Eliminated: user can't access FOIA")]++
+		return false, []fdb.TrackIntersection{}
+	}
+	
 	// If restrictions were specified, only match flights that satisfy them
 	failed := false
 	intersections := []fdb.TrackIntersection{}

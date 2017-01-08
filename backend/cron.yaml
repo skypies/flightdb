@@ -28,6 +28,3 @@ cron:
   schedule: every day 04:15
   timezone: America/Los_Angeles
   target: backend
-
-backend.yaml
-backend.yaml

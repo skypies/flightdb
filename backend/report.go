@@ -9,6 +9,7 @@ import(
 	
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
+	"google.golang.org/appengine/user"
 	
 	"github.com/skypies/geo/sfo"
 	"github.com/skypies/util/date"
@@ -41,11 +42,19 @@ func maybeButtonPOST(idspecs []string, title string, url string) string {
 func reportHandler(w http.ResponseWriter, r *http.Request) {
 	c,_ := context.WithTimeout(appengine.NewContext(r), 10 * time.Minute)
 
+	loginUrl,_ := user.LoginURL(c, "/report")
+
 	if r.FormValue("rep") == "" {
+		user := user.Current(c)
+		email := ""
+		if user != nil { email = user.Email }  // This crap (and the ACL stuff) should be real context
+
 		var params = map[string]interface{}{
 			"Yesterday": date.NowInPdt().AddDate(0,0,-1),
 			"Reports": report.ListReports(),
 			"FormUrl": "/report",
+			"LoginUrl": loginUrl,
+			"UserEmailAddress": email,
 			"Waypoints": sfo.ListWaypoints(),
 			"Title": fmt.Sprintf("Reports (DB v2)"),
 		}
@@ -148,13 +157,14 @@ func reportHandler(w http.ResponseWriter, r *http.Request) {
 	// The only way to get embedded CGI args without them getting escaped is to submit a whole tag
 	vizFormURL := "/fdb/visualize?"+rep.ToCGIArgs()
 	vizFormTag := "<form action=\""+vizFormURL+"\" method=\"post\" target=\"_blank\">"
-	
+
 	var params = map[string]interface{}{
 		"R": rep,
 		"Metadata": rep.MetadataTable(),
 		"PostButtons": template.HTML(postButtons),
 		"IdSpecs": template.HTML(strings.Join(idspecsAccepted,",")),
 		"Title": "Reports (DB v2)",
+		"LoginUrl": loginUrl,
 		"VisualizationFormTag": template.HTML(vizFormTag),
 	}
 	if err := templates.ExecuteTemplate(w, "report3-results", params); err != nil {

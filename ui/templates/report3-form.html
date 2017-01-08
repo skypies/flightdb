@@ -8,6 +8,10 @@
     <form action="{{.FormUrl}}" method="get">
       <div class="stack" style="max-width:600px">
 
+        {{if .UserEmailAddress}}<p>User <code>{{.UserEmailAddress}}</code></p>
+        {{else}}<p>User not logged in - <a href="{{.LoginUrl}}">login here</a>.</p>
+        {{end}}
+        
         <div class="box">
 
         <table border="0">
