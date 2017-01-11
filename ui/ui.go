@@ -8,6 +8,8 @@ import(
 	"google.golang.org/appengine"
 
 	"github.com/skypies/flightdb2/fgae"
+
+	_ "github.com/skypies/flightdb2/analysis" // populate the reports registry
 )
 
 // A 'middleware' handler to parse out common fields, and stuff them into a context
