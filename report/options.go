@@ -240,32 +240,8 @@ func (r Report)CGIArgs() template.HTML { return template.HTML(r.ToCGIArgs()) }
 func (r *Report)ToCGIArgs() string {
 	str := fmt.Sprintf("rep=%s&%s", r.Options.Name, widget.DateRangeToCGIArgs(r.Start, r.End))
 
-	if r.TimeOfDay.IsInitialized() { str += "&"+r.TimeOfDay.ToCGIArgs("tod") }
-
-	if r.TrackDataSource != "" { str += "&datasource="+r.TrackDataSource }
-
-	if !r.BoxCenter.IsNil() {
-		str += "&" + NamedLatlongToCGIArgs("boxcenter", r.BoxCenter)
-		if r.BoxRadiusKM > 0.0 { str += fmt.Sprintf("&boxradiuskm=%.2f", r.BoxRadiusKM) }
-		if r.BoxSideKM > 0.0 { str += fmt.Sprintf("&boxsidekm=%.2f", r.BoxSideKM) }
-		if r.BoxExcludes { str += "&boxexcludes=checked" }
-	}
-
-	if r.AltitudeMin > 0 { str += fmt.Sprintf("&altitudemin=%d", r.AltitudeMin) }
-	if r.AltitudeMax > 0 { str += fmt.Sprintf("&altitudemax=%d", r.AltitudeMax) }
-
-	if !r.ReferencePoint.IsNil() { str += "&" + NamedLatlongToCGIArgs("refpt", r.ReferencePoint) }
-	if !r.ReferencePoint2.IsNil() { str += "&" + NamedLatlongToCGIArgs("refpt2", r.ReferencePoint2) }
-
-	if r.RefDistanceKM > 0.0 { str += fmt.Sprintf("&refdistancekm=%.2f", r.RefDistanceKM) }
-
-	if !r.WindowStart.IsNil() {
-		str += "&" + NamedLatlongToCGIArgs("winstart", r.WindowStart)
-		str += "&" + NamedLatlongToCGIArgs("winend", r.WindowEnd)
-		if r.WindowMin > 0.0 { str += fmt.Sprintf("&winmin=%.0f", r.WindowMin) }
-		if r.WindowMax > 0.0 { str += fmt.Sprintf("&winmax=%.0f", r.WindowMax) }
-	}
-	
+	if len(r.Tags) > 0 { str += fmt.Sprintf("&tags=%s", strings.Join(r.Tags,",")) }
+	if len(r.NotTags) > 0 { str += fmt.Sprintf("&nottags=%s", strings.Join(r.NotTags,",")) }
 	for i,wp := range r.Waypoints {
 		str += fmt.Sprintf("&waypoint%d=%s", i+1, wp)
 	}
@@ -273,11 +249,33 @@ func (r *Report)ToCGIArgs() string {
 		str += fmt.Sprintf("&notwaypoint%d=%s", i+1, wp)
 	}
 
-	if len(r.Tags) > 0 { str += fmt.Sprintf("&tags=%s", strings.Join(r.Tags,",")) }
-	if len(r.NotTags) > 0 { str += fmt.Sprintf("&nottags=%s", strings.Join(r.NotTags,",")) }
-
-	if r.TextString != "" { str += fmt.Sprintf("&textstring=%s", r.TextString) }
+	if !r.BoxCenter.IsNil() {
+		str += "&" + NamedLatlongToCGIArgs("boxcenter", r.BoxCenter)
+		if r.BoxRadiusKM > 0.0 { str += fmt.Sprintf("&boxradiuskm=%.2f", r.BoxRadiusKM) }
+		if r.BoxSideKM > 0.0 { str += fmt.Sprintf("&boxsidekm=%.2f", r.BoxSideKM) }
+		if r.BoxExcludes { str += "&boxexcludes=checked" }
+	}
+	if r.AltitudeMin > 0 { str += fmt.Sprintf("&altitudemin=%d", r.AltitudeMin) }
+	if r.AltitudeMax > 0 { str += fmt.Sprintf("&altitudemax=%d", r.AltitudeMax) }
 	
+	if !r.WindowStart.IsNil() {
+		str += "&" + NamedLatlongToCGIArgs("winstart", r.WindowStart)
+		str += "&" + NamedLatlongToCGIArgs("winend", r.WindowEnd)
+		if r.WindowMin > 0.0 { str += fmt.Sprintf("&winmin=%.0f", r.WindowMin) }
+		if r.WindowMax > 0.0 { str += fmt.Sprintf("&winmax=%.0f", r.WindowMax) }
+	}
+
+	if r.TextString != "" { str += fmt.Sprintf("&textstring=%s", r.TextString) } // CGI Encoding ?
+	if r.AltitudeTolerance > 0.0 { str += fmt.Sprintf("&altitudetolerance=%.2f", r.AltitudeTolerance)}
+	if r.Duration != 0 { str += fmt.Sprintf("&duration=%s", r.Duration) }
+	if !r.ReferencePoint.IsNil() { str += "&" + NamedLatlongToCGIArgs("refpt", r.ReferencePoint) }
+	if !r.ReferencePoint2.IsNil() { str += "&" + NamedLatlongToCGIArgs("refpt2", r.ReferencePoint2) }
+	if r.RefDistanceKM > 0.0 { str += fmt.Sprintf("&refdistancekm=%.2f", r.RefDistanceKM) }
+
+	if r.TimeOfDay.IsInitialized() { str += "&"+r.TimeOfDay.ToCGIArgs("tod") }
+	
+	if r.TrackDataSource != "" { str += "&datasource="+r.TrackDataSource }
+
 	return str
 }
 
