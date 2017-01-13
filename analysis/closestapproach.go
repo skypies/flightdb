@@ -33,7 +33,7 @@ func ClosestApproachReporter(r *report.Report, f *fdb.Flight, tis []fdb.TrackInt
 
 	dist := (*t)[iClosest].DistKM(r.ReferencePoint.Latlong)
 	summaryStr := fmt.Sprintf("* Closest to %s\n* <b>%.2f</b> KM away\n", r.ReferencePoint, dist)
-	(*t)[iClosest].AnalysisMapIcon = "red-large"
+	(*t)[iClosest].AnalysisDisplay = fdb.AnalysisDisplayHighlight
 	(*t)[iClosest].AnalysisAnnotation += summaryStr
 
 	r.I[fmt.Sprintf("[C] <b>Flights compared against ref pt %s </b>", r.ReferencePoint)]++

@@ -77,11 +77,13 @@ func (mp MapPoint)ToJSStr(text string) string {
 		age := date.RoundDuration(time.Since(tp.TimestampUTC))
 		times := fmt.Sprintf("%s (age:%s, epoch:%d)",
 			date.InPdt(tp.TimestampUTC), age, tp.TimestampUTC.Unix())
-		mp.Text = fmt.Sprintf("** %s\n* %s\n* DataSource: <b>%s</b>\n%s* %s",
+		mp.Text = fmt.Sprintf("** %s \n* %s\n* DataSource: <b>%s</b>\n%s* %s",
 			times, mp.TP, mp.TP.LongSource(), tp.AnalysisAnnotation, mp.Text)
-		if tp.AnalysisMapIcon != "" {
-			mp.Icon = tp.AnalysisMapIcon
-			}
+		if tp.AnalysisDisplay == fdb.AnalysisDisplayHighlight {
+			mp.Icon = "red-large"
+		} else if tp.AnalysisDisplay == fdb.AnalysisDisplayOmit {
+			mp.Text += "** OMIT\n"
+		}
 	} else {
 		tp.Latlong = *mp.Pos
 	}
@@ -155,7 +157,7 @@ func TrackToMapPoints(t *fdb.Track, icon, banner string, coloring ColoringStrate
 	}
 
 	points := []MapPoint{}
-	if len(*t) == 0 { return points }
+	if t==nil || len(*t) == 0 { return points }
 
 	for i,_ := range *t {
 		color := icon

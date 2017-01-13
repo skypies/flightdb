@@ -71,7 +71,7 @@ func ClassBForTrack(r *report.Report, track fdb.Track) (*geo.TPClassBAnalysis,er
 			// track[i].AnalysisAnnotation += fmt.Sprintf("** ClassB disabled, <%.1fNM\n", kLimit)
 
 		} else if result.IsViolation() {
-			track[i].AnalysisMapIcon = "red-large"
+			track[i].AnalysisDisplay = fdb.AnalysisDisplayHighlight
 			track[i].AnalysisAnnotation += result.Reasoning
 
 			if result.BelowBy > deepest.BelowBy { deepest = result }

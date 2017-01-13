@@ -64,7 +64,7 @@ func MaybeAddFr24Track(c context.Context, f *fdb.Flight) string {
 
 // {{{ trackHandler
 
-//  &all=1  - show all instances of the IdSpec
+//  &all=1 [&colorby=candy]  - show all instances of the IdSpec [prob want coloring]
 
 func trackHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	// This whole Airframe cache thing should be automatic, and upstream from here.
@@ -278,9 +278,10 @@ func OutputTrackpointsOnAMap(ctx context.Context, w http.ResponseWriter, r *http
 	if r.FormValue("debug") != "" {
 		w.Header().Set("Content-Type", "text/plain")
 		if opt.Report != nil {
-			for reg,_ := range opt.Report.ListGeoRestrictors() {
-				bannerText += fmt.Sprintf(" * GeoRestriction: %s\n", reg)
+			for _,rstrc := range opt.Report.ListGeoRestrictors() {
+				bannerText += fmt.Sprintf(" * GeoRestriction: %s\n", rstrc)
 			}
+			bannerText += fmt.Sprintf("\n--- report:-\n%#v\n", opt.Report)
 			bannerText += "\n--- report.Log:-\n" + opt.Report.Log
 		}
 		w.Write([]byte(fmt.Sprintf("OK\n\n%s", bannerText)))
@@ -289,11 +290,13 @@ func OutputTrackpointsOnAMap(ctx context.Context, w http.ResponseWriter, r *http
 
 	if len(flights) > 1 {
 		// For each flight, translate a track into JS points, add to a JSPointSet
-		color := "blue"
+		colors := []string{"blue", "yellow", "green", "red", "pink"}
+		color := 0
 		for _,f := range flights {
 			text := bannerText + fmt.Sprintf("* %s", f.IdentString())
-			ms.Points = append(ms.Points, TrackToMapPoints(f.Tracks["ADSB"], color, text, coloring)...)
-			if color == "blue" { color = "yellow" } else { color = "blue" }
+			ms.Points = append(ms.Points, TrackToMapPoints(f.Tracks["ADSB"], colors[color], text, coloring)...)
+			color++
+			if color >= len(colors) { color = 0 }
 		}
 
 	} else if len(flights) == 1 {
@@ -407,6 +410,7 @@ func OutputMapLinesOnAStreamingMap(ctx context.Context, w http.ResponseWriter, r
 		"VectorURLPath": vectorURLPath,  // retire this when DBv1/v2ui.go and friends are gone
 		"TrackSpec": trackspec,
 		"ColorScheme": opt.ColorScheme,
+		"Report": opt.Report,  // So that any rendering hints can be determined
 		
 		"Waypoints": WaypointMapVar(sfo.KFixes),
 	}

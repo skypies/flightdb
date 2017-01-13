@@ -50,8 +50,8 @@ func FlownDist(r *report.Report, f *fdb.Flight, tis []fdb.TrackIntersection) (re
 
 	track := *f.Tracks[iTrack]
 	track.PostProcess()
-	track[i].AnalysisMapIcon = "red-large"
-	track[j].AnalysisMapIcon = "red-large"
+	track[i].AnalysisDisplay = fdb.AnalysisDisplayHighlight
+	track[j].AnalysisDisplay = fdb.AnalysisDisplayHighlight
 	track[i].AnalysisAnnotation += "* <b>Start of flown dist measurement</b>\n"
 	track[j].AnalysisAnnotation += "* <b>End of flown dist measurement</b>\n"
 

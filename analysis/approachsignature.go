@@ -79,8 +79,8 @@ func ApproachSignature(r *report.Report, f *fdb.Flight, tis []fdb.TrackIntersect
 		tp := track[result]
 
 		dist := tp.DistNM(sfo.KAirports["KSFO"])
-		track[result].AnalysisMapIcon = "red-large"
 
+		track[result].AnalysisDisplay = fdb.AnalysisDisplayHighlight
 		track[result].AnalysisAnnotation += fmt.Sprintf("* <b>Signature at %.1fNM</b>, from %v\n",
 			dist, sigDistNMs)
 

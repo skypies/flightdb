@@ -52,8 +52,9 @@ func debugHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		}
 		
 		for i,result := range results {
-			s,e := result.Times()
-			str += fmt.Sprintf("  * [%02d] %s,%s  %s\n", i, s,e, result.IdentityString())
+			//s,e := result.Times()
+			//str += fmt.Sprintf("  * [%02d] %s,%s  %s\n", i, s,e, result.IdentityString())
+			str += fmt.Sprintf("  * [%02d] %s\n", i, result)
 		}
 		str += "\n\n\n\n"
 		
@@ -75,6 +76,12 @@ func debugHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 			t := f.AnyTrack()
 			str += fmt.Sprintf("---- Anytrack: %s\n", t)
 
+			/*
+			gr := geo.LatlongBoxRestrictor{LatlongBox: sfo.KFixes["ZORSA"].Box(1,1) }
+			satisfies,intersection,deb := f.SatisfiesGeoRestriction(gr, []string{"ADSB","MLAT"})
+			str += fmt.Sprintf("\n\n---- ZORSA@1KM intersection result:-\n * %v\n * %s\n----\n%s",
+				satisfies, intersection, deb)*/
+			
 			/* pos := sfo.KFixes["BRIXX"]
 		gr := geo.LatlongBoxRestrictor{LatlongBox: pos.Box(1,1) }
 		isects,debug := t.AllIntersectsGeoRestriction(gr)

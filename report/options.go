@@ -234,6 +234,7 @@ func NamedLatlongToCGIArgs(stem string, nl geo.NamedLatlong) string {
 
 // for html/template, which chokes 
 func (r Report)CGIArgs() template.HTML { return template.HTML(r.ToCGIArgs()) }
+func (r Report)QuotedCGIArgs() template.JS { return template.JS("\""+r.ToCGIArgs()+"\"") }
 
 // A bare minimum of args, to embed in track links, so tracks can render with report tooltips
 // and maps can see the geometry used

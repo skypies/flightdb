@@ -48,11 +48,14 @@ function generateUrlConsumingFunction(detailsText) {
 }
 
 function StreamVectors() {
-    var idspecs = {{.IdSpecs}}
+    var idspecs = {{.IdSpecs}};
     for (var i in idspecs) {
-        var idspec = idspecs[i].idspec
+        var idspec = idspecs[i].idspec;
         var url = {{.VectorURLPath}}+'?idspec='+idspec+'&json=1&trackspec='+{{.TrackSpec}}+
-            '&'+{{.ColorScheme.QuotedCGIArgs}}
+            '&'+{{.ColorScheme.QuotedCGIArgs}};
+        {{if .Report}}
+        url += '&'+{{.Report.QuotedCGIArgs}};
+        {{end}}
         var detailsText = '<a target="_blank" href="/fdb/tracks?idspec='+idspec+'">['+i+'] '+
             idspec+'</a>';
         $.getJSON( url, generateUrlConsumingFunction(detailsText) );

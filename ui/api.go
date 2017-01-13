@@ -5,6 +5,7 @@ import(
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"time"
 	
 	"golang.org/x/net/context"
@@ -59,14 +60,13 @@ func vectorHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	OutputFlightAsVectorJSON(w, r, f)
+	OutputFlightAsVectorJSON(ctx, w, r, f)
 }
 
 // }}}
 // {{{ OutputFlightAsVectorJSON
 
-// This function is called from complaints/app/v2ui.go
-func OutputFlightAsVectorJSON(w http.ResponseWriter, r *http.Request, f *fdb.Flight) {
+func OutputFlightAsVectorJSON(ctx context.Context, w http.ResponseWriter, r *http.Request, f *fdb.Flight) {
 	// This is such a botch job
 	trackspecs := widget.FormValueCommaSepStrings(r, "trackspec")
 	if len(trackspecs) == 0 {
@@ -83,6 +83,15 @@ func OutputFlightAsVectorJSON(w http.ResponseWriter, r *http.Request, f *fdb.Fli
 			return
 		} else {
 			complaintTimes = times
+		}
+	}
+
+	// If we have CGI args for a report, process the flight, to get display hints.
+	opt,_ := GetUIOptions(ctx)
+	if opt.Report != nil {
+		if _,err := opt.Report.Process(f); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 	}
 	
@@ -155,7 +164,19 @@ func FlightToMapLines(f *fdb.Flight, trackName string, colorscheme ColorScheme, 
 
 	origTrack.PostProcess()
 	track := origTrack.AsSanityFilteredTrack()
-	//track := origTrack //.AsSanityFilteredTrack() // There was once a track with a crazy datapoint
+
+	// If a report said some data points were uninteresting, we remove them here.
+	toRemove := []int{}
+	for i,tp := range track {
+		if tp.AnalysisDisplay == fdb.AnalysisDisplayOmit {
+			toRemove = append(toRemove, i)
+		}
+	}
+	sort.Sort(sort.Reverse(sort.IntSlice(toRemove))) // Need to remove biggest index first ...
+	for _,index := range toRemove {
+		track = append(track[:index], track[index+1:]...)
+	}
+	
 	flightLines := track.AsLinesSampledEvery(sampleRate)
 
 	complaintCounts := make([]int, len(flightLines))

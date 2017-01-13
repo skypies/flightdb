@@ -74,11 +74,19 @@ func NewLevelFlightReporter(r *report.Report, f *fdb.Flight, tis []fdb.TrackInte
 	r.I[fmt.Sprintf("[D] <b>Flights with level flight (|angle| <= %.1f deg, for >= %.1f KM)</b>",
 		r.AltitudeTolerance, r.RefDistanceKM)]++
 
-	t := f.Tracks[tName]
+	t := *f.Tracks[tName]
 
+	// For this report, we blank out everything but the selected level flight span. The trackpoint
+	// display ignores this, but the vector display will omit/downlight these bits.
+	for i:=0; i<iStart; i++ {
+		t[i].AnalysisDisplay = fdb.AnalysisDisplayOmit
+	}
 	for i:=iStart; i<=iEnd; i++ {
-		(*t)[i].AnalysisMapIcon = "red-large"
-		(*t)[i].AnalysisAnnotation += fmt.Sprintf("* <b>Level flight for %.1f KM</b>\n", longestLevelRunKM)
+		t[i].AnalysisDisplay = fdb.AnalysisDisplayHighlight
+		t[i].AnalysisAnnotation += fmt.Sprintf("* <b>Level flight for %.1f KM</b>\n", longestLevelRunKM)
+	}
+	for i:=iEnd+1; i<len(t); i++ {
+		t[i].AnalysisDisplay = fdb.AnalysisDisplayOmit
 	}
 	
 	row := []string{
@@ -86,7 +94,7 @@ func NewLevelFlightReporter(r *report.Report, f *fdb.Flight, tis []fdb.TrackInte
 		"<code>" + f.IdentString() + "</code>",
 		"<b>(LengthKM,Alt,I,J)</b>",
 		fmt.Sprintf("%.2f", longestLevelRunKM),
-		fmt.Sprintf("%.0f", (*t)[iStart].Altitude),
+		fmt.Sprintf("%.0f", t[iStart].Altitude),
 		fmt.Sprintf("%d", iStart),
 		fmt.Sprintf("%d", iEnd),
 	}

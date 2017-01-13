@@ -31,7 +31,7 @@ type Trackpoint struct {
 	
 	// These two are transient fields, populated during analysis, and displayed on the map view
 	AnalysisAnnotation string `datastore:"-" json:"-"`
-	AnalysisMapIcon    string `datastore:"-" json:"-"`
+	AnalysisDisplay    AnalysisDisplayEnum `datastore:"-" json:"-"`
 
 	// These fields are derived
 	IndicatedAltitude         float64 `datastore:"-" json:"-"` // Corrected for local air pressure
@@ -55,6 +55,13 @@ type InterpolatedTrackpoint struct {
 	Line       geo.LatlongLine  // The line that connects the ref point to the line {pre->post}
 	Perp       geo.LatlongLine
 }
+
+type AnalysisDisplayEnum int
+const(
+	AnalysisDisplayDefault AnalysisDisplayEnum = iota
+	AnalysisDisplayOmit
+	AnalysisDisplayHighlight  // "red-large"
+)
 
 // {{{ tp.ShortString
 
