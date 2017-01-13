@@ -46,6 +46,8 @@ func LookupIdspec(db fgae.FlightDB, idspec fdb.IdSpec) ([]*fdb.Flight, error) {
 
 // {{{ jsonHandler
 
+// /fdb/json?idspec=...  - dumps an entire flight object out as JSON.
+
 func jsonHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
 	db := fgae.FlightDB{C:ctx}
@@ -95,40 +97,52 @@ func jsonHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 // }}}
 // {{{ snarfHandler
 
+// /fdb/snarf?idspec=...  - pull the idspecs from prod, insert into local DB. For debugging.
+
 func snarfHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	// opt,_ := GetUIOptions(ctx)
+	opt,_ := GetUIOptions(ctx)
 	client := urlfetch.Client(ctx)
 	db := fgae.FlightDB{C:ctx}
 
-	// This might well be broken nowadays; consider opt.Idspecs()[0]
-	url := "http://fdb.serfr1.org/fdb/json?idspec=" + r.FormValue("idspec")
+	str := "Snarfer!\n--\n\n"
 
-	str := fmt.Sprintf("Snarfer!\n--\n%s\n--\n", url)
-	
-	flights := []fdb.Flight{}
-	if resp,err := client.Get(url); err != nil {
-		http.Error(w, "XX: "+err.Error(), http.StatusInternalServerError)
+	idspecs,err := opt.IdSpecs()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	} else {
-		defer resp.Body.Close()
-		
-		if resp.StatusCode != http.StatusOK {
-			err = fmt.Errorf ("Bad status: %v", resp.Status)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	allFlights := []fdb.Flight{}
+	for _,idspec := range idspecs {
+		theseFlights := []fdb.Flight{}
+		url := fmt.Sprintf("http://fdb.serfr1.org/fdb/json?idspec=%s", idspec)
+		str += fmt.Sprintf("-- snarfing: %s\n", url)
+	
+		if resp,err := client.Get(url); err != nil {
+			http.Error(w, "XX: "+err.Error(), http.StatusInternalServerError)
 			return
-		} else if err := json.NewDecoder(resp.Body).Decode(&flights); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+		} else {
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				err = fmt.Errorf ("Bad status: %v", resp.Status)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			} else if err := json.NewDecoder(resp.Body).Decode(&theseFlights); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
-	}
+		allFlights = append(allFlights, theseFlights...)
 
-	str += "Snarfed:-\n"
-	for _,f := range flights {
-		str += fmt.Sprintf(" * %s\n", f)
+		str += "-- Found:-\n"
+		for _,f := range theseFlights {
+			str += fmt.Sprintf(" * %s\n", f)
+		}
+		str += "--\n"
 	}
-	str += "--\n"
-
-	for _,f := range flights {
+	
+	for _,f := range allFlights {
 		if err := db.PersistFlight(&f); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
