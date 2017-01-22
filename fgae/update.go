@@ -88,7 +88,7 @@ func CurrentAccumulationTrack(f *fdb.Flight) *fdb.Track {
 }
 
 func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
-	db.Debugf("* adding frag %s\n", frag)
+	db.Debugf("* adding frag %d\n", len(frag.Track))
 	f,err := db.LookupMostRecent(db.NewQuery().ByIcaoId(frag.IcaoId))
 	if err != nil { return err }
 
@@ -112,14 +112,12 @@ func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 		// have some MLAT for the flight.
 		accTrack := CurrentAccumulationTrack(f)
 		
-		//if track,exists := f.Tracks[trackKey]; !exists {
 		if accTrack == nil {
 			f.DebugLog += "-- AddFrag "+prefix+": first frag on pre-existing flight\n"
 			db.Infof("* %s no pre-existing track; adding right in", prefix)
 			f.Tracks[trackKey] = &frag.Track
 
-		//} else if plausible,debug := track.PlausibleExtension(&frag.Track); plausible==true {
-		} else if plausible,debug := accTrack.PlausibleExtension(&frag.Track); plausible==true {
+		} else if plausible,debug := accTrack.PlausibleContribution(&frag.Track); plausible==true {
 			f.DebugLog += fmt.Sprintf("-- AddFrag %s: extending (adding %d to %d points)\n",
 				prefix, len(frag.Track), len(*accTrack))
 			db.Debugf("* %s extending track ... debug:\n%s", prefix, debug)
@@ -143,6 +141,8 @@ func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 					prevTP = &((*f.Tracks[trackKey])[n-1])
 				}
 			}
+
+			db.Infof("* %s adding %d points to %d\n", prefix, len(frag.Track), len(*f.Tracks[trackKey]))
 
 			db.Debugf("** pre : %s", f.Tracks[trackKey])
 			f.Tracks[trackKey].Merge(&frag.Track)

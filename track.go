@@ -44,12 +44,24 @@ func (t Track)End() time.Time { return t[len(t)-1].TimestampUTC }
 func (t Track)Times() (s,e time.Time) { return t.Start(), t.End() }
 func (t Track)Duration() time.Duration { return t.End().Sub(t.Start()) }
 func (t Track)StartEndBoundingBox() geo.LatlongBox {
+	if len(t) == 0 { return geo.LatlongBox{} }
 	// This isn't the actual bounding box for the track; it assumes mostly linear flight.
 	return t[0].BoxTo(t[len(t)-1].Latlong)
 }
 func (t Track)Notes() string {
 	if len(t) == 0 { return "" }
 	return t[0].Notes
+}
+
+// Full bounding box involves a full traversal of the track.
+func (t Track)FullBoundingBox() geo.LatlongBox {
+	if len(t) == 0 { return geo.LatlongBox{} }
+
+	b := t[0].BoxTo(t[0].Latlong)
+	for _,tp := range t[1:] {
+		b.Enclose(tp.Latlong)
+	}
+	return b
 }
 
 // }}}
@@ -340,19 +352,30 @@ func (t1 *Track)Compare(t2 *Track) CompareOutcome {
 // }}}
 // {{{ t.CompareInSpace
 
-// OverlapOutcome isn't purely accurate; just use it for .IsDisjoint, etc
+// OverlapOutcome is abused here; only use the return value for .IsDisjoint() checks.
 func (t1 *Track)CompareInSpace(t2 *Track) (geo.OverlapOutcome,float64) {
 	if len(*t1) == 0 || len(*t2) == 0 {
 		return geo.Undefined, 0.0
-	} else if len(*t1) == 1 && len(*t2) == 1 {
-		if (*t1)[0].Latlong.Equal((*t2)[0].Latlong) { return geo.OverlapR2IsContained, 1.0 }
-	} else if len(*t1) == 1 {
-		if t2.StartEndBoundingBox().Contains((*t1)[0].Latlong) { return geo.OverlapR2Contains, 1.0 }
+	}
+
+	if len(*t1) == 1 && len(*t2) == 1 {
+		if (*t1)[0].Latlong.Equal((*t2)[0].Latlong) {
+			return geo.OverlapR2IsContained, 1.0
+		} else {
+			return geo.DisjointR2ComesAfter, 0.0
+		}
+	}
+
+	// Bounding boxes involve full traversals, so compute once.
+	b1,b2 := t1.FullBoundingBox(),t2.FullBoundingBox()
+
+	if len(*t1) == 1 {
+		if b2.Contains((*t1)[0].Latlong) { return geo.OverlapR2Contains, 1.0 }
 	} else if len(*t2) == 1 {
-		if t1.StartEndBoundingBox().Contains((*t2)[0].Latlong) { return geo.OverlapR2IsContained, 0.0 }
+		if b1.Contains((*t2)[0].Latlong) { return geo.OverlapR2IsContained, 0.0 }
 	} else {
-		// Non-degenerate case: two tracks with >1 points
-		return t1.StartEndBoundingBox().OverlapsWith(t2.StartEndBoundingBox())
+		// At last, the non-degenerate case: two tracks with >1 points
+		return b1.OverlapsWith(b2)
 	}
 
 	return geo.DisjointR2ComesAfter, 0.0
@@ -391,6 +414,44 @@ func (t1 *Track)PlausibleExtension(t2 *Track) (bool, string) {
 			}
 		}
 */
+	}
+}
+
+// }}}
+// {{{ t.PlausibleContribution
+
+// Does t2 seem like it could be glued onto/into t1 ?
+func (t1 *Track)PlausibleContribution(t2 *Track) (bool, string) {
+	o := t1.Compare(t2)
+
+	if o.TimeDisposition==geo.DisjointR2ComesAfter {
+		if o.Duration <= kExtensionMaxGap {
+			return true, o.String() + "looks good disjoint suffix, plausible is YES\n"
+		} else {
+			return false, o.String() + fmt.Sprintf("suffix gap is too long (>%s)", kExtensionMaxGap)
+		}
+
+	} else if o.TimeDisposition==geo.DisjointR2ComesBefore {
+		// Out-of-order delivery; t2 are trackpoints that precede
+		// trackpoints we already have in t1. Almost certainly part of the
+		// same flight, so relax the duration constraint.
+		if o.Duration <= 3 * kExtensionMaxGap {
+			return true, o.String() + "looks good disjoint prefix, plausible is YES\n"
+		} else {
+			return false, o.String() + fmt.Sprintf("prefix gap is too long (>%s)", kExtensionMaxGap * 3)
+		}
+
+	} else {
+		// They overlapped in time. Do they overlap in space/altitude/etc ?
+		if o.SpaceDisposition.IsDisjoint() {
+			// Weird. Let's plot them. Our one instance was an error from over-approximate bboxes.
+			str := fmt.Sprintf("* view at fdb.serfr1.org/fdb/map?boxes=b1,b2&%s&%s\n",
+				t1.StartEndBoundingBox().ToCGIArgs("b1"),
+				t2.StartEndBoundingBox().ToCGIArgs("b2"))
+			return false, o.String() + str + "No space overlap, despite time overlap\n"
+		}
+
+		return true, o.String() + "Time and space overlap, plausible is YES\n"
 	}
 }
 
