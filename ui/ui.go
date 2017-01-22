@@ -39,7 +39,7 @@ type contextHandler func(context.Context, http.ResponseWriter, *http.Request)
 
 func UIOptionsHandler(ch contextHandler) baseHandler {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx,_ := context.WithTimeout(appengine.NewContext(r), 55 * time.Second)
+		ctx,_ := context.WithTimeout(appengine.NewContext(r), 550 * time.Second)
 		r.ParseForm()
 
 		opt,err := FormValueUIOptions(r)

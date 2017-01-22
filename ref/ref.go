@@ -38,7 +38,7 @@ func NewAirframeCache(c context.Context) *AirframeCache {
 	buf := bytes.NewBuffer(data)
 	ac := AirframeCache{Map:map[string]*fdb.Airframe{}}
 	if err := gob.NewDecoder(buf).Decode(&ac); err != nil {
-		log.Errorf(c, "airframecache: could not decode: %v", err)
+		//log.Errorf(c, "airframecache: could not decode: %v", err)
 	}
 
 	return &ac
