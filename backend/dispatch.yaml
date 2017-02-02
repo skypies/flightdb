@@ -2,13 +2,13 @@ application: serfr0-fdb
 
 dispatch:
 
-- url: "airspace.serfr1.org/"
+# All front doors (to stop stackdriver starting up default module)
+- url: "*/"
   module: frontend
-
-- url: "fdb.serfr1.org/"
-  module: frontend
-- url: "fdb.serfr1.org/comp"
-  module: frontend
+#- url: "airspace.serfr1.org/"
+#  module: frontend
+#- url: "fdb.serfr1.org/"
+#  module: frontend
 
 - url: "fdb.serfr1.org/fdb/*"
   module: ui
