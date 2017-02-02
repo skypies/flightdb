@@ -2,7 +2,6 @@ package main
 
 import(
 	"compress/gzip"
-	"context"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -13,6 +12,7 @@ import(
 	"time"
 
 	"cloud.google.com/go/storage"
+	"golang.org/x/net/context"
 	"google.golang.org/api/iterator"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
