@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"time"
 
+	"cloud.google.com/go/bigquery" // different API; see ffs below.
+
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/taskqueue"
-	"google.golang.org/cloud/bigquery"
-	// "cloud.google.com/go/bigquery" // different API; see ffs below.
 
 	"github.com/skypies/util/date"
 	"github.com/skypies/util/gcs"
@@ -189,6 +189,7 @@ func writeBigQueryFlightsGCSFile(r *http.Request, datestring, foldername,filenam
 // }}}
 // {{{ submitLoadJob
 
+// https://cloud.google.com/bigquery/docs/loading-data-cloud-storage#bigquery-import-gcs-file-go
 func submitLoadJob(r *http.Request, gcsfolder, gcsfile string) error {
 	ctx := appengine.NewContext(r)
 
@@ -196,32 +197,38 @@ func submitLoadJob(r *http.Request, gcsfolder, gcsfile string) error {
 	if err != nil {
 		return fmt.Errorf("Creating bigquery client: %v", err)
 	}
-
-	gcsSrc := client.NewGCSReference(fmt.Sprintf("gs://%s/%s", gcsfolder, gcsfile))
+	myDataset := client.Dataset(bigqueryDataset)
+	destTable := myDataset.Table(bigqueryTableName)
+	
+	gcsSrc := bigquery.NewGCSReference(fmt.Sprintf("gs://%s/%s", gcsfolder, gcsfile))
 	gcsSrc.SourceFormat = bigquery.JSON
+	gcsSrc.AllowJaggedRows = true
 
+	loader := destTable.LoaderFrom(gcsSrc)
+	loader.CreateDisposition = bigquery.CreateNever
+	job,err := loader.Run(ctx)	
+	if err != nil {
+		return fmt.Errorf("Submission of load job: %v", err)
+	}
+
+	// https://godoc.org/cloud.google.com/go/bigquery#Copier
+/*
 	tableDest := &bigquery.Table{
 		ProjectID: bigqueryProject,
 		DatasetID: bigqueryDataset,
 		TableID:   bigqueryTableName,
 	}
-
-	// FFS.
-	// https://godoc.org/cloud.google.com/go/bigquery#Copier
-	/*
-	myDataset := client.Dataset(bigqueryDataset)
-	copier := myDataset.Table(bigqueryTableName).CopierFrom(myDataset.Table("src"))
-copier.WriteDisposition = bigquery.WriteTruncate
-job, err = copier.Run(ctx)
-if err != nil {
-    // TODO: Handle error.
-}
-*/
-	
-	job,err := client.Copy(ctx, tableDest, gcsSrc, bigquery.WriteAppend)
+	copier := myDataset.Table(bigqueryTableName).CopierFrom(gcsSrc)
+	copier.WriteDisposition = bigquery.WriteAppend
+	job,err := copier.Run(ctx)
 	if err != nil {
 		return fmt.Errorf("Submission of load job: %v", err)
 	}
+*/	
+	//job,err := client.Copy(ctx, tableDest, gcsSrc, bigquery.WriteAppend)
+	//if err != nil {
+	//	return fmt.Errorf("Submission of load job: %v", err)
+	//}
 
 	time.Sleep(5 * time.Second)
 	

@@ -2,6 +2,7 @@ package main
 
 import(
 	"compress/gzip"
+	"context"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -11,14 +12,12 @@ import(
 	"strconv"
 	"time"
 
-	"golang.org/x/net/context"
+	"cloud.google.com/go/storage"
+	"google.golang.org/api/iterator"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/taskqueue"
-	"google.golang.org/appengine/log"
-	
-	"google.golang.org/cloud/storage"
-	//"cloud.google.com/go/storage" // different API
+	"google.golang.org/appengine/log"	
 
 	"github.com/skypies/geo"
 	"github.com/skypies/util/date"
@@ -361,15 +360,19 @@ func doStorageJunk(ctx context.Context, date string) (string, error) {
 	q := &storage.Query{
 		//Delimiter: "/",
 		Prefix: dir + "/Offload_track_IFR_"+date,
-		MaxResults: 200,
 	}
-
-	objs,err := bucket.List(ctx, q)
-	if err != nil { return "", fmt.Errorf("GCS-Readdir [gs://%s]%s': %v", bucketName, q.Prefix, err) }
 
 	str := ""
 	names := []string{}
-	for _,oa := range objs.Results {
+	it := bucket.Objects(ctx, q)
+	for {
+    oa, err := it.Next()
+    if err == iterator.Done {
+			break
+    }
+    if err != nil {
+			return "", fmt.Errorf("GCS-Readdir [gs://%s]%s': %v", bucketName, q.Prefix, err)
+    }
 		str += fmt.Sprintf("%8db %s {%s}\n", oa.Size, oa.Updated.Format("2006.01.02"), oa.Name)
 		names = append(names, oa.Name)
 	}
@@ -458,18 +461,29 @@ func processFoiaDatafile(ctx context.Context, date string, foiaFunc FoiaFlightFu
 	q := &storage.Query{
 		//Delimiter: "/",
 		Prefix: dir + "/Offload_track_IFR_"+date,
-		MaxResults: 200,
 	}
-
-	objs,err := bucket.List(ctx, q)
-	if err != nil { return "", fmt.Errorf("GCS-Readdir: %v", err) }
 
 	str := ""
 	names := []string{}
-	for _,oa := range objs.Results {
+	it := bucket.Objects(ctx, q)
+	for {
+    oa, err := it.Next()
+    if err == iterator.Done {
+			break
+    }
+    if err != nil {
+			return "", fmt.Errorf("GCS-Readdir [gs://%s]%s': %v", bucketName, q.Prefix, err)
+    }
 		str += fmt.Sprintf("%8db %s {%s}\n", oa.Size, oa.Updated.Format("2006.01.02"), oa.Name)
 		names = append(names, oa.Name)
 	}
+
+	//objs,err := bucket.List(ctx, q)
+	//if err != nil { return "", fmt.Errorf("GCS-Readdir: %v", err) }
+	//for _,oa := range objs.Results {
+	//	str += fmt.Sprintf("%8db %s {%s}\n", oa.Size, oa.Updated.Format("2006.01.02"), oa.Name)
+	//	names = append(names, oa.Name)
+	//}
 
 	nFlights := 0
 	for _,filename := range names {
