@@ -60,6 +60,9 @@ func WaypointMapVar(in map[string]geo.Latlong) template.JS {
 // {{{ MapHandler
 
 // ?boxes=b1[,b2]&...{latlongbox.ToCGIArgs("b1")}, etc - render some arbitrary boxes
+// ?heatmap=2h  - heatmap of complaint locations over past [duration]
+// ?usermap=7d  - heatmap of users who were active within [duration]
+// ?usermap=all - heatmap of all user profiles
 
 func MapHandler(w http.ResponseWriter, r *http.Request) {	
 	var params = map[string]interface{}{
@@ -71,6 +74,10 @@ func MapHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.FormValue("heatmap") != "" {
 		params["Heatmap"] = r.FormValue("heatmap")
+
+	} else if r.FormValue("usermap") != "" {
+		params["Usermap"] = r.FormValue("usermap")
+
 	}
 	
 	if r.FormValue("boxes") != "" {

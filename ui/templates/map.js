@@ -5,7 +5,7 @@
 
 {{if .Points}}  {{template "js-map-shapes" . }} {{end}}
 {{if .IdSpecs}} {{template "js-map-ajax" . }}   {{end}}
-{{if .Heatmap}} {{template "js-heatmap"}}       {{end}}
+{{if or (.Heatmap) (.Usermap)}} {{template "js-heatmap"}} {{end}}
 
 var map;
 
@@ -51,9 +51,13 @@ function initMap() {
     PaintLegend( {{.Legend}} );
     {{if .Points}}ShapesOverlay();{{end}}
     {{if .IdSpecs}}StreamVectors();{{end}}
+
     {{if .Heatmap}}
     InitHeatmap();
     FetchAndPaintHeatmap({{.Heatmap}});
+    {{else if .Usermap}}
+    InitUsermap({{.Usermap}});
+    FetchAndPaintHeatmap({{.Usermap}});
     {{end}}
 }
 
