@@ -68,6 +68,11 @@ func ListReporter(r *Report, f *fdb.Flight, intersections []fdb.TrackIntersectio
 			r.I[fmt.Sprintf("[D] %s", alt2bkt(tp.Altitude))]++
 			r.I[fmt.Sprintf("[E] %s", speed2bkt(tp.GroundSpeed))]++
 			bucketsAdded = true // Only once per flight
+
+			// Add first to HTML output, too
+			htmlrow = append(htmlrow, []string{
+				tpInPT.Format("15:04"),
+			}...)
 		}
 	}
 
