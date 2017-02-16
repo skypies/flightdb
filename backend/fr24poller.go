@@ -20,9 +20,9 @@ import(
 // dev_appserver.py --clear_datastore=yes ./ui.yaml
 
 func init() {
-	http.HandleFunc("/fdb/fr24", fr24PollHandler)
-	http.HandleFunc("/fdb/schedcache/view", schedcacheViewHandler)
-	http.HandleFunc("/fdb/fr24q", fr24QueryHandler)
+	http.HandleFunc("/be/fr24", fr24PollHandler)
+	http.HandleFunc("/be/fr24q", fr24QueryHandler)
+	http.HandleFunc("/be/schedcache/view", schedcacheViewHandler)
 }
 
 // {{{ listResult2Airframe

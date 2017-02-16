@@ -5,24 +5,21 @@ dispatch:
 # All front doors (to stop stackdriver starting up default module)
 - url: "*/"
   module: frontend
-#- url: "airspace.serfr1.org/"
-#  module: frontend
-#- url: "fdb.serfr1.org/"
-#  module: frontend
 
-- url: "fdb.serfr1.org/fdb/*"
+- url: "*/fdb/*"
   module: ui
-- url: "fdb.serfr1.org/api/*"
+- url: "*/api/*"
   module: ui
 - url: "*/static/*"
   module: ui
 
-- url: "*/status"
-  module: consolidator
-- url: "fdb.serfr1.org/reset"
+- url: "*/con/*"
   module: consolidator
 
-- url: "fdb.serfr1.org/report"
+- url: "*/be/*"
   module: backend
-- url: "fdb.serfr1.org/batch/*"
+
+- url: "*/report"
+  module: backend
+- url: "*/batch/*"
   module: backend
