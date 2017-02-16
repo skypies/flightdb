@@ -4,7 +4,6 @@ import(
 	"fmt"
 	"time"
 	
-	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/datastore"
 
 	"github.com/skypies/geo/sfo"
@@ -49,7 +48,7 @@ func (db *FlightDB)findOrGenerateFlightKey(f *fdb.Flight) (*datastore.Key, error
 	}
 	k := datastore.NewKey(db.C, kFlightKind, "", intKey, rootKey)
 	
-	log.Infof(db.C, "creating a new key: %v", k)
+	//log.Debugf(db.C, "creating a new key: %v", k)
 	
 	return k, nil
 }
@@ -114,7 +113,7 @@ func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 		
 		if accTrack == nil {
 			f.DebugLog += "-- AddFrag "+prefix+": first frag on pre-existing flight\n"
-			db.Infof("* %s no pre-existing track; adding right in", prefix)
+			db.Debugf("* %s no pre-existing track; adding right in", prefix)
 			f.Tracks[trackKey] = &frag.Track
 
 		} else if plausible,debug := accTrack.PlausibleContribution(&frag.Track); plausible==true {
@@ -142,7 +141,7 @@ func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 				}
 			}
 
-			db.Infof("* %s adding %d points to %d\n", prefix, len(frag.Track), len(*f.Tracks[trackKey]))
+			db.Debugf("* %s adding %d points to %d\n", prefix, len(frag.Track), len(*f.Tracks[trackKey]))
 
 			db.Debugf("** pre : %s", f.Tracks[trackKey])
 			f.Tracks[trackKey].Merge(&frag.Track)
@@ -151,7 +150,7 @@ func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 		}	else {
 			f = fdb.NewFlightFromTrackFragment(frag)
 			f.DebugLog += "-- AddFrag "+prefix+": was not plausible, so new flight\n"
-			db.Infof("* %s not a plausible addition; starting afresh ... debug\n%s", prefix, debug)
+			db.Debugf("* %s not a plausible addition; starting afresh ... debug\n%s", prefix, debug)
 			f.DebugLog += debug+"\n"
 		}
 	}
