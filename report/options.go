@@ -62,17 +62,6 @@ type Options struct {
 	ReportLogLevel // For debugging
 }
 
-func FormValueNamedLatlong(r *http.Request, stem string) geo.NamedLatlong {
-	if wp := strings.ToUpper(r.FormValue(stem+"_name")); wp != "" {
-		if _,exists := sfo.KFixes[wp]; !exists {
-			return geo.NamedLatlong{Name:"[UNKNOWN]"} //, fmt.Errorf("Waypoint '%s' not known", wp)
-		}
-		return geo.NamedLatlong{wp, sfo.KFixes[wp]}
-	}
-
-	return geo.NamedLatlong{"", geo.FormValueLatlong(r,stem)}
-}
-
 func FormValueReportOptions(r *http.Request) (Options, error) {
 	if r.FormValue("rep") == "" {
 		return Options{}, fmt.Errorf("url arg 'rep' missing (no report specified")
@@ -95,23 +84,23 @@ func FormValueReportOptions(r *http.Request) (Options, error) {
 		Waypoints: []string{},
 		NotWaypoints: []string{},
 		
-		BoxCenter: FormValueNamedLatlong(r, "boxcenter"),
+		BoxCenter: sfo.FormValueNamedLatlong(r, "boxcenter"),
 		BoxRadiusKM: widget.FormValueFloat64EatErrs(r, "boxradiuskm"),
 		BoxSideKM: widget.FormValueFloat64EatErrs(r, "boxsidekm"),
 		BoxExcludes: widget.FormValueCheckbox(r, "boxexcludes"),
 		AltitudeMin: widget.FormValueInt64(r, "altitudemin"),
 		AltitudeMax: widget.FormValueInt64(r, "altitudemax"),
 
-		WindowStart: FormValueNamedLatlong(r, "winstart"),
-		WindowEnd:   FormValueNamedLatlong(r, "winend"),
+		WindowStart: sfo.FormValueNamedLatlong(r, "winstart"),
+		WindowEnd:   sfo.FormValueNamedLatlong(r, "winend"),
 		WindowMin: widget.FormValueFloat64EatErrs(r, "winmin"),
 		WindowMax: widget.FormValueFloat64EatErrs(r, "winmax"),
 
 		TextString: r.FormValue("textstring"),
 		AltitudeTolerance: widget.FormValueFloat64EatErrs(r, "altitudetolerance"),
 		Duration: widget.FormValueDuration(r, "duration"),
-		ReferencePoint: FormValueNamedLatlong(r, "refpt"),
-		ReferencePoint2: FormValueNamedLatlong(r, "refpt2"),
+		ReferencePoint: sfo.FormValueNamedLatlong(r, "refpt"),
+		ReferencePoint2: sfo.FormValueNamedLatlong(r, "refpt2"),
 		RefDistanceKM: widget.FormValueFloat64EatErrs(r, "refdistancekm"),
 
 		ResultsFormat: r.FormValue("resultformat"),
@@ -228,10 +217,6 @@ func (o Options)String() string {
 	return str
 }
 
-func NamedLatlongToCGIArgs(stem string, nl geo.NamedLatlong) string {
-	return fmt.Sprintf("%s_name=%s&%s", stem, nl.Name, nl.Latlong.ToCGIArgs(stem))
-}
-
 // for html/template, which chokes 
 func (r Report)CGIArgs() template.HTML { return template.HTML(r.ToCGIArgs()) }
 func (r Report)QuotedCGIArgs() template.JS { return template.JS("\""+r.ToCGIArgs()+"\"") }
@@ -251,7 +236,7 @@ func (r *Report)ToCGIArgs() string {
 	}
 
 	if !r.BoxCenter.IsNil() {
-		str += "&" + NamedLatlongToCGIArgs("boxcenter", r.BoxCenter)
+		str += "&" + r.BoxCenter.ToCGIArgs("boxcenter")
 		if r.BoxRadiusKM > 0.0 { str += fmt.Sprintf("&boxradiuskm=%.2f", r.BoxRadiusKM) }
 		if r.BoxSideKM > 0.0 { str += fmt.Sprintf("&boxsidekm=%.2f", r.BoxSideKM) }
 		if r.BoxExcludes { str += "&boxexcludes=checked" }
@@ -260,8 +245,8 @@ func (r *Report)ToCGIArgs() string {
 	if r.AltitudeMax > 0 { str += fmt.Sprintf("&altitudemax=%d", r.AltitudeMax) }
 	
 	if !r.WindowStart.IsNil() {
-		str += "&" + NamedLatlongToCGIArgs("winstart", r.WindowStart)
-		str += "&" + NamedLatlongToCGIArgs("winend", r.WindowEnd)
+		str += "&" + r.WindowStart.ToCGIArgs("winstart")
+		str += "&" + r.WindowEnd.ToCGIArgs("winend")
 		if r.WindowMin > 0.0 { str += fmt.Sprintf("&winmin=%.0f", r.WindowMin) }
 		if r.WindowMax > 0.0 { str += fmt.Sprintf("&winmax=%.0f", r.WindowMax) }
 	}
@@ -269,8 +254,8 @@ func (r *Report)ToCGIArgs() string {
 	if r.TextString != "" { str += fmt.Sprintf("&textstring=%s", r.TextString) } // CGI Encoding ?
 	if r.AltitudeTolerance > 0.0 { str += fmt.Sprintf("&altitudetolerance=%.2f", r.AltitudeTolerance)}
 	if r.Duration != 0 { str += fmt.Sprintf("&duration=%s", r.Duration) }
-	if !r.ReferencePoint.IsNil() { str += "&" + NamedLatlongToCGIArgs("refpt", r.ReferencePoint) }
-	if !r.ReferencePoint2.IsNil() { str += "&" + NamedLatlongToCGIArgs("refpt2", r.ReferencePoint2) }
+	if !r.ReferencePoint.IsNil() { str += "&" + r.ReferencePoint.ToCGIArgs("refpt") }
+	if !r.ReferencePoint2.IsNil() { str += "&" + r.ReferencePoint2.ToCGIArgs("refpt2") }
 	if r.RefDistanceKM > 0.0 { str += fmt.Sprintf("&refdistancekm=%.2f", r.RefDistanceKM) }
 
 	if r.TimeOfDay.IsInitialized() { str += "&"+r.TimeOfDay.ToCGIArgs("tod") }

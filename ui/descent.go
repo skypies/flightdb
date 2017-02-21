@@ -108,9 +108,10 @@ func DescentPDFInit(opt UIOptions, w http.ResponseWriter, r *http.Request, numFl
 		AveragingWindow: widget.FormValueDuration(r, "averagingwindow"),
 	}
 
-	if originPos,err := FormValueAirportLocation(r, "airportdest"); err == nil {
-		dp.OriginPoint = originPos
-		dp.OriginLabel = r.FormValue("airportdest")
+	refpt := sfo.FormValueNamedLatlong(r, "destpt")  // &destpt_name={KSFO,EDDYY}
+	if refpt.Name != "" {
+		dp.OriginPoint = refpt.Latlong
+		dp.OriginLabel = refpt.Name
 	}
 	
 	if widget.FormValueCheckbox(r, "showaccelerations") {

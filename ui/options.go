@@ -116,6 +116,7 @@ func formValueIdSpecStrings(r *http.Request) ([]string) {
 	return idspecs
 }
 
+// Likely not what you want; consider geo/sfo.FormValueNamedLatlong()
 func FormValueAirportLocation(r *http.Request, name string) (geo.Latlong, error) {
 	if pos,exists := sfo.KAirports[r.FormValue(name)]; exists {
 		return pos, nil
