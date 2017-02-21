@@ -36,6 +36,9 @@ func init() {
 //  &classb=1           (maybe render the SFO class B airpsace)
 //  &refpt_lat=36&refpt_long=-122&refpt_label=FOO  (render a reference point onto the graph)
 
+//  &anchor_name=EDDYY  (a geo.NamedLatlong with stem "anchor")
+//  &anchor_alt_{min,max} (altitude range; i.e. BRIXX (5000,50000)==first pass, (0,5000) second)
+
 func descentHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
 	db := fgae.FlightDB{C:ctx}
@@ -88,32 +91,24 @@ func descentHandler(ctx context.Context, w http.ResponseWriter, r *http.Request)
 func DescentPDFInit(opt UIOptions, w http.ResponseWriter, r *http.Request, numFlights int) *fpdf.DescentPdf {
 	colorscheme := opt.PDFColorScheme
 	colorscheme = fpdf.ByPlotKind
-
-	lengthNM := 80
-	if length := widget.FormValueInt64(r, "length"); length > 0 {
-		lengthNM = int(length)
-	}
-	altitudeMax := 30000
-	if alt := widget.FormValueInt64(r, "alt"); alt > 0 {
-		altitudeMax = int(alt)
-	}	
 	
 	dp := fpdf.DescentPdf{
 		ColorScheme: colorscheme,
-		OriginPoint: sfo.KLatlongSFO,
-		AltitudeMax: float64(altitudeMax),
-		LengthNM:    float64(lengthNM),
+		Anchor:      geo.NamedLatlong{Name:"KSFO", Latlong:sfo.KLatlongSFO},
+		AnchorAltitudeMin: float64(widget.FormValueIntWithDefault(r, "anchor_alt_min", 0)),
+		AnchorAltitudeMax: float64(widget.FormValueIntWithDefault(r, "anchor_alt_max", 5000)),
+		AltitudeMax: float64(widget.FormValueIntWithDefault(r, "alt", 30000)),
+		LengthNM:    float64(widget.FormValueIntWithDefault(r, "length", 80)),
 		ToShow:      map[string]bool{"altitude":true, "groundspeed":true, "verticalspeed":true},
 		ShowDebug:  (r.FormValue("debug") != ""),
 		AveragingWindow: widget.FormValueDuration(r, "averagingwindow"),
+		Permalink:   opt.Permalink,
 	}
 
-	refpt := sfo.FormValueNamedLatlong(r, "destpt")  // &destpt_name={KSFO,EDDYY}
-	if refpt.Name != "" {
-		dp.OriginPoint = refpt.Latlong
-		dp.OriginLabel = refpt.Name
+	anchor := sfo.FormValueNamedLatlong(r, "anchor")  // &anchor_name={KSFO,EDDYY}
+	if anchor.Name != "" {
+		dp.Anchor = anchor
 	}
-	
 	if widget.FormValueCheckbox(r, "showaccelerations") {
 		dp.ToShow["groundacceleration"],dp.ToShow["verticalacceleration"] = true,true
 	}

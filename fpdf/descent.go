@@ -20,8 +20,13 @@ type DescentPdf struct {
 
 	AltitudeMin     float64
 	AltitudeMax     float64
-	OriginPoint     geo.Latlong
-	OriginLabel     string
+
+	Anchor          geo.NamedLatlong
+	AnchorAltitudeMin float64
+	AnchorAltitudeMax float64
+	// OriginPoint     geo.Latlong
+	// OriginLabel     string
+
 	LengthNM        float64
 	AveragingWindow time.Duration
 	ColorScheme     // embedded
@@ -32,6 +37,7 @@ type DescentPdf struct {
 	Grids        map[string]*BaseGrid
 	*gofpdf.Fpdf // Embedded pointer
 
+	Permalink    string
 	Caption      string
 	Debug        string
 	ShowDebug    bool
@@ -176,8 +182,9 @@ func (g DescentPdf)DrawFrames() {
 func (g DescentPdf)DrawCaption() {
 	title := ""
 
-	if g.OriginLabel != "" {
-		title += "* Origin point == " + g.OriginLabel + "\n"
+	if g.Anchor.Name != "" {
+		title += fmt.Sprintf("* 0NM anchor point: %s (altitude: %.0f - %.0f)\n", g.Anchor.Name,
+			g.AnchorAltitudeMin, g.AnchorAltitudeMax)
 	}
 	
 	if g.AveragingWindow > 0 {
@@ -194,6 +201,14 @@ func (g DescentPdf)DrawCaption() {
 	g.MoveTo(10, 10)
 	g.MultiCell(0, 4, title, "", "", false)
 	g.DrawPath("D")
+
+	if g.Permalink != "" {
+		g.SetFont("Arial", "B", 10)	
+		g.MoveTo(190, 5)
+		g.CellFormat(20, 4, "[Permalink]", "", 0, "", false, 0, g.Permalink)
+		g.DrawPath("D")
+		g.SetFont("Arial", "", 10)	
+	}
 }
 
 // }}}
@@ -239,7 +254,7 @@ func (g DescentPdf)MaybeDrawSFOClassB() {
 
 func (g DescentPdf)DrawReferencePoint(p geo.Latlong, label string) {	
 	// This is DistanceFromOrigin; it'll be wrong if plotted into grids that use DistAlongPath
-	nm := p.DistNM(g.OriginPoint)
+	nm := p.DistNM(g.Anchor.Latlong)
 
 	//rgb := []int{0,250,250}
 
@@ -328,7 +343,7 @@ func (g *DescentPdf)DrawTrackAsDistanceFromOrigin(t fdb.Track) {
 	trackpointToXY := func(tp fdb.Trackpoint) (float64, float64, []int) {
 		rgb := []int{0,0,0}
 		if g.ColorScheme == ByPlotKind { rgb = []int{0,250,0} }
-		return tp.DistNM(g.OriginPoint), tp.IndicatedAltitude, rgb
+		return tp.DistNM(g.Anchor.Latlong), tp.IndicatedAltitude, rgb
 	}
 
 	g.Debug += fmt.Sprintf("DrawTrackAsDistanceFromOrigin\n")
@@ -344,15 +359,15 @@ func (g *DescentPdf)DrawTrackAsDistanceFromOrigin(t fdb.Track) {
 // long steady line.)
 // Also, plot as 'distance remaining until destination'
 func (g *DescentPdf)DrawTrackAsDistanceRemainingAlongPath(t fdb.Track) {
-	// We want to render this working backwards from the end, so descents can line up together.
-	// That means we're interested in each point's distance travelled in relation to the end point.
+	// We want to render this working backwards from the anchor, so descents can line up together.
+	// That means we're interested in each point's distance travelled in relation to the anchor point.
 	g.Debug += fmt.Sprintf("DrawTrackAsDistanceRemainingAlongPath\n")
-	iClosest := t.ClosestTo(g.OriginPoint, 5000.0)
+	iClosest := t.ClosestTo(g.Anchor.Latlong, g.AnchorAltitudeMin, g.AnchorAltitudeMax)
 	if iClosest < 0 { return }
 	endpointKM := t[iClosest].DistanceTravelledKM
 
 	// If the closest point isn't all that close, assume linear flight from it to the origin
-	offsetKM := t[iClosest].DistKM(g.OriginPoint)
+	offsetKM := t[iClosest].DistKM(g.Anchor.Latlong)
 
 	g.Debug += fmt.Sprintf("* endKM=%.2f, offsetKM=%.2f, index=%d\n", endpointKM, offsetKM, iClosest)
 	
@@ -376,13 +391,13 @@ func (g *DescentPdf)DrawTrackAsDistanceRemainingAlongPath(t fdb.Track) {
 
 // As above, but plat as 'distance travelled from Origin' (i.e. suitable for departures)
 func (g *DescentPdf)DrawTrackAsDistanceTravelledAlongPath(t fdb.Track) {
-	// We want to render this working backwards from the end, so descents can line up together.
-	// That means we're interested in each point's distance travelled in relation to the end point.
+	// We want to render this working backwards from the anchor, so descents can line up together.
+	// That means we're interested in each point's distance travelled in relation to the anchor point.
 	g.Debug += fmt.Sprintf("DrawTrackAsDistanceTravelledAlongPath\n")
 
 	// Assume that we depart from the OriginPoint. If we're missing early datapoints, then assume
-	// linear travel,
-	offsetKM := t[0].DistKM(g.OriginPoint)
+	// linear travel
+	offsetKM := t[0].DistKM(g.Anchor.Latlong)
 
 	g.Debug += fmt.Sprintf("* offsetKM=%.2f\n", offsetKM)
 	

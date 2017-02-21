@@ -6,8 +6,6 @@ import(
 	"net/http"
 	"time"
 
-	"github.com/skypies/geo"
-	"github.com/skypies/geo/sfo"
 	"github.com/skypies/util/widget"
 
 	fdb "github.com/skypies/flightdb2"
@@ -18,6 +16,7 @@ import(
 
 // Common parameters for UI rendering, as parsed from CGI params
 type UIOptions struct {
+	Permalink       string
 	ResultsetID     string
 	IdSpecStrings []string
 	Report         *report.Report  // nil if none defined
@@ -82,7 +81,6 @@ func (opt UIOptions)IdSpecs() ([]fdb.IdSpec, error) {
 	return ret, nil
 }
 
-
 func formValuePDFColorScheme(r *http.Request) fpdf.ColorScheme {
 	switch r.FormValue("colorby") {
 	case "delta": return fpdf.ByDeltaGroundspeed
@@ -114,13 +112,5 @@ func formValueIdSpecStrings(r *http.Request) ([]string) {
 	}
 
 	return idspecs
-}
-
-// Likely not what you want; consider geo/sfo.FormValueNamedLatlong()
-func FormValueAirportLocation(r *http.Request, name string) (geo.Latlong, error) {
-	if pos,exists := sfo.KAirports[r.FormValue(name)]; exists {
-		return pos, nil
-	}
-	return geo.Latlong{}, fmt.Errorf("airport '%s' not known; try KSFO,KOAK etc", r.FormValue(name))
 }
 

@@ -824,13 +824,13 @@ func (in Track)AsSanityFilteredTrack() Track {
 
 // returns the index of the trackpoint that was closest to the reference point, or -1 if track
 // has no points. Any matches must be from trackpoints under the maxAltitude.
-func (t Track)ClosestTo(ref geo.Latlong, maxAltitude float64) (int) {
+func (t Track)ClosestTo(ref geo.Latlong, minAltitude, maxAltitude float64) (int) {
 	if len(t) == 0 { return -1 }
 
 	iMin,sqDistMin := 0,math.MaxFloat64
 
 	for i,tp := range t {
-		if tp.Altitude > maxAltitude { continue }
+		if tp.Altitude > maxAltitude || tp.Altitude < minAltitude { continue }
 		dist := ref.LatlongDistSq(tp.Latlong)
 		if dist < sqDistMin {
 			iMin,sqDistMin = i,dist

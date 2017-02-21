@@ -326,17 +326,9 @@ func OutputMapLinesOnAStreamingMap(ctx context.Context, w http.ResponseWriter, r
 	ms := NewMapShapes()
 	legend := ""
 
-	// Add a permalink, if we can
-	if opt.ResultsetID != "" {
-		// Rejigger all the POST and GET data into a single GET URL, then add our new field.
-		vals := widget.ExtractAllCGIArgs(r)
-		vals.Del("idspec")
-		vals.Set("resultset", opt.ResultsetID)
-
-		urlstr := widget.URLStringReplacingGETArgs(r,&vals)
-		legend += fmt.Sprintf("[<a target=\"_blank\" href=\"%s\">permalink</a>] ", urlstr)
+	if opt.Permalink != "" {
+		legend += fmt.Sprintf("[<a target=\"_blank\" href=\"%s\">permalink</a>] ", opt.Permalink)
 	}
-
 	legend += fmt.Sprintf("%d flights", len(opt.IdSpecStrings))
 
 	trackspec := ""

@@ -27,8 +27,8 @@ func ClosestApproachReporter(r *report.Report, f *fdb.Flight, tis []fdb.TrackInt
 	if t == nil { return report.RejectedByReport, nil } // Flight had no track data !
 	if r.ReferencePoint.IsNil() { return report.RejectedByReport, nil } // No ref pt
 	
-	maxAltitude := 50000.0 // no restrictions
-	iClosest := t.ClosestTo(r.ReferencePoint.Latlong, maxAltitude)
+	minAltitude,maxAltitude := -1.0, 50000.0 // no restrictions
+	iClosest := t.ClosestTo(r.ReferencePoint.Latlong, minAltitude, maxAltitude)
 	if iClosest < 0 { return report.RejectedByReport, nil } // track was in fact empty ?
 
 	dist := (*t)[iClosest].DistKM(r.ReferencePoint.Latlong)

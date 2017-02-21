@@ -7,9 +7,9 @@ import(
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 
-	"github.com/skypies/flightdb2/fgae"
-
 	_ "github.com/skypies/flightdb2/analysis" // populate the reports registry
+	"github.com/skypies/flightdb2/fgae"
+	"github.com/skypies/util/widget"
 )
 
 // A 'middleware' handler to parse out common fields, and stuff them into a context
@@ -51,6 +51,14 @@ func UIOptionsHandler(ch contextHandler) baseHandler {
 		if err := opt.MaybeLoadSaveResultset(ctx); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
+		}
+
+		if opt.ResultsetID != "" {
+			// Rejigger all the POST and GET data into a single GET URL, then add our new field.
+			vals := widget.ExtractAllCGIArgs(r)
+			vals.Del("idspec")
+			vals.Set("resultset", opt.ResultsetID)
+			opt.Permalink = widget.URLStringReplacingGETArgs(r,&vals)
 		}
 
 		if r.FormValue("debugoptions") != "" {
