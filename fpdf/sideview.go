@@ -37,6 +37,7 @@ type SideviewPdf struct {
 	*gofpdf.Fpdf    // embedded
 
 	Permalink       string
+	MapPermalink    string
 	Caption         string
 	Debug           string
 	ShowDebug       bool
@@ -195,10 +196,14 @@ func (g SideviewPdf)DrawCaption() {
 
 	if g.Permalink != "" {
 		g.SetFont("Arial", "B", 10)	
-		g.MoveTo(190, 5)
+		g.MoveTo(180, 5)
 		g.CellFormat(20, 4, "[Permalink]", "", 0, "", false, 0, g.Permalink)
+
+		g.MoveTo(200, 5)
+		g.CellFormat(20, 4, "[Map]", "", 0, "", false, 0, g.MapPermalink)
 		g.DrawPath("D")
 		g.SetFont("Arial", "", 10)	
+
 	}
 }
 

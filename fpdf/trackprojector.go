@@ -19,7 +19,7 @@ type ProjectAsCrowFlies struct {
 	distTravelledAtAnchorKM float64 // points with a shorter dist travelled come 'before' the anchor.
 }
 func (p *ProjectAsCrowFlies)Description() string {
-	return "As Crow Flies (all points direct to anchor)"
+	return "As Crow Flies (distance to anchor)"
 }
 
 func (p *ProjectAsCrowFlies)Setup(t fdb.Track, ap AnchorPoint) error {
@@ -53,7 +53,7 @@ func (p *ProjectAsCrowFlies)Project(tp fdb.Trackpoint) (float64,float64) {
 type ProjectAlongPath struct {
 	distTravelledAtAnchorKM float64 // points with a shorter dist travelled come 'before' the anchor.
 }
-func (p *ProjectAlongPath)Description() string { return "Along Path (e.g. 'flattened' path)" }
+func (p *ProjectAlongPath)Description() string { return "Along Path (i.e. distance travelled)" }
 
 func (p *ProjectAlongPath)Setup(t fdb.Track, ap AnchorPoint) error {
 	if i,distKM,err := ap.PointOfClosestApproach(t); err != nil {

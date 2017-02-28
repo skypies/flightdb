@@ -26,23 +26,22 @@ func init() {
 // {{{ sideviewHandler
 
 // ?idspec=XX,YY,...    (or ?idspec=XX&idspec=YYY&...)
-//  &sample=N           (sample the track every N seconds)
+//  &sample=15s          (sample the track every N seconds)
 //  &averagingwindow=2m (duration to average over)
 //  &alt=30000          (max altitude for graph)
 //  &dist=crowflies     (for distance axis, use dist from airport; by default, uses dist along path)
-//  &colorby=delta      (delta groundspeed, instead of groundspeed)
-
 //  &classb=1           (maybe render the SFO class B airpsace)
 //  &refpt_lat=36&refpt_long=-122&refpt_label=FOO  (render a reference point onto the graph)
-
 //  &anchor_name=EDDYY  (a geo.NamedLatlong with stem "anchor")
-//  &anchor_alt_{min,max} (altitude range; i.e. BRIXX (5000,50000)==first pass, (0,5000) second)
-//  &anchor_dist_{min,max} (dist range; [-80,0] for arrivals, [-40,40] for waypoints, [0,80] deps)
-
+//  &anchor_alt_{min,max}= (altitude range; i.e. BRIXX (5000,50000)==first pass, (0,5000) second)
+//  &anchor_dist_{min,max}= (dist range; [-80,0] for arrivals, [-40,40] for waypoints, [0,80] deps)
+//  &anchor_within_dist=8  (how close, in KM, a flight must be to the anchor to be included)
 //  &showaccelerations=1
 //  &showangleofinclination=1
 
-// http://localhost:8080/fdb/sideview?idspec=ASH5408@1425022200&debug=true&anchor_alt_max=40000&anchor_dist_min=-80&anchor_dist_max=10&anchor_name=KSFO&&showaccelerations=1&classb=1&refpt_lat=37.060312&refpt_long=-121.990814&refpt_label=YOU&dist=crowflies
+//  &arriving=KSJC      (
+//  &departing=KSFO
+
 
 func sideviewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
@@ -110,18 +109,17 @@ func SideviewPDFInit(opt UIOptions, w http.ResponseWriter, r *http.Request, numF
 			NamedLatlong: sfo.FormValueNamedLatlong(r, "anchor"),  // &anchor_name={KSFO,EDDYY}
 			AltitudeMin:  float64(widget.FormValueIntWithDefault(r, "anchor_alt_min", 0)),
 			AltitudeMax:  float64(widget.FormValueIntWithDefault(r, "anchor_alt_max", 8000)),
-			DistMaxKM:    float64(widget.FormValueIntWithDefault(r, "anchor_max_dist", 80)),
+			DistMaxKM:    float64(widget.FormValueIntWithDefault(r, "anchor_within_dist", 80)),
 		},
 
 		ToShow:          map[string]bool{"altitude":true, "groundspeed":true, "verticalspeed":true},
-		ShowDebug:      (r.FormValue("debug") != ""),
 		AveragingWindow: widget.FormValueDuration(r, "averagingwindow"),
 		Permalink:       opt.Permalink,
+		MapPermalink:    opt.PermalinkWithViewtype("vector"),
+		ShowDebug:      (r.FormValue("debug") != ""),
 	}
 
-	if svp.AnchorPoint.Name == "" {
-		svp.AnchorPoint.NamedLatlong = geo.NamedLatlong{Name:"KSFO", Latlong:sfo.KAirports["KSFO"]}
-	}
+	classb := (r.FormValue("classb") != "")
 
 	if widget.FormValueCheckbox(r, "showaccelerations") {
 		svp.ToShow["groundacceleration"],svp.ToShow["verticalacceleration"] = true,true
@@ -135,11 +133,28 @@ func SideviewPDFInit(opt UIOptions, w http.ResponseWriter, r *http.Request, numF
 	} else {
 		svp.TrackProjector = &fpdf.ProjectAlongPath{}
 	}
+
+	// A few shorthands
+	if dest := r.FormValue("arriving"); dest != "" {
+		svp.AnchorPoint.NamedLatlong = geo.NamedLatlong{Name:dest, Latlong:sfo.KAirports[dest]}
+		if dest == "KSFO" {
+			// Hardwire classb, which means we need to be as-crow-flies
+			classb = true
+			svp.TrackProjector = &fpdf.ProjectAsCrowFlies{}
+		}
+	} else if orgn := r.FormValue("departing"); orgn != "" {
+		svp.AnchorPoint.NamedLatlong = geo.NamedLatlong{Name:orgn, Latlong:sfo.KAirports[orgn]}
+		svp.AltitudeMax,svp.AnchorDistMinNM,svp.AnchorDistMaxNM = 20000,0,40
+	}
+	
+	if svp.AnchorPoint.Name == "" {
+		svp.AnchorPoint.NamedLatlong = geo.NamedLatlong{Name:"KSFO", Latlong:sfo.KAirports["KSFO"]}
+	}
 	
 	svp.Init()
 	svp.DrawFrames()
 
-	if r.FormValue("classb") != "" {
+	if classb {
 		svp.MaybeDrawSFOClassB()
 	}
 	
@@ -154,7 +169,7 @@ func SideviewPDFInit(opt UIOptions, w http.ResponseWriter, r *http.Request, numF
 // {{{ SideviewPDFAddFlight
 
 func SideviewPDFAddFlight(opt UIOptions, r *http.Request, svp *fpdf.SideviewPdf, metars *metar.Archive, f *fdb.Flight, first bool) error {
-	t,err := flightToDescentTrack(opt, r, metars, f)
+	t,err := flightToAltitudeTrack(opt, r, metars, f)
 	if err != nil { return err }
 
 	svp.DrawProjectedTrack(t, svp.ColorScheme)
@@ -187,12 +202,12 @@ func SideviewPDFFinalize(opt UIOptions, w http.ResponseWriter, r *http.Request, 
 
 // }}}
 
-// {{{ flightToDescentTrack
+// {{{ flightToAltitudeTrack
 
 // Resamples the track; does full post-processing; attempts altitude correction
 // Extracts a bunch of args from the request (sample, DateRange widget)
 
-func flightToDescentTrack(opt UIOptions, r *http.Request, metars *metar.Archive, f *fdb.Flight) (fdb.Track, error) {
+func flightToAltitudeTrack(opt UIOptions, r *http.Request, metars *metar.Archive, f *fdb.Flight) (fdb.Track, error) {
 	trackKeyName,track := f.PreferredTrack([]string{"ADSB", "MLAT", "FOIA", "FA", "fr24"})
 	if track == nil {
 		return nil, fmt.Errorf("no track found (saw %q)", f.ListTracks())
@@ -216,6 +231,8 @@ func flightToDescentTrack(opt UIOptions, r *http.Request, metars *metar.Archive,
 }
 
 // }}}
+
+// A few canned queries
 
 
 // {{{ -------------------------={ E N D }=----------------------------------

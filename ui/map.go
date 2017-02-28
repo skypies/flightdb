@@ -17,8 +17,9 @@ func init() {
 // {{{ getGoogleMapsParams
 
 //  &whiteveil=1         (bleach out the map, to make vecctor lines more prominent
-//  &zoom=10
-//  &center_lat=37&center_long=-122 (alternate center point)
+//  &map_zoom=10
+//  &map_center_lat=37&map_center_long=-122 (alternate center point)
+//     &map_center_name=ZORSA           (or use known entities (KSFO, waypoints))
 //  &maptype=terrain  (roadmap, satellite, hybrid)
 //  &noclassb=1                     (hide the class B overlay)
 
@@ -26,11 +27,14 @@ func getGoogleMapsParams(r *http.Request, params map[string]interface{}) {
 	classBOverlay := ! widget.FormValueCheckbox(r, "noclassb")
 	whiteVeil := widget.FormValueCheckbox(r, "whiteveil")
 
-	zoom := widget.FormValueInt64(r, "zoom")
+	zoom := widget.FormValueInt64(r, "map_zoom")
 	if zoom == 0 { zoom = 10 }	
 
-	center := geo.FormValueLatlong(r, "center")
-	if center.IsNil() { center = sfo.KFixes["EDDYY"] }
+
+	center := sfo.KFixes["EDDYY"]
+	if nll := sfo.FormValueNamedLatlong(r, "map_center"); !nll.Latlong.IsNil() {
+		center = nll.Latlong
+	}
 
 	mapType := r.FormValue("maptype")
 	if mapType == "" { mapType = "Silver" }

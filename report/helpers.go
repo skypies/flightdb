@@ -43,11 +43,13 @@ func (r *Report)Links(f *fdb.Flight) string {
 		addFrag("map",     "/fdb/tracks?idspec="+f.IdSpecString()+"&"+reportArgs)
 		addFrag("vec",     "/fdb/trackset?idspec="+f.IdSpecString()+"&"+reportArgs)
 
-		sideUrl := "/fdb/descent?idspec="+f.IdSpecString()+"&"+dateArgs+"&length=100"
+
+		
+		sideUrl := "/fdb/sideview?idspec="+f.IdSpecString()
 		if f.HasTag("NORCAL:") {
-			addFrag("dep", sideUrl + "&asdepartures=yes")
-		} else {
-			addFrag("arr", sideUrl)
+			addFrag("dep", sideUrl + "&departing=K"+f.Origin)
+		} else if f.HasTag(":NORCAL") {
+			addFrag("arr", sideUrl + "&arriving=K"+f.Destination)
 		}
 	}
 

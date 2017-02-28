@@ -143,7 +143,7 @@ func DescentPDFInit(opt UIOptions, w http.ResponseWriter, r *http.Request, numFl
 // {{{ DescentPDFAddFlight
 
 func DescentPDFAddFlight(opt UIOptions, r *http.Request, dp *fpdf.DescentPdf, metars *metar.Archive, f *fdb.Flight) error {
-	if t,err := flightToDescentTrack(opt, r, metars, f); err != nil {
+	if t,err := flightToAltitudeTrack(opt, r, metars, f); err != nil {
 		return err
 	} else {		
 		if r.FormValue("dist") == "from" {

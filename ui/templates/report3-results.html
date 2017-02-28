@@ -36,8 +36,8 @@
               <!-- this is a hack, to provoke the magic handler to --
                 -- stash the list of idspecs into datastore, and then --
                 -- use the datastore key for a permalink. -->
-              <button type="submit" name="viewtype" value="vector" class="btn-link">VectorMap</button>
-              [noFurn:<input type="checkbox" checked="yes" name="nofurniture"/>;
+              <button type="submit" name="viewtype" value="vector" class="btn-link">VectorMap</button><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;[noFurn:<input type="checkbox" checked="yes" name="nofurniture"/>;
               colorBy:<select name="colorby">
                 <option value="source">DataSource</option>
                 <option value="altitude" selected="1">Altitude</option>
@@ -54,27 +54,32 @@
               minAltitude:<input type="text" name="minaltitude" size="5" value="3000"/>,
               maxAltitude:<input type="text" name="maxaltitude" size="5" value="10000"/>.]
 <br/>
-<button type="submit" name="viewtype" value="descent" class="btn-link">AltitudeGraph</button>
-              [<input type="text" name="length" size="3" value="100"/>NM by
-              <input type="text" name="alt" size="5" value="30000"/>ft;
+
+<button type="submit" name="viewtype" value="sideview"class="btn-link">Altitude sideview</button><br/>
+
+&nbsp;&nbsp;&nbsp;&nbsp;[Anchor:
+within <input size="3" type="text" name="anchor_within_dist" value="20"/>KM of
+of <input size="5" type="text" name="anchor_name" value="KSFO"/>,
+and altitude within
+<input size="5" type="text" name="anchor_alt_min" value="0"/> to
+<input size="5" type="text" name="anchor_alt_max" value="25000"/>ft.]<br/>
+
+&nbsp;&nbsp;&nbsp;&nbsp;[Dimensions:
+<input type="text" name="alt" size="5" value="30000"/>ft, and each side of anchor:
+<input size="3" type="text" name="anchor_dist_min" value="-100"/>,
+<input size="3" type="text" name="anchor_dist_max" value="0"/>NM.
+Distance: <select name="dist">
+  <option value="alongpath" selected="1">Travelled Along Path</option>
+  <option value="crowflies" >As Crow Flies</option>
+</select> to the anchor.]<br/>
+
+&nbsp;&nbsp;&nbsp;&nbsp;[Render options:
               showAccel:<input type="checkbox" name="showaccelerations"/>;
               showAngle:<input type="checkbox" name="showangleofinclination"/>;
               showClassB:<input type="checkbox" name="classb"/>;
               avgWin:<input size="4" type="text" name="averagingwindow" value="0s"/>
-              sampleRate:<input size="4" type="text" name="sample" value="15s"/>;
-              asDepartures:<input type="checkbox" name="asdepartures"/>.]
+              sampleRate:<input size="4" type="text" name="sample" value="15s"/>.]
 <br/>
-<button type="submit" name="viewtype" value="sideview" class="btn-link">*New* Sideview</button>
-[all above, also:
-
-anchor:<input size="5" type="text" name="anchor_name" value="KSFO"/>;
-window width: 
-<input size="3" type="text" name="anchor_dist_min" value="-100"/>-
-<input size="3" type="text" name="anchor_dist_max" value="0"/>NM;
-altitudes to hit anchor:
-<input size="5" type="text" name="anchor_alt_min" value="0"/>-
-<input size="5" type="text" name="anchor_alt_max" value="25000"/>ft.
-]
           </td></tr>
           <tr><td colspan="8">
               <b>Checkboxes</b>:[

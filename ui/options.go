@@ -4,6 +4,7 @@ import(
 	"fmt"
 	"math/rand"
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/skypies/util/widget"
@@ -27,6 +28,11 @@ type UIOptions struct {
 	PDFColorScheme  fpdf.ColorScheme
 }
 
+// *shame*
+func (opt UIOptions)PermalinkWithViewtype(view string) string {
+	re := regexp.MustCompile("viewtype=[a-z]*")
+	return re.ReplaceAllLiteralString(opt.Permalink, "viewtype="+view)
+}
 
 // Parse a full set of UI Options
 //  &idspec=...,...    OR    &resultset=asdasdasdasdasd
