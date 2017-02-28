@@ -9,37 +9,55 @@ import(
 	fdb "github.com/skypies/flightdb2"
 )
 
-type DescentPdf struct {
-	ToShow          map[string]bool  // Which grids to render
+var (
+	BlackRGB = []int{0, 0, 0}
+	RedRGB   = []int{0xff, 0, 0}
+	GreenRGB = []int{0, 0xff, 0}
+	BlueRGB  = []int{0, 0, 0xff}
+)
 
-	AltitudeMin     float64
-	AltitudeMax     float64
-
-	Anchor          geo.NamedLatlong
-	AnchorAltitudeMin float64
-	AnchorAltitudeMax float64
-	// OriginPoint     geo.Latlong
-	// OriginLabel     string
-
-	LengthNM        float64
-	AveragingWindow time.Duration
-	ColorScheme     // embedded
-	
-	LineThickness   float64
-	LineOpacity     float64 // 0.0==transparent, 1.0==opaque
-	
-	Grids        map[string]*BaseGrid
-	*gofpdf.Fpdf // Embedded pointer
-
-	Permalink    string
-	Caption      string
-	Debug        string
-	ShowDebug    bool
+type AnchorPoint struct {
+	geo.NamedLatlong
+	AltitudeMin      float64
+	AltitudeMax      float64
+	DistMaxKM        float64 // Must be at least this close, or we skip flight
+}
+func (ap AnchorPoint)String() string {
+	return fmt.Sprintf("%s, <=%.1fKM, [%.0f-%.0f]ft", ap.NamedLatlong, ap.DistMaxKM,
+		ap.AltitudeMin, ap.AltitudeMax)
 }
 
-// {{{ dp.Init
+// Given an anchor and a trackpoint, generate a distance and altitude (and render hint)
+type ProjectionFunc func(tp fdb.Trackpoint, ap AnchorPoint) (distNM float64, alt float64, rgb []int)
 
-func (g *DescentPdf)Init() {
+type SideviewPdf struct {
+	ToShow          map[string]bool       // Which grids to render
+	Grids           map[string]*BaseGrid
+
+	AltitudeMin     float64  // Min/max for the altitude and distance axes
+	AltitudeMax     float64
+	AnchorDistMinNM float64
+	AnchorDistMaxNM float64
+
+	AnchorPoint     // embedded
+
+	AveragingWindow time.Duration
+
+	ColorScheme     // embedded	
+	LineThickness   float64
+	LineOpacity     float64 // 0.0==transparent, 1.0==opaque (>1 is a thickness)
+
+	*gofpdf.Fpdf    // embedded
+
+	Permalink       string
+	Caption         string
+	Debug           string
+	ShowDebug       bool
+}
+
+// {{{ svp.Init
+
+func (g *SideviewPdf)Init() {
 	g.Fpdf = gofpdf.New("P", "mm", "Letter", "")
 	g.AddPage()
 	g.SetFont("Arial", "", 10)	
@@ -57,11 +75,11 @@ func (g *DescentPdf)Init() {
 			OffsetU: u,
 			OffsetV: v,
 			W: 170,
-			MinX: 0,
-			MaxX: g.LengthNM,
+			MinX: g.AnchorDistMinNM,
+			MaxX: g.AnchorDistMaxNM,
 			XGridlineEvery: 10,
-			Clip: true, // set to false for debugging datasets
-			InvertX: true,  // Descend to origin, on the right
+			Clip: true,    // set to false for debugging datasets
+			InvertX: false,  // Descend to origin, on the right  // IGNORE THIS for now; redundant?
 		}
 	}
 
@@ -77,7 +95,9 @@ func (g *DescentPdf)Init() {
 		ng.XTickFmt = "%.0fNM"
 		ng.YTickFmt = "%.0fft"
 		ng.XTickOtherSide = true
-		ng.YTickOtherSide = true
+		if g.AnchorPoint.Name != "" {
+			ng.XOriginTickFmt = "%.0fNM("+g.AnchorPoint.Name+")"
+		}
 		
 		v += 110
 	}
@@ -90,7 +110,6 @@ func (g *DescentPdf)Init() {
 		ng.MinY = 0
 		ng.MaxY = 500
 		ng.YGridlineEvery = 100
-		ng.YTickOtherSide = true
 		ng.YTickFmt = "%.0f knots"
 
 		// This is overlayed into the same grid as groundspeed
@@ -102,6 +121,7 @@ func (g *DescentPdf)Init() {
 			ng.MinY = -6
 			ng.MaxY = 6
 			ng.YGridlineEvery = 3
+			ng.YTickOtherSide = true
 			ng.YTickFmt = "%.0f knots/sec"
 			ng.NoGridlines = true
 		}
@@ -117,7 +137,6 @@ func (g *DescentPdf)Init() {
 		ng.MinY = -2500
 		ng.MaxY =  2500
 		ng.YGridlineEvery = 1250
-		ng.YTickOtherSide = true
 		ng.YTickFmt = "%.0f feet/min"
 
 		// This is overlayed into the same grid as verticalspeed
@@ -130,6 +149,7 @@ func (g *DescentPdf)Init() {
 			ng.MaxY = +8
 			ng.YGridlineEvery = 4
 			ng.YTickFmt = "%.0f deg"
+			ng.YTickOtherSide = true
 		}
 		
 		// This is overlayed into the same grid as verticalspeed
@@ -142,6 +162,7 @@ func (g *DescentPdf)Init() {
 			ng.MaxY =  100
 			ng.YGridlineEvery = 50
 			ng.YTickFmt = "%.0f fpm/sec"
+			ng.YTickOtherSide = true
 			ng.NoGridlines = true
 		}
 
@@ -150,10 +171,10 @@ func (g *DescentPdf)Init() {
 }
 
 // }}}
-// {{{ dp.ReconfigureForDepartures
+// {{{ svp.ReconfigureForDepartures
 
 // If we are rendering departures, flip everything so the origin is on the Left Hand Side.
-func (g *DescentPdf)ReconfigureForDepartures() {
+func (g *SideviewPdf)ReconfigureForDepartures() {
 	for name,_ := range g.Grids {
 		g.Grids[name].InvertX = false
 		g.Grids[name].YTickOtherSide = !g.Grids[name].YTickOtherSide
@@ -162,23 +183,22 @@ func (g *DescentPdf)ReconfigureForDepartures() {
 
 // }}}
 
-// {{{ dp.DrawFrames
+// {{{ svp.DrawFrames
 
-func (g DescentPdf)DrawFrames() {
+func (g SideviewPdf)DrawFrames() {
 	for _,grid := range g.Grids {
 		grid.DrawGridlines()
 	}
 }
 
 // }}}
-// {{{ dp.DrawCaption
+// {{{ svp.DrawCaption
 
-func (g DescentPdf)DrawCaption() {
+func (g SideviewPdf)DrawCaption() {
 	title := ""
 
-	if g.Anchor.Name != "" {
-		title += fmt.Sprintf("* 0NM anchor point: %s (altitude: %.0f - %.0f)\n", g.Anchor.Name,
-			g.AnchorAltitudeMin, g.AnchorAltitudeMax)
+	if g.AnchorPoint.Name != "" {
+		title += fmt.Sprintf("* 0NM anchor: %s\n", g.AnchorPoint)
 	}
 	
 	if g.AveragingWindow > 0 {
@@ -206,9 +226,9 @@ func (g DescentPdf)DrawCaption() {
 }
 
 // }}}
-// {{{ dp.DrawColorSchemeKeys
+// {{{ svp.DrawColorSchemeKeys
 
-func (g DescentPdf)DrawColorSchemeKeys() {
+func (g SideviewPdf)DrawColorSchemeKeys() {
 	for _,grid := range g.Grids {
 		grid.DrawColorSchemeKey()
 	}
@@ -216,9 +236,9 @@ func (g DescentPdf)DrawColorSchemeKeys() {
 
 // }}}
 
-// {{{ dp.MaybeDrawSFOClassB
+// {{{ svp.MaybeDrawSFOClassB
 
-func (g DescentPdf)MaybeDrawSFOClassB() {
+func (g SideviewPdf)MaybeDrawSFOClassB() {
 	grid,exists := g.Grids["altitude"]
 	if !exists { return }
 
@@ -244,11 +264,11 @@ func (g DescentPdf)MaybeDrawSFOClassB() {
 }
 
 // }}}
-// {{{ dp.DrawReferencePoint
+// {{{ svp.DrawReferencePoint
 
-func (g DescentPdf)DrawReferencePoint(p geo.Latlong, label string) {	
+func (g SideviewPdf)DrawReferencePoint(p geo.Latlong, label string) {	
 	// This is DistanceFromOrigin; it'll be wrong if plotted into grids that use DistAlongPath
-	nm := p.DistNM(g.Anchor.Latlong)
+	nm := p.DistNM(g.AnchorPoint.Latlong)
 
 	//rgb := []int{0,250,250}
 
@@ -271,21 +291,114 @@ func (g DescentPdf)DrawReferencePoint(p geo.Latlong, label string) {
 
 // }}}
 
-// {{{ dp.DrawTrackWithDistFunc
+// {{{ svp.trackIndexAtAnchor
 
-type DistanceFunc func(tp fdb.Trackpoint) (float64, float64, []int)
+// trackIndexAtAnchor finds the index of the trackpoint closest to the
+// anchor, that is within the altitude range, and also the max dist.
+// If no trackpoint matches, returns -1. The float is the closest
+// distance, in KM.
+func (g *SideviewPdf)trackIndexAtAnchor(t fdb.Track) (int, float64) {
+	i := t.ClosestTo(g.AnchorPoint.Latlong, g.AnchorPoint.AltitudeMin, g.AnchorPoint.AltitudeMax)
+	if i < 0 {
+		g.Debug += fmt.Sprintf("TrackIndexAtAnchor: nothing in alt range (%s)\n", g.AnchorPoint)
+		return -1,0
+	}
 
-func (g *DescentPdf)DrawTrackWithDistFunc(t fdb.Track, f DistanceFunc, colorscheme ColorScheme) {
+	closestDist := t[i].DistKM(g.AnchorPoint.Latlong)
+	if closestDist > g.AnchorPoint.DistMaxKM {
+		g.Debug += fmt.Sprintf("TrackIndexAtanchor: closest[%d] too far (%f > %f) from anchor %s\n",
+			i, closestDist, g.AnchorPoint.DistMaxKM,g.AnchorPoint)
+		return -1,0
+	}
+
+	return i, closestDist
+}
+
+// }}}
+
+// {{{ svp.BuildAsCrowFliesFunc
+
+// Consider distance as being simply the distance from the origin, and plot against altitude.
+// The less the aircraft flies in a straight line to the origin, the less useful this will be.
+// (E.g. if an aircraft descends in a spiral, it will plot as a zig-zag, getting closer then
+// further away as it descends.)
+
+func (g *SideviewPdf)BuildAsCrowFliesFunc(t fdb.Track) ProjectionFunc {	
+	g.Debug += fmt.Sprintf("Built AsCrowFliesFunc\n")
+
+	i,closestDist := g.trackIndexAtAnchor(t)
+	if i < 0 { return nil }
+
+	// trackpoints with a shorter dist travelled are 'before' the anchor.
+	distTravelledAtAnchorKM := t[i].DistanceTravelledKM + closestDist
+
+	g.Debug += fmt.Sprintf("* endKM=%.2f, offsetKM=%.2f, index=%d\n",
+		distTravelledAtAnchorKM, closestDist, i)
+	
+	projectionFunc := func(tp fdb.Trackpoint, ap AnchorPoint) (float64, float64, []int) {
+		distNM := tp.DistNM(ap.Latlong)
+		if tp.DistanceTravelledKM < distTravelledAtAnchorKM {
+			distNM *= -1.0 // go -ve, as we've not reached the anchor
+		}
+		return distNM, tp.IndicatedAltitude, BlackRGB
+	}
+
+	return projectionFunc
+}
+
+// }}}
+// {{{ svp.BuildAlongPathFunc
+
+// BuildAlongPathFunc returns a projection function from trackpoints
+// into a scalar range 'distance along path', which is -ve for
+// trackpoints before the anchor, and +ve for those after. It computes
+// distance flown, so flying in circles loops make values bigger.
+func (g *SideviewPdf)BuildAlongPathFunc(t fdb.Track) ProjectionFunc {
+	g.Debug += fmt.Sprintf("Built AlongPathFunc\n")
+
+	i,closestDistKM := g.trackIndexAtAnchor(t)
+	if i < 0 { return nil }
+
+	// If the closest point isn't all that close, assume linear flight
+	// from it to the origin. When aircraft pass very close to the
+	// anchor, this has no effect; this is mostly a trick to handle
+	// flights landing at an airport when our data peters out before
+	// actual touchdown.
+	distTravelledAtAnchorKM := t[i].DistanceTravelledKM + closestDistKM
+
+	g.Debug += fmt.Sprintf("* endKM=%.2f, closestDistKM=%.2f, index=%d\n",
+		distTravelledAtAnchorKM, closestDistKM, i)
+
+	projectionFunc := func(tp fdb.Trackpoint, ap AnchorPoint) (float64, float64, []int) {
+		distFromAnchorKM := tp.DistanceTravelledKM - distTravelledAtAnchorKM
+		distFromAnchorNM := distFromAnchorKM * geo.KNauticalMilePerKM
+		return distFromAnchorNM, tp.IndicatedAltitude, BlackRGB
+	}
+
+	return projectionFunc
+}
+
+// }}}
+
+// {{{ svp.DrawTrackProjection
+
+func (g *SideviewPdf)DrawTrackProjection(t fdb.Track, f ProjectionFunc, colorscheme ColorScheme) {
 	g.SetDrawColor(0xff, 0x00, 0x00)
 	g.SetAlpha(g.LineOpacity, "")
+	
+	if f == nil {
+		g.Debug += "**** NO FUNC\n"
+		return
+	}
 
 	if len(t) == 0 { return }
-	
+
 	for i,_ := range t[1:] {
-		x1,alt1,_ := f(t[i])
-		x2,alt2,rgb := f(t[i+1])
-		
-		g.Debug += fmt.Sprintf("[%3d] (%.2fNM, %.0fft)\n", i, x1, alt1)
+		x1,alt1,_ := f(t[i], g.AnchorPoint)
+		x2,alt2,rgb := f(t[i+1], g.AnchorPoint)
+
+		//g.Debug += fmt.Sprintf("[%3d] (%.2fNM, %.0fft) <%.2fKM>\n", i, x1, alt1,
+		//	t[i].DistKM(g.AnchorPoint.Latlong))
 
 		g.SetLineWidth(g.LineThickness)
 		g.SetDrawColor(rgb[0], rgb[1], rgb[2])
@@ -322,96 +435,6 @@ func (g *DescentPdf)DrawTrackWithDistFunc(t fdb.Track, f DistanceFunc, colorsche
 
 	g.DrawPath("D")	
 	g.SetAlpha(1.0, "")
-}
-
-// }}}
-// {{{ dp.DrawTrackAsDistanceFromOrigin
-
-// Consider distance as being simply the distance from the origin, and plot against altitude.
-// The less the aircraft flies in a straight line to the origin, the less useful this will be.
-// (E.g. if an aircraft descends in a spiral, it will plot as a zig-zag, getting closer then
-// further away as it descends.)
-
-func (g *DescentPdf)DrawTrackAsDistanceFromOrigin(t fdb.Track) {	
-	trackpointToXY := func(tp fdb.Trackpoint) (float64, float64, []int) {
-		rgb := []int{0,0,0}
-		if g.ColorScheme == ByPlotKind { rgb = []int{0,250,0} }
-		return tp.DistNM(g.Anchor.Latlong), tp.IndicatedAltitude, rgb
-	}
-
-	g.Debug += fmt.Sprintf("DrawTrackAsDistanceFromOrigin\n")
-	
-	g.DrawTrackWithDistFunc(t, trackpointToXY, g.ColorScheme)
-}
-
-// }}}
-// {{{ dp.DrawTrackAsDistanceRemainingAlongPath
-
-// Consider distance to be distance travelled along the path.
-// (E.g. if the aircraft descends in a steady spiral, we'll plot the 'unrolled' version as a
-// long steady line.)
-// Also, plot as 'distance remaining until destination'
-func (g *DescentPdf)DrawTrackAsDistanceRemainingAlongPath(t fdb.Track) {
-	// We want to render this working backwards from the anchor, so descents can line up together.
-	// That means we're interested in each point's distance travelled in relation to the anchor point.
-	g.Debug += fmt.Sprintf("DrawTrackAsDistanceRemainingAlongPath\n")
-	iClosest := t.ClosestTo(g.Anchor.Latlong, g.AnchorAltitudeMin, g.AnchorAltitudeMax)
-	if iClosest < 0 { return }
-	endpointKM := t[iClosest].DistanceTravelledKM
-
-	// If the closest point isn't all that close, assume linear flight from it to the origin
-	offsetKM := t[iClosest].DistKM(g.Anchor.Latlong)
-
-	g.Debug += fmt.Sprintf("* endKM=%.2f, offsetKM=%.2f, index=%d\n", endpointKM, offsetKM, iClosest)
-
-	if false {
-		for i,tp := range t {
-			g.Debug += fmt.Sprintf("%03d: trav=%.2fKM, dist=%.2fKM, alt=%.0f\n", i,
-				tp.DistanceTravelledKM, tp.DistKM(g.Anchor.Latlong), tp.IndicatedAltitude)
-		}
-	}
-	
-	trackpointToXY := func(tp fdb.Trackpoint) (float64, float64, []int) {
-		distToGoKM := endpointKM - tp.DistanceTravelledKM + offsetKM
-		distToGoNM := distToGoKM * geo.KNauticalMilePerKM
-
-		rgb := []int{0,0,0}
-		if g.ColorScheme == ByPlotKind { rgb = []int{250,0,0} }
-
-		//g.Debug += fmt.Sprintf("%s\n", tp)
-		
-		return distToGoNM, tp.IndicatedAltitude, rgb
-	}
-
-	g.DrawTrackWithDistFunc(t, trackpointToXY, g.ColorScheme)
-}
-
-// }}}
-// {{{ dp.DrawTrackAsDistanceTravelledAlongPath
-
-// As above, but plat as 'distance travelled from Origin' (i.e. suitable for departures)
-func (g *DescentPdf)DrawTrackAsDistanceTravelledAlongPath(t fdb.Track) {
-	// We want to render this working backwards from the anchor, so descents can line up together.
-	// That means we're interested in each point's distance travelled in relation to the anchor point.
-	g.Debug += fmt.Sprintf("DrawTrackAsDistanceTravelledAlongPath\n")
-
-	// Assume that we depart from the OriginPoint. If we're missing early datapoints, then assume
-	// linear travel
-	offsetKM := t[0].DistKM(g.Anchor.Latlong)
-
-	g.Debug += fmt.Sprintf("* offsetKM=%.2f\n", offsetKM)
-	
-	trackpointToXY := func(tp fdb.Trackpoint) (float64, float64, []int) {		
-		distTravelledKM := tp.DistanceTravelledKM + offsetKM  // ignore endpointKM ??
-		distTravelledNM := distTravelledKM * geo.KNauticalMilePerKM
-
-		rgb := []int{0,0,0}
-		if g.ColorScheme == ByPlotKind { rgb = []int{250,0,0} }
-		
-		return distTravelledNM, tp.IndicatedAltitude, rgb
-	}
-
-	g.DrawTrackWithDistFunc(t, trackpointToXY, g.ColorScheme)
 }
 
 // }}}

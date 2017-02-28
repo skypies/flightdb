@@ -4,7 +4,6 @@ import(
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 	
 	"golang.org/x/net/context"
 
@@ -95,8 +94,8 @@ func DescentPDFInit(opt UIOptions, w http.ResponseWriter, r *http.Request, numFl
 	dp := fpdf.DescentPdf{
 		ColorScheme: colorscheme,
 		Anchor:      geo.NamedLatlong{Name:"KSFO", Latlong:sfo.KLatlongSFO},
-		AnchorAltitudeMin: float64(widget.FormValueIntWithDefault(r, "anchor_alt_min", 0)),
-		AnchorAltitudeMax: float64(widget.FormValueIntWithDefault(r, "anchor_alt_max", 5000)),
+		AnchorAltitudeMin: 0, //float64(widget.FormValueIntWithDefault(r, "anchor_alt_min", 0)),
+		AnchorAltitudeMax: 25000, //float64(widget.FormValueIntWithDefault(r, "anchor_alt_max", 5000)),
 		AltitudeMax: float64(widget.FormValueIntWithDefault(r, "alt", 30000)),
 		LengthNM:    float64(widget.FormValueIntWithDefault(r, "length", 80)),
 		ToShow:      map[string]bool{"altitude":true, "groundspeed":true, "verticalspeed":true},
@@ -105,10 +104,11 @@ func DescentPDFInit(opt UIOptions, w http.ResponseWriter, r *http.Request, numFl
 		Permalink:   opt.Permalink,
 	}
 
-	anchor := sfo.FormValueNamedLatlong(r, "anchor")  // &anchor_name={KSFO,EDDYY}
-	if anchor.Name != "" {
-		dp.Anchor = anchor
-	}
+	// Hardcode anchor; new sideviewHandler looks at that.
+	//anchor := sfo.FormValueNamedLatlong(r, "anchor")  // &anchor_name={KSFO,EDDYY}
+	//if anchor.Name != "" {
+	//	dp.Anchor = anchor
+	//}
 	if widget.FormValueCheckbox(r, "showaccelerations") {
 		dp.ToShow["groundacceleration"],dp.ToShow["verticalacceleration"] = true,true
 	}
@@ -176,37 +176,6 @@ func DescentPDFFinalize(opt UIOptions, w http.ResponseWriter, r *http.Request, d
 }
 
 // }}}
-
-// {{{ flightToDescentTrack
-
-// Resamples the track; does full post-processing; attempts altitude correction
-// Extracts a bunch of args from the request (sample, DateRange widget)
-
-func flightToDescentTrack(opt UIOptions, r *http.Request, metars *metar.Archive, f *fdb.Flight) (fdb.Track, error) {
-	trackKeyName,track := f.PreferredTrack([]string{"ADSB", "MLAT", "FOIA", "FA", "fr24"})
-	if track == nil {
-		return nil, fmt.Errorf("no track found (saw %q)", f.ListTracks())
-	}
-
-	sampleRate := widget.FormValueDuration(r, "sample")
-	if sampleRate == 0 { sampleRate = 15 * time.Second }
-	track = track.SampleEvery(sampleRate, false)
-	track.PostProcess()
-	
-	if trackKeyName == "FOIA" {
-		track.AdjustAltitudes(nil) // FOIA track altitudes are already pressure-corrected
-
-	} else {
-		if metars != nil {
-			track.AdjustAltitudes(metars)
-		}
-	}
-
-	return track, nil
-}
-
-// }}}
-
 
 // {{{ -------------------------={ E N D }=----------------------------------
 

@@ -26,6 +26,8 @@ type BaseGrid struct {
 	XTickFmt,       YTickFmt       string  // Will be passed a float64 via fmt.Sprintf; blank==none
 	XTickOtherSide, YTickOtherSide bool    // Note that InvertX,Y also affect where ticks go
 
+	XOriginTickFmt,   YOriginTickFmt string  // Tick formats for the zero origin label
+	
 	// Other formatting
 	LineColor []int // rgb, each [0,255] - axis labels
 }
@@ -147,7 +149,11 @@ func (bg BaseGrid)DrawGridlines() {
 				bg.MoveBy(-4, 2)  // Offset in MM
 			}
 			bg.SetTextColor(0,0,0) // Should maybe be a bit more configurable
-			bg.Cell(30, float64(4), fmt.Sprintf(bg.XTickFmt, x))
+			tickfmt := bg.XTickFmt
+			if x == 0 && bg.XOriginTickFmt != "" {
+				tickfmt = bg.XOriginTickFmt
+			}
+			bg.Cell(30, float64(4), fmt.Sprintf(tickfmt, x))
 			bg.DrawPath("D")
 		}
 	}

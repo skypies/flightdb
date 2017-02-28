@@ -15,7 +15,7 @@ import(
 
 func init() {
 	http.HandleFunc("/fdb/json", UIOptionsHandler(jsonHandler))
-		http.HandleFunc("/fdb/snarf", UIOptionsHandler(snarfHandler))
+	http.HandleFunc("/fdb/snarf", UIOptionsHandler(snarfHandler))
 }
 
 // {{{ LookupIdspec
