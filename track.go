@@ -824,14 +824,15 @@ func (in Track)AsSanityFilteredTrack() Track {
 
 // returns the index of the trackpoint that was closest to the
 // reference point and within the altitude range, or -1 if track has
-// no points within the altitude range.
+// no points within the altitude range. Set maxAltitude to zero to disable
+// altitude checks.
 func (t Track)ClosestTo(ref geo.Latlong, minAltitude, maxAltitude float64) (int) {
 	if len(t) == 0 { return -1 }
 
 	iMin,sqDistMin := 0,math.MaxFloat64
 
 	for i,tp := range t {
-		if tp.Altitude > maxAltitude || tp.Altitude < minAltitude { continue }
+		if maxAltitude > 0 && (tp.Altitude > maxAltitude || tp.Altitude < minAltitude) { continue }
 		dist := ref.LatlongDistSq(tp.Latlong)
 		if dist < sqDistMin {
 			iMin,sqDistMin = i,dist

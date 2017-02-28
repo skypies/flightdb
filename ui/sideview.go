@@ -42,6 +42,8 @@ func init() {
 //  &showaccelerations=1
 //  &showangleofinclination=1
 
+// http://localhost:8080/fdb/sideview?idspec=ASH5408@1425022200&debug=true&anchor_alt_max=40000&anchor_dist_min=-80&anchor_dist_max=10&anchor_name=KSFO&&showaccelerations=1&classb=1&refpt_lat=37.060312&refpt_long=-121.990814&refpt_label=YOU&dist=crowflies
+
 func sideviewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
 	db := fgae.FlightDB{C:ctx}
@@ -77,14 +79,15 @@ func sideviewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request
 			return
 		}
 		if af := airframes.Get(f.IcaoId); af != nil { f.Airframe = *af }
-
-		if err := SideviewPDFAddFlight(opt, r, svp, metars, f); err != nil {
+		
+		if err := SideviewPDFAddFlight(opt, r, svp, metars, f, (n==0)); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
 		n++
 	}
-	
+
 	SideviewPDFFinalize(opt,w,r,svp)
 }
 
@@ -127,15 +130,17 @@ func SideviewPDFInit(opt UIOptions, w http.ResponseWriter, r *http.Request, numF
 		svp.ToShow["angleofinclination"] = true
 	}
 
+	if r.FormValue("dist") == "crowflies" {
+		svp.TrackProjector = &fpdf.ProjectAsCrowFlies{}
+	} else {
+		svp.TrackProjector = &fpdf.ProjectAlongPath{}
+	}
+	
 	svp.Init()
 	svp.DrawFrames()
 
 	if r.FormValue("classb") != "" {
 		svp.MaybeDrawSFOClassB()
-	}
-
-	if pos := geo.FormValueLatlong(r, "refpt"); !pos.IsNil() {
-		svp.DrawReferencePoint(pos, r.FormValue("refpt_label"))
 	}
 	
 	if opt.Report != nil {
@@ -148,19 +153,18 @@ func SideviewPDFInit(opt UIOptions, w http.ResponseWriter, r *http.Request, numF
 // }}}
 // {{{ SideviewPDFAddFlight
 
-func SideviewPDFAddFlight(opt UIOptions, r *http.Request, svp *fpdf.SideviewPdf, metars *metar.Archive, f *fdb.Flight) error {
+func SideviewPDFAddFlight(opt UIOptions, r *http.Request, svp *fpdf.SideviewPdf, metars *metar.Archive, f *fdb.Flight, first bool) error {
 	t,err := flightToDescentTrack(opt, r, metars, f)
 	if err != nil { return err }
 
-	var projectionFunc fpdf.ProjectionFunc
-	if r.FormValue("dist") == "crowflies" {
-		projectionFunc = svp.BuildAsCrowFliesFunc(t)
-	} else {
-		projectionFunc = svp.BuildAlongPathFunc(t)
+	svp.DrawProjectedTrack(t, svp.ColorScheme)
+
+	if first {
+		if pos := geo.FormValueLatlong(r, "refpt"); !pos.IsNil() {
+			svp.DrawPointProjectedIntoTrack(t, pos, r.FormValue("refpt_label"))
+		}
 	}
-
-	svp.DrawTrackProjection(t, projectionFunc, svp.ColorScheme)
-
+	
 	if strings.Count(svp.Caption, "\n") < 3 {
 		svp.Caption += fmt.Sprintf("%s %s\n", f.IdentString(), t.MediumString())
 	}
@@ -173,7 +177,7 @@ func SideviewPDFAddFlight(opt UIOptions, r *http.Request, svp *fpdf.SideviewPdf,
 
 func SideviewPDFFinalize(opt UIOptions, w http.ResponseWriter, r *http.Request, svp *fpdf.SideviewPdf) {
 	svp.DrawCaption()
-
+	
 	w.Header().Set("Content-Type", "application/pdf")
 	if err := svp.Output(w); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

@@ -16,20 +16,6 @@ var (
 	BlueRGB  = []int{0, 0, 0xff}
 )
 
-type AnchorPoint struct {
-	geo.NamedLatlong
-	AltitudeMin      float64
-	AltitudeMax      float64
-	DistMaxKM        float64 // Must be at least this close, or we skip flight
-}
-func (ap AnchorPoint)String() string {
-	return fmt.Sprintf("%s, <=%.1fKM, [%.0f-%.0f]ft", ap.NamedLatlong, ap.DistMaxKM,
-		ap.AltitudeMin, ap.AltitudeMax)
-}
-
-// Given an anchor and a trackpoint, generate a distance and altitude (and render hint)
-type ProjectionFunc func(tp fdb.Trackpoint, ap AnchorPoint) (distNM float64, alt float64, rgb []int)
-
 type SideviewPdf struct {
 	ToShow          map[string]bool       // Which grids to render
 	Grids           map[string]*BaseGrid
@@ -40,6 +26,7 @@ type SideviewPdf struct {
 	AnchorDistMaxNM float64
 
 	AnchorPoint     // embedded
+	TrackProjector  // embedded
 
 	AveragingWindow time.Duration
 
@@ -171,17 +158,6 @@ func (g *SideviewPdf)Init() {
 }
 
 // }}}
-// {{{ svp.ReconfigureForDepartures
-
-// If we are rendering departures, flip everything so the origin is on the Left Hand Side.
-func (g *SideviewPdf)ReconfigureForDepartures() {
-	for name,_ := range g.Grids {
-		g.Grids[name].InvertX = false
-		g.Grids[name].YTickOtherSide = !g.Grids[name].YTickOtherSide
-	}
-}
-
-// }}}
 
 // {{{ svp.DrawFrames
 
@@ -198,7 +174,8 @@ func (g SideviewPdf)DrawCaption() {
 	title := ""
 
 	if g.AnchorPoint.Name != "" {
-		title += fmt.Sprintf("* 0NM anchor: %s\n", g.AnchorPoint)
+		title += fmt.Sprintf("* Projection:%s. 0NM anchor: %s.\n",
+			g.TrackProjector.Description(), g.AnchorPoint)
 	}
 	
 	if g.AveragingWindow > 0 {
@@ -235,9 +212,9 @@ func (g SideviewPdf)DrawColorSchemeKeys() {
 }
 
 // }}}
-
 // {{{ svp.MaybeDrawSFOClassB
 
+// Only valid if the grid is anchored to SFO.
 func (g SideviewPdf)MaybeDrawSFOClassB() {
 	grid,exists := g.Grids["altitude"]
 	if !exists { return }
@@ -246,31 +223,37 @@ func (g SideviewPdf)MaybeDrawSFOClassB() {
 	grid.SetLineWidth(0.45)
 
 	// Should really parse this all out of geo/sfo.SFOClassBMap ...
-	grid.MoveTo( 0.0, 10000.0)
-	grid.LineTo(30.0, 10000.0)
-	grid.LineTo(30.0,  8000.0)
-	grid.LineTo(25.0,  8000.0)
-	grid.LineTo(25.0,  6000.0)
-	grid.LineTo(20.0,  6000.0)
-	grid.LineTo(20.0,  4000.0)
-	grid.LineTo(15.0,  4000.0)
-	grid.LineTo(15.0,  3000.0)
-	grid.LineTo(10.0,  3000.0)
-	grid.LineTo(10.0,  1500.0)
-	grid.LineTo( 7.0,  1500.0)
-	grid.LineTo( 7.0,     0.0)
+	grid.MoveTo(  0.0, 10000.0)
+	grid.LineTo(-30.0, 10000.0)
+	grid.LineTo(-30.0,  8000.0)
+	grid.LineTo(-25.0,  8000.0)
+	grid.LineTo(-25.0,  6000.0)
+	grid.LineTo(-20.0,  6000.0)
+	grid.LineTo(-20.0,  4000.0)
+	grid.LineTo(-15.0,  4000.0)
+	grid.LineTo(-15.0,  3000.0)
+	grid.LineTo(-10.0,  3000.0)
+	grid.LineTo(-10.0,  1500.0)
+	grid.LineTo( -7.0,  1500.0)
+	grid.LineTo( -7.0,     0.0)
+
+	grid.LineTo(  0.0,     0.0)
+	grid.LineTo(  0.0, 10000.0)
 
 	grid.DrawPath("D")
 }
 
 // }}}
-// {{{ svp.DrawReferencePoint
+// {{{ svp.DrawPointProjectedIntoTrack
 
-func (g SideviewPdf)DrawReferencePoint(p geo.Latlong, label string) {	
-	// This is DistanceFromOrigin; it'll be wrong if plotted into grids that use DistAlongPath
-	nm := p.DistNM(g.AnchorPoint.Latlong)
+// This is trickier than it looks. We find the trackpoint closest to the refpt, then
+// project it via whatever projector we're using in this sideview.
+func (g *SideviewPdf)DrawPointProjectedIntoTrack(t fdb.Track, p geo.Latlong, label string) {	
+	ap := AnchorPoint{NamedLatlong:geo.NamedLatlong{Latlong:p}}	
+	i,_,err := ap.PointOfClosestApproach(t)
+	if err != nil { return }
 
-	//rgb := []int{0,250,250}
+	nm,_ := g.TrackProjector.Project(t[i])
 
 	for name,grid := range g.Grids {
 		grid.SetDrawColor(20,220,20)
@@ -291,125 +274,34 @@ func (g SideviewPdf)DrawReferencePoint(p geo.Latlong, label string) {
 
 // }}}
 
-// {{{ svp.trackIndexAtAnchor
+// {{{ svp.DrawProjectedTrack
 
-// trackIndexAtAnchor finds the index of the trackpoint closest to the
-// anchor, that is within the altitude range, and also the max dist.
-// If no trackpoint matches, returns -1. The float is the closest
-// distance, in KM.
-func (g *SideviewPdf)trackIndexAtAnchor(t fdb.Track) (int, float64) {
-	i := t.ClosestTo(g.AnchorPoint.Latlong, g.AnchorPoint.AltitudeMin, g.AnchorPoint.AltitudeMax)
-	if i < 0 {
-		g.Debug += fmt.Sprintf("TrackIndexAtAnchor: nothing in alt range (%s)\n", g.AnchorPoint)
-		return -1,0
+func (g *SideviewPdf)DrawProjectedTrack(t fdb.Track, colorscheme ColorScheme) error {	
+	if len(t) == 0 {
+		return nil
+	}
+	if g.TrackProjector == nil {
+		return fmt.Errorf("DrawTrackProjection: no projector in ")
+	}
+	if err := g.TrackProjector.Setup(t, g.AnchorPoint); err != nil {
+		return err
 	}
 
-	closestDist := t[i].DistKM(g.AnchorPoint.Latlong)
-	if closestDist > g.AnchorPoint.DistMaxKM {
-		g.Debug += fmt.Sprintf("TrackIndexAtanchor: closest[%d] too far (%f > %f) from anchor %s\n",
-			i, closestDist, g.AnchorPoint.DistMaxKM,g.AnchorPoint)
-		return -1,0
-	}
-
-	return i, closestDist
-}
-
-// }}}
-
-// {{{ svp.BuildAsCrowFliesFunc
-
-// Consider distance as being simply the distance from the origin, and plot against altitude.
-// The less the aircraft flies in a straight line to the origin, the less useful this will be.
-// (E.g. if an aircraft descends in a spiral, it will plot as a zig-zag, getting closer then
-// further away as it descends.)
-
-func (g *SideviewPdf)BuildAsCrowFliesFunc(t fdb.Track) ProjectionFunc {	
-	g.Debug += fmt.Sprintf("Built AsCrowFliesFunc\n")
-
-	i,closestDist := g.trackIndexAtAnchor(t)
-	if i < 0 { return nil }
-
-	// trackpoints with a shorter dist travelled are 'before' the anchor.
-	distTravelledAtAnchorKM := t[i].DistanceTravelledKM + closestDist
-
-	g.Debug += fmt.Sprintf("* endKM=%.2f, offsetKM=%.2f, index=%d\n",
-		distTravelledAtAnchorKM, closestDist, i)
-	
-	projectionFunc := func(tp fdb.Trackpoint, ap AnchorPoint) (float64, float64, []int) {
-		distNM := tp.DistNM(ap.Latlong)
-		if tp.DistanceTravelledKM < distTravelledAtAnchorKM {
-			distNM *= -1.0 // go -ve, as we've not reached the anchor
-		}
-		return distNM, tp.IndicatedAltitude, BlackRGB
-	}
-
-	return projectionFunc
-}
-
-// }}}
-// {{{ svp.BuildAlongPathFunc
-
-// BuildAlongPathFunc returns a projection function from trackpoints
-// into a scalar range 'distance along path', which is -ve for
-// trackpoints before the anchor, and +ve for those after. It computes
-// distance flown, so flying in circles loops make values bigger.
-func (g *SideviewPdf)BuildAlongPathFunc(t fdb.Track) ProjectionFunc {
-	g.Debug += fmt.Sprintf("Built AlongPathFunc\n")
-
-	i,closestDistKM := g.trackIndexAtAnchor(t)
-	if i < 0 { return nil }
-
-	// If the closest point isn't all that close, assume linear flight
-	// from it to the origin. When aircraft pass very close to the
-	// anchor, this has no effect; this is mostly a trick to handle
-	// flights landing at an airport when our data peters out before
-	// actual touchdown.
-	distTravelledAtAnchorKM := t[i].DistanceTravelledKM + closestDistKM
-
-	g.Debug += fmt.Sprintf("* endKM=%.2f, closestDistKM=%.2f, index=%d\n",
-		distTravelledAtAnchorKM, closestDistKM, i)
-
-	projectionFunc := func(tp fdb.Trackpoint, ap AnchorPoint) (float64, float64, []int) {
-		distFromAnchorKM := tp.DistanceTravelledKM - distTravelledAtAnchorKM
-		distFromAnchorNM := distFromAnchorKM * geo.KNauticalMilePerKM
-		return distFromAnchorNM, tp.IndicatedAltitude, BlackRGB
-	}
-
-	return projectionFunc
-}
-
-// }}}
-
-// {{{ svp.DrawTrackProjection
-
-func (g *SideviewPdf)DrawTrackProjection(t fdb.Track, f ProjectionFunc, colorscheme ColorScheme) {
 	g.SetDrawColor(0xff, 0x00, 0x00)
 	g.SetAlpha(g.LineOpacity, "")
-	
-	if f == nil {
-		g.Debug += "**** NO FUNC\n"
-		return
-	}
-
-	if len(t) == 0 { return }
-
+		
 	for i,_ := range t[1:] {
-		x1,alt1,_ := f(t[i], g.AnchorPoint)
-		x2,alt2,rgb := f(t[i+1], g.AnchorPoint)
-
-		//g.Debug += fmt.Sprintf("[%3d] (%.2fNM, %.0fft) <%.2fKM>\n", i, x1, alt1,
-		//	t[i].DistKM(g.AnchorPoint.Latlong))
+		x1,alt1 := g.TrackProjector.Project(t[i])
+		x2,alt2 := g.TrackProjector.Project(t[i+1])
 
 		g.SetLineWidth(g.LineThickness)
-		g.SetDrawColor(rgb[0], rgb[1], rgb[2])
 
 		if grid,exists := g.Grids["altitude"]; exists {
-			g.SetDrawColor(rgb[0], rgb[1], rgb[2])
 			grid.Line(x1,alt1, x2,alt2)
 		}
 
-		tpA,tpB := t[i],t[i+1]
-		
+		// Smooth out the speeds & accelerations using an averaging window
+		tpA,tpB := t[i],t[i+1]		
 		if g.AveragingWindow > 0 {
 			tpA = t.WindowedAverageAt(i, g.AveragingWindow)
 			tpB = t.WindowedAverageAt(i+1, g.AveragingWindow)
@@ -435,6 +327,8 @@ func (g *SideviewPdf)DrawTrackProjection(t fdb.Track, f ProjectionFunc, colorsch
 
 	g.DrawPath("D")	
 	g.SetAlpha(1.0, "")
+
+	return nil
 }
 
 // }}}
