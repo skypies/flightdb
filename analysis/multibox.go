@@ -66,6 +66,7 @@ func MultiBoxReporter(r *report.Report, f *fdb.Flight, tis []fdb.TrackIntersecti
 
 	for k,gr := range rstrcs {
 		satisfies,intersection,deb := f.SatisfiesGeoRestriction(gr, r.ListPreferredDataSources())
+		_=intersection
 		_=deb
 		if satisfies {
 			r.I[fmt.Sprintf("[D] intersects %s", k)]++

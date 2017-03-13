@@ -12,6 +12,13 @@ indexes:
 
 - kind: flight
   properties:
+  - name: Icao24
+  - name: Timeslots
+  - name: LastUpdate
+    direction: desc
+
+- kind: flight
+  properties:
   - name: Ident
   - name: Timeslots
   - name: LastUpdate

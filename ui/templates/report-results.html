@@ -1,4 +1,4 @@
-{{define "report3-results"}}
+{{define "report-results"}}
 
 <html>
   {{template "header"}}
@@ -96,21 +96,21 @@ Distance: <select name="dist">
       </div>
 
       <div style="text-align:left">
-<!--      <p>DEBUG:<a target="_blank" href="localhost:8080/fdb/snarf?idspec={{.IdSpecs}}">snarf
-      to a local flightdb2/ui</a></p> -->
+      <p>DEBUG:<a target="_blank" href="localhost:8080/fdb/snarf?idspec={{.IdSpecs}}">snarf
+      to a local flightdb2/ui</a></p>
       <p><pre>{{.OptStr}}</pre></p>
       <p><pre>{{.R.Log}}</pre></p>
       </div>
       
       <div class="stack">
         <h3>Notes</h3>
-        {{if .R.ReportingContext.UserEmail}}
-        <p>User <code>{{.R.ReportingContext.UserEmail}}</code>
+        {{if .UIOptions.UserEmail}}
+        <p>User <code>{{.UIOptions.UserEmail}}</code>
           {{if .R.Options.CanSeeFOIA}} (can see FOIA data)
           {{else}} (no FOIA access){{end}}
         </p>
         {{else}}
-        <p>User not logged in - <a href="{{.LoginUrl}}">login here</a>.</p>
+        <p>User not logged in - <a href="{{.UIOptions.LoginUrl}}">login here</a>.</p>
         {{end}}
       </div>
     </div>

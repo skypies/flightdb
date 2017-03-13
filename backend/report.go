@@ -1,6 +1,7 @@
 package main
 
 import(
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -8,18 +9,18 @@ import(
 	"time"
 	
 	"golang.org/x/net/context"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/user"
 	
 	"github.com/skypies/geo/sfo"
 	"github.com/skypies/util/date"
+	fdb "github.com/skypies/flightdb2"
 	"github.com/skypies/flightdb2/fgae"
+	"github.com/skypies/flightdb2/ui"
 	"github.com/skypies/flightdb2/report"
 	_ "github.com/skypies/flightdb2/analysis" // populate the reports registry
 )
 
 func init() {
-	http.HandleFunc("/report", reportHandler)
+	http.HandleFunc("/report", ui.UIOptionsHandler(reportHandler))
 }
 
 func ButtonPOST(anchor, action string, idspecs []string) string {
@@ -39,42 +40,49 @@ func maybeButtonPOST(idspecs []string, title string, url string) string {
 		idspecs)
 }
 
-func reportHandler(w http.ResponseWriter, r *http.Request) {
-	c,_ := context.WithTimeout(appengine.NewContext(r), 10 * time.Minute)
-
-	loginUrl,_ := user.LoginURL(c, "/report")
+func reportHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	opt,_ := ui.GetUIOptions(ctx)
+	db := fgae.FlightDB{C:ctx}
 
 	if r.FormValue("rep") == "" {
-		user := user.Current(c)
-		email := ""
-		if user != nil { email = user.Email }  // This crap (and the ACL stuff) should be real context
-
+		// Show blank form
 		var params = map[string]interface{}{
 			"Yesterday": date.NowInPdt().AddDate(0,0,-1),
 			"Reports": report.ListReports(),
 			"FormUrl": "/report",
-			"LoginUrl": loginUrl,
-			"UserEmailAddress": email,
+			"UIOptions": opt,
 			"Waypoints": sfo.ListWaypoints(),
-			"Title": fmt.Sprintf("Reports (DB v2)"),
+			"Title": fmt.Sprintf("Reports"),
 		}
-		if err := templates.ExecuteTemplate(w, "report3-form", params); err != nil {
+
+		fdb.BlankGeoRestrictorIntoParams(params)
+		
+		if opt.UserEmail != "" {
+			if rsets,err := db.LookupRestrictorSets(opt.UserEmail); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			} else {
+				params["RestrictorSets"] = rsets
+			}
+		} 
+
+		if err := templates.ExecuteTemplate(w, "report-form", params); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
 	
-	db := fgae.FlightDB{C:c}
 	//airframes := ref.NewAirframeCache(c)
 
-	rep,err := report.SetupReport(r)
+	rep,err := report.SetupReport(ctx, r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if r.FormValue("debug") != "" {
+		jsonBytes,_ := json.MarshalIndent(rep.Options, "", "  ")
 		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte(fmt.Sprintf("OK\n--\n%s\n", rep.Options)))
+		w.Write([]byte(fmt.Sprintf("OK\n--\n%s\n", string(jsonBytes))))//rep.Options)))
 		return
 	}
 	
@@ -83,7 +91,6 @@ func reportHandler(w http.ResponseWriter, r *http.Request) {
 	idspecsRejectByReport := []string{}
 
 	query := db.QueryForTimeRangeWaypoint(rep.Tags, rep.Options.Waypoints, rep.Start,rep.End)
-	rep.Debug(fmt.Sprintf("Using DB Query:-\n%s\n%#v\n", query, query))
 		
 	iter := db.NewLongIterator(query)
 	n := 0
@@ -158,16 +165,19 @@ func reportHandler(w http.ResponseWriter, r *http.Request) {
 	vizFormURL := "/fdb/visualize?"+rep.ToCGIArgs()
 	vizFormTag := "<form action=\""+vizFormURL+"\" method=\"post\" target=\"_blank\">"
 
+	jsonBytes,_ := json.MarshalIndent(rep.Options.GRS, "", "  ")
+	rep.Debugf("--{ the GRS }--\n%s\n", string(jsonBytes))
+	
 	var params = map[string]interface{}{
 		"R": rep,
 		"Metadata": rep.MetadataTable(),
 		"PostButtons": template.HTML(postButtons),
 		"IdSpecs": template.HTML(strings.Join(idspecsAccepted,",")),
 		"Title": "Reports (DB v2)",
-		"LoginUrl": loginUrl,
+		"UIOptions": opt,
 		"VisualizationFormTag": template.HTML(vizFormTag),
 	}
-	if err := templates.ExecuteTemplate(w, "report3-results", params); err != nil {
+	if err := templates.ExecuteTemplate(w, "report-results", params); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}	
 }

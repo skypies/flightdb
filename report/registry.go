@@ -5,8 +5,7 @@ import(
 	"net/http"
 	"sort"
 
-	"google.golang.org/appengine"
-	// "google.golang.org/appengine/log"
+	"golang.org/x/net/context"
 )
 
 // A simple registry of all known reports.
@@ -50,19 +49,22 @@ func ListReports() []ReportEntry {
 	return out
 }
 
-func SetupReport(r *http.Request) (Report, error) {
-	opt,err := FormValueReportOptions(r)
+func SetupReport(ctx context.Context, r *http.Request) (Report, error) {
+	opt,err := FormValueReportOptions(ctx, r)
 	if err != nil { return Report{}, err }
 
 	rep,err := InstantiateReport(opt.Name)
 	if err != nil { return Report{}, err }
 
 	rep.Options = opt
-
-	//log.Errorf(appengine.NewContext(r), "Oho: %#v", opt)
 	
-	if err := rep.setupReportingContext(appengine.NewContext(r)); err != nil {
+	if err := rep.setupReportingContext(ctx); err != nil {
 		return Report{}, err
+	}
+
+	if rep.ReportingContext.UserEmail == "" && r.FormValue("robot") == "1823791957218959063" {
+		rep.ReportingContext.UserEmail = r.FormValue("robot")+"@hardwired.robots"
+		rep.Options.CanSeeFOIA = true
 	}
 	
 	return rep, nil

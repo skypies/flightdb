@@ -1,0 +1,241 @@
+package flightdb2
+
+import(
+	"bytes"
+	"encoding/gob"
+	"fmt"
+	"net/http"
+	"net/url"
+	"sort"
+	"strings"
+
+	"github.com/skypies/geo"
+	"github.com/skypies/geo/sfo"
+	"github.com/skypies/util/widget"
+)
+
+type RestrictorCombinationLogic int
+const(
+	CombinationLogicAll RestrictorCombinationLogic = iota
+	CombinationLogicAny
+)
+func (l RestrictorCombinationLogic)String() string {
+	return map[RestrictorCombinationLogic]string{
+		CombinationLogicAll: "all",
+		CombinationLogicAny: "any",
+	}[l]
+}
+
+type GeoRestrictorSet struct {
+	Name       string
+	User       string
+	Logic      RestrictorCombinationLogic
+	Tags     []string
+
+	R        []geo.NewRestrictor
+	
+	DSKey      string
+}
+
+// {{{ grs.String
+
+func (grs GeoRestrictorSet)String() string {
+	str := fmt.Sprintf("GeoRestrictorSet '%s' <%s>\n* Tags: [%s]\n", grs.Name, grs.User,
+		strings.Join(grs.Tags, ","))
+	str += fmt.Sprintf("%s of:-\n", grs.Logic)
+	for i,gr := range grs.R {
+		str += fmt.Sprintf("* [%02d] %s\n", i, gr)
+	}
+	return str
+}
+
+// }}}
+// {{{ grs.OnelineString
+
+func (grs GeoRestrictorSet)OnelineString() string {
+	tagStr := ""
+	if len(grs.Tags) > 0 { tagStr = "[" + strings.Join(grs.Tags, ",") + "]" }
+
+	logicStr := ""
+	if len(grs.R) > 1 { logicStr = strings.Title(grs.Logic.String()) + " of: " }
+	
+	str := fmt.Sprintf("%s%s, %s", grs.Name, tagStr, logicStr)
+	grStrs := []string{}
+	for _,gr := range grs.R {
+		grStrs = append(grStrs, gr.String())
+	}
+	str += strings.Join(grStrs, "; ")
+	return str
+}
+
+// }}}
+// {{{ grs.Debug
+
+func (grs GeoRestrictorSet)Debug() string {
+	str := fmt.Sprintf("%s\n----{ DEBUG }----\n", grs)
+
+	for i,_ := range grs.R {
+		str += fmt.Sprintf("--{ %02d }--\n%s\n", i, grs.R[i].GetDebug())
+	}
+	return str
+}
+
+// }}}
+// {{{ grs.IsNil, IsAdhoc
+
+func (grs GeoRestrictorSet)IsNil() bool {
+	return (grs.Name == "" && len(grs.R) == 0 && grs.DSKey == "")
+}
+
+
+func (grs GeoRestrictorSet)IsAdhoc() bool {
+	return (grs.Name == "ad-hoc")
+}
+
+// }}}
+
+// {{{ GeoRestrictorIntoParams
+
+func GeoRestrictorIntoParams(gr geo.NewRestrictor, p map[string]interface{}) {
+	widget.ValuesIntoTemplateParams("", GeoRestrictorAsValues(gr), p)
+}
+
+// }}}
+// {{{ BlankGeoRestrictorIntoParams
+
+// Also called externally
+func BlankGeoRestrictorIntoParams(p map[string]interface{}) {
+	grBlank := geo.SquareBoxRestriction{}	
+	p["GR"] = grBlank
+	GeoRestrictorIntoParams(grBlank, p)
+}
+
+// }}}
+// {{{ FormValueGeoRestrictor
+
+func FormValueGeoRestrictor(r *http.Request) (geo.NewRestrictor, error) {
+	var gr geo.NewRestrictor
+	
+	switch r.FormValue("gr_type") {
+	case "squarebox":
+		gr = geo.SquareBoxRestriction{
+			Debugger: new(geo.DebugLog),
+			NamedLatlong: sfo.FormValueNamedLatlong(r, "sb_center"),
+			SideKM: widget.FormValueFloat64EatErrs(r, "sb_sidekm"),
+			IsExcluding: widget.FormValueCheckbox(r, "sb_isexcluding"),
+		}
+
+	case "verticalplane":
+		gr = geo.VerticalPlaneRestriction{
+			Debugger: new(geo.DebugLog),
+			Start: sfo.FormValueNamedLatlong(r, "vp_start"),
+			End: sfo.FormValueNamedLatlong(r, "vp_end"),
+			IsExcluding: widget.FormValueCheckbox(r, "vp_isexcluding"),
+		}
+
+	default:
+		return nil, fmt.Errorf("formValueGeoRestrictor: Fell out of switch")
+	}
+
+	return gr, nil
+}
+
+// }}}
+// {{{ GeoRestrictorAsValues
+
+// TODO: Should figure out a nice way to get this into the NewRestrictor interface, without
+// making geo/ depend on util/widget
+func GeoRestrictorAsValues(gr geo.NewRestrictor) url.Values {
+	v := url.Values{}
+
+	switch t := gr.(type) {
+	case geo.SquareBoxRestriction:
+		v.Set("gr_type", "squarebox")
+		widget.AddPrefixedValues(v, t.NamedLatlong.Values(), "sb_center")
+		v.Set("sb_sidekm", fmt.Sprintf("%.3f", t.SideKM))
+		if t.IsExcluding {
+			v.Set("sb_isexcluding", "1")
+		} else {
+			v.Set("sb_isexcluding", "")
+		}
+
+	case geo.VerticalPlaneRestriction:
+		v.Set("gr_type", "verticalplane")
+		widget.AddPrefixedValues(v, t.Start.Values(), "vp_start")
+		widget.AddPrefixedValues(v, t.End.Values(), "vp_end")
+		if t.IsExcluding {
+			v.Set("vp_isexcluding", "1")
+		} else {
+			v.Set("vp_isexcluding", "")
+		}
+	}
+
+	return v
+}
+
+// }}}
+
+// {{{ f.SatisfiesGeoRestrictorSet
+
+// Kinda useless without the outcome intersections
+func (f *Flight)SatisfiesGeoRestrictorSet(grs GeoRestrictorSet) (bool, RestrictorSetIntersectOutcome) {
+	it := f.GetIntersectableTrack() // build once; a bit expensive
+	outcome := it.SatisfiesRestrictorSet(grs)
+	return outcome.Satisfies(grs.Logic), outcome
+}
+
+// }}}
+
+
+// This is the object which is persisted into Datastore
+type IndexedRestrictorSetBlob struct {
+	Blob         []byte      `datastore:",noindex"`
+
+	Name           string
+	Tags         []string
+	User           string
+}
+
+// {{{ grs.ToBlob
+
+func (grs *GeoRestrictorSet)ToBlob() (*IndexedRestrictorSetBlob, error) {
+	var buf bytes.Buffer
+
+	_ = grs.Debug() // Drain any debug logs
+
+	if err := gob.NewEncoder(&buf).Encode(grs); err != nil {
+		return nil,err
+	}
+
+	sort.Strings(grs.Tags)
+	
+	return &IndexedRestrictorSetBlob{
+		Blob: buf.Bytes(),
+		Tags: grs.Tags,
+		User: grs.User,
+	}, nil
+}
+
+// }}}
+// {{{ blob.ToRestrictorSet
+
+func (blob *IndexedRestrictorSetBlob)ToRestrictorSet(key string) (*GeoRestrictorSet, error) {
+	buf := bytes.NewBuffer(blob.Blob)
+	grs := GeoRestrictorSet{}
+	err := gob.NewDecoder(buf).Decode(&grs)
+
+	grs.DSKey = key
+
+	return &grs, err
+}
+
+// }}}
+
+
+// {{{ -------------------------={ E N D }=----------------------------------
+
+// Local variables:
+// folded-file: t
+// end:
+
+// }}}

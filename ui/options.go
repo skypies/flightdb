@@ -6,9 +6,9 @@ import(
 	"net/http"
 	"regexp"
 	"time"
+	"golang.org/x/net/context"
 
 	"github.com/skypies/util/widget"
-
 	fdb "github.com/skypies/flightdb2"
 	"github.com/skypies/flightdb2/fpdf"
 	"github.com/skypies/flightdb2/report"
@@ -17,10 +17,13 @@ import(
 
 // Common parameters for UI rendering, as parsed from CGI params
 type UIOptions struct {
+	UserEmail       string // if nil, user not logged in
+	LoginUrl        string
+	
 	Permalink       string
 	ResultsetID     string
 	IdSpecStrings []string
-	Report         *report.Report  // nil if none defined
+	Report         *report.Report  // nil if none defined; may trigger calls to datastore
 
 	Start,End       time.Time      // From the report daterange, or guessed from idspecs
 	
@@ -36,7 +39,7 @@ func (opt UIOptions)PermalinkWithViewtype(view string) string {
 
 // Parse a full set of UI Options
 //  &idspec=...,...    OR    &resultset=asdasdasdasdasd
-func FormValueUIOptions(r *http.Request) (UIOptions, error) {
+func FormValueUIOptions(ctx context.Context, r *http.Request) (UIOptions, error) {
 	opt := UIOptions{
 		IdSpecStrings: formValueIdSpecStrings(r),
 		ResultsetID: r.FormValue("resultset"),
@@ -46,7 +49,8 @@ func FormValueUIOptions(r *http.Request) (UIOptions, error) {
 	
 	// Try and guess some start/end times for the dataset in question; add paranoid buffers
 	if r.FormValue("rep") != "" {
-		if rep,err := report.SetupReport(r); err != nil {
+		// This may trigger DS reads, to pull up RestrictorSets
+		if rep,err := report.SetupReport(ctx, r); err != nil {
 			return opt, fmt.Errorf("report parse error: %v", err)
 		} else {
 			opt.Report = &rep

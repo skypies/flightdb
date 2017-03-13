@@ -1,4 +1,4 @@
-{{define "report3-form"}}
+{{define "report-form"}}
 
 <html>
   {{template "header"}}
@@ -8,8 +8,8 @@
     <form action="{{.FormUrl}}" method="get">
       <div class="stack" style="max-width:600px">
 
-        {{if .UserEmailAddress}}<p>User <code>{{.UserEmailAddress}}</code></p>
-        {{else}}<p>User not logged in - <a href="{{.LoginUrl}}">login here</a>.</p>
+        {{if .UIOptions.UserEmail}}<p>Hello, <code>{{.UIOptions.UserEmail}}</code>.</p>
+        {{else}}<p>User not logged in - <a href="{{.UIOptions.LoginUrl}}">login here</a>.</p>
         {{end}}
         
         <div class="box">
@@ -184,6 +184,27 @@
           </tr>
 
           <tr><td colspan="2"><hr/></td></tr>
+
+          <tr><td colspan="2">
+              <b>Geo restrictions</b>: Define a <b>{region}</b> of interest.
+              Pick a saved RestrictionSet (<a href="/fdb/restrictors/list">edit your saved
+              restrictionsets</a>), or use an ad-hoc one.<br/>
+          </td></tr>
+              
+          <tr><td>Saved sets</td><td>{{if .RestrictorSets}}
+              <select name="grs_dskey">
+                <option value="">(please select)</option>
+                {{range .RestrictorSets}}
+                <option value="{{.DSKey}}">{{.OnelineString}}</option>{{end}}
+              </select>
+              {{else}}<i>None found</i>{{end}}
+          </td></tr>
+
+          <tr><td>Ad-hoc</td><td><br/><div class="box">
+                {{template "restrictors-gr-edit-form" .}}
+          </div></td></tr>
+
+          <!--
           <tr><td colspan="2"><b>Geo restrictions (1)</b>: Define a <b>{region}</b> of interest;
               pick a center for a box. Leave
               blank to report on all flights. Don't use regions less
@@ -193,14 +214,13 @@
           <tr>
             <td>Center</td>
             <td>
-              {{template "widget-waypoint-or-pos" dict "Waypoints" .Waypoints "Name" "boxcenter"}}
+              template "widget-waypoint-or-pos" dict "Waypoints" .Waypoints "Name" "boxcenter"
             </td>
           </tr>            
           
           <tr>
             <td>Size (KM)</td>
             <td>
-<!--              Radius <input type="text" name="boxradiuskm" size="4" value=""/>, or-->
               Boxside <input type="text" name="boxsidekm" size="4" value=""/>
             </td>
           </tr>
@@ -224,25 +244,26 @@
           <tr><td colspan="2"><br/><b>Geo restrictions (2)</b>:
               And/or, define a geo <b>{window}</b> that flights must fly through.<br/>
           </td></tr>
+-->
 <!--
 Skyline Window
 37.495131, -122.368961
 37.206145, -122.048494
 -->
-
+<!--
           <tr>
             <td>To</td>
             <td>
-              {{template "widget-waypoint-or-pos" dict "Waypoints" .Waypoints "Name" "winstart"}}
+              template "widget-waypoint-or-pos" dict "Waypoints" .Waypoints "Name" "winstart"
             </td>
           </tr>            
           <tr>
             <td>From</td>
             <td>
-              {{template "widget-waypoint-or-pos" dict "Waypoints" .Waypoints "Name" "winend"}}
+              template "widget-waypoint-or-pos" dict "Waypoints" .Waypoints "Name" "winend"
             </td>
           </tr>
-
+-->
 <!--          <tr>
             <td>Window Altitude</td>
             <td>
@@ -296,15 +317,13 @@ Skyline Window
           <tr>
             <td>Reference Point</td>
             <td>
-              <b>{refpoint}</b>
-              {{template "widget-waypoint-or-pos" dict "Waypoints" .Waypoints "Name" "refpt"}}
+              <b>{refpoint}</b>{{template "widget-waypoint-or-pos" nlldict "refpt" . }}
             </td>
           </tr>
           <tr>
             <td>Reference Point 2</td>
             <td>
-              <b>{refpoint2}</b>
-              {{template "widget-waypoint-or-pos" dict "Waypoints" .Waypoints "Name" "refpt2"}}
+              <b>{refpoint2}</b>{{template "widget-waypoint-or-pos" nlldict "refpt2" . }}
             </td>
           </tr>
 
@@ -339,9 +358,10 @@ Skyline Window
         <p style="text-align:center"><input class="button" type="submit" value="GENERATE"/></p>
         <br/>
         </div>
-<!--
-        <p> Debug: <input type="text" name="debug" value="1" size="1"/></p>
--->
+
+        <p> Debug: <input type="text" name="debug" value="" size="1"/></p>
+        <input type="hidden" name="log" value="debug"/>
+
         <p>Instructions: <a href="https://goo.gl/2MVVSU">https://goo.gl/2MVVSU</a></p>
         
       </div>

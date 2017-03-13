@@ -59,6 +59,30 @@ a.fakebutton {
     -webkit-border-radius:3px;
 }
 
+#big_ro_button{
+    background-color: #d0ffd0;
+    padding:6px 12px;
+    font-size: 1.3em;
+}
+#big_rw_button{
+    background-color: #ffd0d0;
+    padding:6px 12px;
+    font-size: 1.3em;
+}
+#small_ro_button{
+    background-color: #d0ffd0;
+    padding: 0.25em;
+    font-size: 0.8em;
+}
+#small_rw_button{
+    background-color: #ffd0d0;
+    padding: 0.25em;
+    font-size: 0.8em;
+}
+
+
+
+
 form { margin:0em}
 
 div.stack {

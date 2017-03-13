@@ -1,0 +1,38 @@
+{{define "restrictors-gr-edit"}}
+
+<html>
+  {{template "header"}}
+  <body>
+    <h1>GeoRestriction {{.GRIndex}} for set {{.GRS.Name}}</h1><p/>
+    <div class="allstack">
+      <div style="text-align:left" class="box">
+        <p> For user <tt>{{.UIOptions.UserEmail}}</tt>:</p>
+      </div><p/>
+      <div class="box">
+        <form action="{{.URIStem}}/gr/edit" method="get">
+          <input type="hidden" name="grs_dskey" value="{{.GRS.DSKey}}"/>
+          <input type="hidden" name="gr_index" value="{{.GRIndex}}"/>
+
+          {{template "restrictors-gr-edit-form" .}}
+
+          <table>
+            <tr>
+              <td colspan="2" align="center">
+                <br/>
+                <a id="big_rw_button" class="fakebutton"
+                   href="{{.URIStem}}/gr/delete?grs_dskey={{.GRS.DSKey}}&gr_index={{.GRIndex}}">
+                  DELETE</a>&nbsp;
+                <a id="big_ro_button" class="fakebutton"
+                   href="{{.URIStem}}/grs/edit?grs_dskey={{.GRS.DSKey}}">CANCEL</a>&nbsp;
+                <input id="big_ro_button" class="button" type="submit" value="SAVE"/>
+              </td>
+            </tr>
+          </table>
+
+        </form>  
+      </div>
+    </div>
+  </body>
+</html>
+
+{{end}}

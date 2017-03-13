@@ -1,0 +1,79 @@
+{{define "restrictors-grs-edit"}}
+
+<html>
+  {{template "header"}}
+  <body>
+    <h1>{{.Title}}</h1><p/>
+    <div class="allstack">
+      <div style="text-align:left" class="box">
+        <p> For user <tt>{{.UIOptions.UserEmail}}</tt>:</p>
+      </div><p/>
+
+      {{if (len .GRS.R) | ne 0}}
+      <p>
+        <form action="{{.URIStem}}/grs/view" method="get" target="_blank">
+          <input type="hidden" name="grs_dskey" value="{{.GRS.DSKey}}"/>
+          <input id="small_ro_button" class="button" type="submit" value="VIEW ON MAP"/>
+          (and apply against flight
+          <input type="text" size="19" name="idspec" placeholder="ABC123@1231231231"/>)
+        </form>
+      </p>
+      {{end}}
+
+      <div class="box">
+
+        <form action="{{.URIStem}}/grs/edit" method="get">
+          <input type="hidden" name="grs_dskey" value="{{.GRS.DSKey}}"/>
+          <table>
+            <tr>
+              <td>Name (short!)</td>
+              <td><input type="text" name="name" value="{{.GRS.Name}}" size="15"/></td>
+            </tr>
+            <tr>
+              <td>Tags</td>
+              <td><input type="text" name="tags" value="{{sort .GRS.Tags | flatten}}" size="35"/></td>
+            </tr>
+            <tr><td><br/></td></tr>
+
+            <tr>
+              <td>Logic </td>
+              <td>Satisfy <select name="combinationlogic">
+                  <option value="any" {{if .GRS.Logic | printf "%s" | eq "any"}}selected="1"{{end}}>
+                    any</option>
+                  <option value="all" {{if .GRS.Logic | printf "%s" | eq "all"}}selected="1"{{end}}>
+                    all</option>
+                  </select> of the following restrictions.
+            </tr>
+
+            {{$uristem := .URIStem}}
+            {{$dskey := .GRS.DSKey}}
+            {{range $i, $r := .GRS.R}}
+            <tr>
+              <td><a id="small_ro_button" class="fakebutton"
+                     href="{{$uristem}}/gr/edit?grs_dskey={{$dskey}}&gr_index={{$i}}">EDIT</a>
+              </td>
+              <td><code>{{$i}} : {{$r}}</code></td>
+              </tr>
+            {{end}}
+            {{if .GRS.DSKey}}
+            <tr><td colspan="2" align="center"><a id="small_ro_button" class="fakebutton"
+            href="{{.URIStem}}/gr/new?grs_dskey={{.GRS.DSKey}}">ADD RESTRICTOR</a></td></tr>
+            {{end}}
+            
+          </table>
+          <br/>
+          <p>
+            {{if .GRS.DSKey}}
+            <a id="big_rw_button" class="fakebutton"
+               href="{{.URIStem}}/grs/delete?grs_dskey={{.GRS.DSKey}}">DELETE</a>&nbsp;
+            {{end}}
+            <a id="big_ro_button" class="fakebutton" href="{{.URIStem}}/list">CANCEL</a>&nbsp;
+            <input id="big_ro_button" class="button" type="submit" value="SAVE"/>
+          </p>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>
+
+{{end}}

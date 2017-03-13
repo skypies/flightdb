@@ -1,0 +1,35 @@
+{{define "restrictors-list"}}
+
+<html>
+  {{template "header"}}
+  <body>
+    <h1>Restrictor Sets</h1><p/>
+    <div class="allstack">
+      <p>Hello, <code>{{.UIOptions.UserEmail}}</code>.</p>
+      <div style="text-align:left" class="box">
+        {{if (len .RestrictorSets | eq 0)}}
+        <p> You have no restrictor sets !</p>
+        {{else}}
+        <table>
+          {{$uristem := .URIStem}}
+          {{range .RestrictorSets}}
+          <tr>
+            <td><a id="changebutton" class="fakebutton"
+                   href="{{$uristem}}/grs/edit?grs_dskey={{.DSKey}}">EDIT</a></td>
+            <td><b>{{.Name}}</b></td>
+            <td><code>{{flatten .Tags}}</code></td>
+            <td><a id="changebutton" class="fakebutton" target="_blank"
+                   href="{{$uristem}}/grs/view?grs_dskey={{.DSKey}}">VIEW</a></td>
+          </tr>
+          {{end}}
+        </table>
+        {{end}}
+      </div>
+      <p/>
+      <p><a id="big_ro_button" class="fakebutton"
+            href="{{.URIStem}}/grs/new">NEW</a></p>
+    </div>
+  </body>
+</html>
+
+{{end}}

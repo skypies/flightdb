@@ -1,5 +1,7 @@
 package flightdb2
 
+// DIE
+
 import(
 	"fmt"
 	"time"
@@ -182,57 +184,6 @@ func (t Track)IntersectsGeoRestriction(gr geo.Restrictor) (bool, TrackIntersecti
 	
 	return true, TrackIntersection{Start:t[iEntry], End:t[iExit], I:iEntry, J:iExit}, str
 }
-
-// }}}
-// {{{ t.AllIntersectsGeoRestriction
-
-/* TBD.
-
-func (t Track)AllIntersectsGeoRestriction(gr geo.Restrictor) ([]TrackIntersection, string) {
-	lines := t.AsLinesSampledEvery(time.Second * 1)
-	str := fmt.Sprintf("** %s\n** Geo   %s\n", t, gr)
-
-	ret := []TrackIntersection{}
-
-	n := 0
-	for {
-		str += fmt.Sprintf("** Top of loop, n=%d\n", n)
-		iEntry,iLine,deb := t.findEntry(lines, 0, gr)
-		str += deb
-		if iEntry < 0 {
-			str += "* No [more] entry point found\n"
-			break
-		}
-
-		if ! gr.LookForExit() {
-			str += "* Not looking for exit\n"
-			t[iEntry].AnalysisAnnotation += fmt.Sprintf("* Sole point to satisfy\n")
-			ret = append(ret, TrackIntersection{Start:t[iEntry], I:iEntry})
-
-		} else {
-			iExit,_,deb := t.findExit(lines, iLine, gr)
-			str += deb
-
-			if iExit < 0 {
-				str += "* No exit found\n"
-				iExit = len(t)-1
-			}  // track ran out before we exited; pick the end.
-
-			for i:=iEntry; i<=iExit; i++ {
-				t[i].AnalysisAnnotation += fmt.Sprintf("* Point satisfied georestriction #%d %s\n", n, gr)
-			}
-			t[iEntry].AnalysisAnnotation += fmt.Sprintf("* First point to satisfy\n")
-			t[iExit].AnalysisAnnotation += fmt.Sprintf("* Last point to satisfy\n")
-
-			ret = append(ret, TrackIntersection{Start:t[iEntry], End:t[iExit], I:iEntry, J:iExit})
-		}
-		n++
-	}
-	
-	return ret, str
-}
-
-*/
 
 // }}}
 

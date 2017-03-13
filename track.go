@@ -168,6 +168,8 @@ func (t Track)LongSource() string {
 
 // {{{ t.PostProcess
 
+// TODO: make this idempotent (perhaps finally create a sentinel object for Track ?)
+
 // Derive a bunch of data fields from the raw data.
 // NOTE - the vertical data gets too jerky with ADSB, because altitude change appears more like
 // an occasional step function when the datapoints are too close. You should use t.SampleEvery()

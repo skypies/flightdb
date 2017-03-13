@@ -68,8 +68,10 @@ func (r *Report)Logger(level ReportLogLevel, s string) {
 	if level < r.Options.ReportLogLevel { return }
 	r.Log += s
 }
-func (r *Report)Info(s string) { r.Logger(INFO, s) }
-func (r *Report)Debug(s string) { r.Logger(DEBUG, s) }
+func (r *Report)Infof(s string,args ...interface{}) { r.Logger(INFO, fmt.Sprintf(s,args...)) }
+func (r *Report)Debugf(s string,args ...interface{}) { r.Logger(DEBUG, fmt.Sprintf(s,args...)) }
+func (r *Report)Info(s string) { r.Infof(s) }
+func (r *Report)Debug(s string) { r.Debugf(s) }
 
 func (r *Report)SetHeaders(headers []string) {
 	if len(r.HeadersText) == 0 { r.HeadersText = headers }
@@ -115,24 +117,37 @@ func (r *Report)PreProcess(f *fdb.Flight) (bool, []fdb.TrackIntersection) {
 	// If restrictions were specified, only match flights that satisfy them
 	failed := false
 	intersections := []fdb.TrackIntersection{}
-	for _,gr := range r.Options.ListGeoRestrictors() {
-		r.Debug(fmt.Sprintf("---- %s\nSources: %v\n", f.IdentityString(), r.ListPreferredDataSources()))
-		satisfies,intersection,deb := f.SatisfiesGeoRestriction(gr, r.ListPreferredDataSources())
-		_=deb
-/*
-		r.Debug(fmt.Sprintf("---- %s --[%v]--\n", f.IdentityString(), r.TrackSpec))
-		for _,tName := range f.ListTracks() {
-			r.Debug(fmt.Sprintf(" [%-6.6s] %s\n", tName, f.Tracks[tName]))
-		}
-		r.Debug(fmt.Sprintf("\n%s\n", deb))
-*/
-		if satisfies {
-			intersections = append(intersections, intersection)
+
+	if !r.Options.GRS.IsNil() {
+		satisfied,outcomes := f.SatisfiesGeoRestrictorSet(r.Options.GRS)
+		r.Debugf("---- %s\nSources: %v\n", f.IdentityString(), r.ListPreferredDataSources())
+		r.Debugf("--{ GRS }--\n%s\n", r.Options.GRS)
+		r.Debugf("--{ Outcome satisfies=%v }--\n", satisfied)
+		r.Debugf("--{ Debug }--\n%s\n", outcomes.Debug())
+
+		if satisfied {
+			for _,o := range outcomes.Outcomes {
+				intersections = append(intersections, o.TrackIntersection)
+			}
 		} else {
-			r.I["[B] Eliminated: did not satisfy "+gr.String()]++
+			r.I["[B] Eliminated: did not satisfy "+outcomes.BlameString(r.Options.GRS)]++
 			failed = true
-			break
 		}
+/*
+	} else {	
+		for _,gr := range r.Options.ListGeoRestrictors() {
+			r.Debug(fmt.Sprintf("---- %s\nSources: %v\n", f.IdentityString(),
+				r.ListPreferredDataSources()))
+			satisfied,intersection,_ := f.SatisfiesGeoRestriction(gr, r.ListPreferredDataSources())
+			if satisfied {
+				intersections = append(intersections, intersection)
+			} else {
+				r.I["[B] Eliminated: did not satisfy "+gr.String()]++
+				failed = true
+				break
+			}
+		}
+*/
 	}
 	if failed { return false, intersections }
 

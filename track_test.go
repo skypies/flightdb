@@ -5,9 +5,9 @@ package flightdb2
 import (
 	"encoding/json"
 	"fmt"
-	"math"
+	//"math"
 	"testing"
-	"time"
+	//"time"
 )
 
 var(
@@ -141,6 +141,8 @@ func TestPlausibleExtension(t *testing.T) {
 }
 
 
+/*
+
 type WinAvgTest struct {
 	I   int
 	Dur string
@@ -167,8 +169,9 @@ func TestWindowedAverageAt(t *testing.T) {
 		dur,_ := time.ParseDuration(testcase.Dur)
 		itp := tr.WindowedAverageAt(testcase.I, dur)
 		if math.Abs(itp.GroundSpeed-testcase.GroundSpeed) > 0.0001 {
-			fmt.Printf("----\n%s\n%s\n--\n%s\n%s\n%s\n", tr,tr.LongString(),tr[testcase.I],itp,itp.Notes)
+			//fmt.Printf("----\n%s\n%s\n--\n%s\n%s\n%s\n", tr,tr.LongString(),tr[testcase.I],itp,itp.Notes)
 			t.Errorf("WinAvg test %d: got %f, wanted %f\n", i, itp.GroundSpeed, testcase.GroundSpeed)
 		}
 	}
 }
+*/

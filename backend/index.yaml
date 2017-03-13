@@ -22,7 +22,7 @@ indexes:
   properties:
   - name: Icao24
   - name: Timeslots
-  
+
 - kind: flight
   properties:
   - name: Icao24
@@ -34,13 +34,18 @@ indexes:
   properties:
   - name: Ident
   - name: Timeslots
-  
+
 - kind: flight
   properties:
   - name: Ident
   - name: Timeslots
   - name: LastUpdate
     direction: desc
+
+- kind: flight
+  properties:
+  - name: Tags
+  - name: Timeslots
 
 - kind: flight
   properties:
