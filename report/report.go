@@ -49,6 +49,7 @@ type Report struct {
 	S         map[string]string
 	H         histogram.Histogram
 	
+	Stats histogram.Set // internal performance counters
 	Log string
 }
 
@@ -61,6 +62,7 @@ func BlankReport() Report {
 		RowsText: [][]string{},
 		HeadersText: []string{},
 		Blobs: map[string]interface{}{},
+		Stats: histogram.NewSet(40000),  // maxval, in micros; 40ms == 40000us
 	}
 }
 
@@ -119,12 +121,14 @@ func (r *Report)PreProcess(f *fdb.Flight) (bool, []fdb.TrackIntersection) {
 	intersections := []fdb.TrackIntersection{}
 
 	if !r.Options.GRS.IsNil() {
+		tStart := time.Now()
 		satisfied,outcomes := f.SatisfiesGeoRestrictorSet(r.Options.GRS)
 		r.Debugf("---- %s\nSources: %v\n", f.IdentityString(), r.ListPreferredDataSources())
-		r.Debugf("--{ GRS }--\n%s\n", r.Options.GRS)
+		r.Debugf("--{ GRS }--\n%s", r.Options.GRS)
 		r.Debugf("--{ Outcome satisfies=%v }--\n", satisfied)
 		r.Debugf("--{ Debug }--\n%s\n", outcomes.Debug())
-
+		r.Stats.RecordValue("restrictions", (time.Since(tStart).Nanoseconds()/1000))
+		
 		if satisfied {
 			for _,o := range outcomes.Outcomes {
 				intersections = append(intersections, o.TrackIntersection)
@@ -133,21 +137,6 @@ func (r *Report)PreProcess(f *fdb.Flight) (bool, []fdb.TrackIntersection) {
 			r.I["[B] Eliminated: did not satisfy "+outcomes.BlameString(r.Options.GRS)]++
 			failed = true
 		}
-/*
-	} else {	
-		for _,gr := range r.Options.ListGeoRestrictors() {
-			r.Debug(fmt.Sprintf("---- %s\nSources: %v\n", f.IdentityString(),
-				r.ListPreferredDataSources()))
-			satisfied,intersection,_ := f.SatisfiesGeoRestriction(gr, r.ListPreferredDataSources())
-			if satisfied {
-				intersections = append(intersections, intersection)
-			} else {
-				r.I["[B] Eliminated: did not satisfy "+gr.String()]++
-				failed = true
-				break
-			}
-		}
-*/
 	}
 	if failed { return false, intersections }
 
@@ -211,9 +200,10 @@ func (r *Report)Process(f *fdb.Flight) (FlightReportOutcome, error) {
 }
 
 func (r *Report)FinishSummary() {
-	r.Info("**** Stage: finish summary\n")
+	r.Info("**** Stage: all done\n")
 	r.Debug("* (DEBUG)\n")
 	if r.SummarizeFunc != nil { r.SummarizeFunc(r) }
+	r.Infof("Stats (in micros):-\n%s", r.Stats)
 }
 
 func (r *Report)MetadataTable()[][]template.HTML {

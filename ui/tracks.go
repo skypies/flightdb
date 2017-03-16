@@ -225,9 +225,6 @@ func OutputTrackpointsOnAMap(ctx context.Context, w http.ResponseWriter, r *http
 	if r.FormValue("debug") != "" {
 		w.Header().Set("Content-Type", "text/plain")
 		if opt.Report != nil {
-			for _,rstrc := range opt.Report.ListGeoRestrictors() {
-				bannerText += fmt.Sprintf(" * GeoRestriction: %s\n", rstrc)
-			}
 			bannerText += fmt.Sprintf("\n--- report:-\n%#v\n", opt.Report)
 			bannerText += "\n--- report.Log:-\n" + opt.Report.Log
 		}

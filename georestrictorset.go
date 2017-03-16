@@ -32,7 +32,7 @@ type GeoRestrictorSet struct {
 	Logic      RestrictorCombinationLogic
 	Tags     []string
 
-	R        []geo.NewRestrictor
+	R        []geo.Restrictor
 	
 	DSKey      string
 }
@@ -96,7 +96,7 @@ func (grs GeoRestrictorSet)IsAdhoc() bool {
 
 // {{{ GeoRestrictorIntoParams
 
-func GeoRestrictorIntoParams(gr geo.NewRestrictor, p map[string]interface{}) {
+func GeoRestrictorIntoParams(gr geo.Restrictor, p map[string]interface{}) {
 	widget.ValuesIntoTemplateParams("", GeoRestrictorAsValues(gr), p)
 }
 
@@ -108,13 +108,14 @@ func BlankGeoRestrictorIntoParams(p map[string]interface{}) {
 	grBlank := geo.SquareBoxRestriction{}	
 	p["GR"] = grBlank
 	GeoRestrictorIntoParams(grBlank, p)
+	p["gr_type"] = "" // unknown at this time
 }
 
 // }}}
 // {{{ FormValueGeoRestrictor
 
-func FormValueGeoRestrictor(r *http.Request) (geo.NewRestrictor, error) {
-	var gr geo.NewRestrictor
+func FormValueGeoRestrictor(r *http.Request) (geo.Restrictor, error) {
+	var gr geo.Restrictor
 	
 	switch r.FormValue("gr_type") {
 	case "squarebox":
@@ -122,6 +123,8 @@ func FormValueGeoRestrictor(r *http.Request) (geo.NewRestrictor, error) {
 			Debugger: new(geo.DebugLog),
 			NamedLatlong: sfo.FormValueNamedLatlong(r, "sb_center"),
 			SideKM: widget.FormValueFloat64EatErrs(r, "sb_sidekm"),
+			AltitudeMin: widget.FormValueInt64(r, "sb_altmin"),
+			AltitudeMax: widget.FormValueInt64(r, "sb_altmax"),
 			IsExcluding: widget.FormValueCheckbox(r, "sb_isexcluding"),
 		}
 
@@ -130,6 +133,8 @@ func FormValueGeoRestrictor(r *http.Request) (geo.NewRestrictor, error) {
 			Debugger: new(geo.DebugLog),
 			Start: sfo.FormValueNamedLatlong(r, "vp_start"),
 			End: sfo.FormValueNamedLatlong(r, "vp_end"),
+			AltitudeMin: widget.FormValueInt64(r, "vp_altmin"),
+			AltitudeMax: widget.FormValueInt64(r, "vp_altmax"),
 			IsExcluding: widget.FormValueCheckbox(r, "vp_isexcluding"),
 		}
 
@@ -143,9 +148,9 @@ func FormValueGeoRestrictor(r *http.Request) (geo.NewRestrictor, error) {
 // }}}
 // {{{ GeoRestrictorAsValues
 
-// TODO: Should figure out a nice way to get this into the NewRestrictor interface, without
+// TODO: Should figure out a nice way to get this into the geo.Restrictor interface, without
 // making geo/ depend on util/widget
-func GeoRestrictorAsValues(gr geo.NewRestrictor) url.Values {
+func GeoRestrictorAsValues(gr geo.Restrictor) url.Values {
 	v := url.Values{}
 
 	switch t := gr.(type) {
@@ -158,6 +163,8 @@ func GeoRestrictorAsValues(gr geo.NewRestrictor) url.Values {
 		} else {
 			v.Set("sb_isexcluding", "")
 		}
+		v.Set("sb_altmin", fmt.Sprintf("%d", t.AltitudeMin))
+		v.Set("sb_altmax", fmt.Sprintf("%d", t.AltitudeMax))
 
 	case geo.VerticalPlaneRestriction:
 		v.Set("gr_type", "verticalplane")
@@ -168,6 +175,8 @@ func GeoRestrictorAsValues(gr geo.NewRestrictor) url.Values {
 		} else {
 			v.Set("vp_isexcluding", "")
 		}
+		v.Set("vp_altmin", fmt.Sprintf("%d", t.AltitudeMin))
+		v.Set("vp_altmax", fmt.Sprintf("%d", t.AltitudeMax))
 	}
 
 	return v

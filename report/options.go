@@ -33,28 +33,7 @@ type Options struct {
 	NotWaypoints     []string  // Tags that are blacklisted from results; not efficient
 
 	TimeOfDay          date.TimeOfDayRange  // If initialized, only find flights that 'match' it
-
-	// {{{ DIE
-
-	///// DIE
-	// Geo restriction 1: Box.
-	BoxCenter          geo.NamedLatlong
-	BoxRadiusKM        float64  // [BROKEN FOR NOW] For defining areas of interest around waypoints
-	BoxSideKM          float64  // For defining areas of interest around waypoints
-	BoxExcludes        bool     // By default[false], tracks must intersect the box. NOT IMPLEMENTED
-	// Min/max altitudes. 0 == don't care
-	AltitudeMin        int64
-	AltitudeMax        int64
-	//
-	// Geo-restriction 2: Window. Represent this a bit better.	
-	WindowStart        geo.NamedLatlong
-	WindowEnd          geo.NamedLatlong
-	WindowMin, WindowMax float64
-	//
-	////
-
-	// }}}
-
+	
 	GRS                fdb.GeoRestrictorSet
 	
 	// Data specification
@@ -93,26 +72,6 @@ func FormValueReportOptions(ctx context.Context, r *http.Request) (Options, erro
 		NotTags: widget.FormValueCommaSpaceSepStrings(r,"nottags"),
 		Waypoints: []string{},
 		NotWaypoints: []string{},
-		
-		// {{{ DIE
-
-		//// DIE
-		//
-		BoxCenter: sfo.FormValueNamedLatlong(r, "boxcenter"),
-		BoxRadiusKM: widget.FormValueFloat64EatErrs(r, "boxradiuskm"),
-		BoxSideKM: widget.FormValueFloat64EatErrs(r, "boxsidekm"),
-		BoxExcludes: widget.FormValueCheckbox(r, "boxexcludes"),
-		AltitudeMin: widget.FormValueInt64(r, "altitudemin"),
-		AltitudeMax: widget.FormValueInt64(r, "altitudemax"),
-		//
-		WindowStart: sfo.FormValueNamedLatlong(r, "winstart"),
-		WindowEnd:   sfo.FormValueNamedLatlong(r, "winend"),
-		WindowMin: widget.FormValueFloat64EatErrs(r, "winmin"),
-		WindowMax: widget.FormValueFloat64EatErrs(r, "winmax"),
-		//
-		////
-
-		// }}}
 
 		TextString: r.FormValue("textstring"),
 		AltitudeTolerance: widget.FormValueFloat64EatErrs(r, "altitudetolerance"),
@@ -123,8 +82,6 @@ func FormValueReportOptions(ctx context.Context, r *http.Request) (Options, erro
 
 		ResultsFormat: r.FormValue("resultformat"),
 	}
-
-	//return opt, fmt.Errorf("WTF")
 	
 	if grs,err := FormValueGeoRestrictorSetLoadOrAdHoc(ctx, r); err != nil {
 		return opt,err
@@ -215,55 +172,12 @@ func maybeLoadGRSDSKey(ctx context.Context, r *http.Request, grs *fdb.GeoRestric
 
 // }}}
 
-// {{{ o.ListGeoRestrictors
-
-func (o Options)ListGeoRestrictors() []geo.NewRestrictor {
-/*
-	ret := []geo.Restrictor{}
-
-	if !o.WindowStart.IsNil() && !o.WindowEnd.IsNil() {
-		window := geo.WindowRestrictor{
-			Window: geo.Window{
-				LatlongLine: o.WindowStart.BuildLine(o.WindowEnd.Latlong),
-				MinAltitude: o.WindowMin,
-				MaxAltitude: o.WindowMax,
-			},
-		}
-		ret = append(ret, window)
-	}
-
-	addCenteredRestriction := func(pos geo.Latlong) {
-		if o.BoxSideKM > 0 {
-			restric := geo.LatlongBoxRestrictor{LatlongBox: pos.Box(o.BoxSideKM,o.BoxSideKM) }
-			restric.Floor, restric.Ceil = o.AltitudeMin, o.AltitudeMax
-			restric.MustNotIntersectVal = o.BoxExcludes
-			ret = append(ret, restric)
-			// BROKEN } else if o.BoxRadiusKM > 0 {
-			// ret = append(ret, pos.Circle(o.BoxRadiusKM))
-		}
-	}
-
-	if !o.BoxCenter.IsNil() { addCenteredRestriction(o.BoxCenter.Latlong) }
-	return ret
-*/
-
-	return o.GRS.R
-}
-
-// }}}
-// {{{ o.GetRefpointRestrictor
-
-func (o Options)GetRefpointRestrictor() geo.Restrictor {
-	return geo.LatlongBoxRestrictor{LatlongBox:o.ReferencePoint.Box(o.RefDistanceKM,o.RefDistanceKM)}
-}
-
-// }}}
 // {{{ o.ListMapRenderers
 
 func (o Options)ListMapRenderers() []geo.MapRenderer {
 	ret := []geo.MapRenderer{}
 
-	for _,gr  := range o.ListGeoRestrictors() {
+	for _,gr  := range o.GRS.R {
 		ret = append(ret, gr)
 	}
 
@@ -284,13 +198,8 @@ func (o Options)ListMapRenderers() []geo.MapRenderer {
 // {{{ o.String
 
 func (o Options)String() string {
-	str := fmt.Sprintf("%#v\n--\n", o)
-	str += "GeoRestrictors:-\n"
-	for _,gr := range o.ListGeoRestrictors() {
-		str += fmt.Sprintf("  %s\n", gr)
-	}
-	str += "--\n"
-	
+	str := fmt.Sprintf("%#v\n--\n%s", o, o.GRS)
+	str += "--\n"	
 	return str
 }
 
@@ -305,36 +214,18 @@ func (o Options)DescriptionText() string {
 	str += s
 	if s != e { str += "-"+e }
 
-	if o.TimeOfDay.IsInitialized() {
-		str += fmt.Sprintf(", TimeOfDay=%s", o.TimeOfDay)
-	}
-
+	if o.TimeOfDay.IsInitialized() { str += fmt.Sprintf(", TimeOfDay=%s", o.TimeOfDay) }
 	if len(o.Tags)>0 { str += fmt.Sprintf(", tags=%v", o.Tags) }
 	if len(o.NotTags)>0 { str += fmt.Sprintf(", not-tags=%v", o.NotTags) }
 	if len(o.Waypoints)>0 { str += fmt.Sprintf(", waypoints=%v", o.Waypoints) }
 	if len(o.NotWaypoints)>0 { str += fmt.Sprintf(", not-waypoints=%v", o.NotWaypoints) }
-
 	if !o.GRS.IsNil() { str += fmt.Sprintf(", %s", o.GRS.OnelineString()) }
-
-	// TODO: implement altitude in the Restrictions.
-	if o.AltitudeMin > 0 || o.AltitudeMax > 0 {
-		str += fmt.Sprintf("@[%d,%d]ft", o.AltitudeMin, o.AltitudeMax)
-	}
-
-	if o.TextString != "" {
-		str += fmt.Sprintf(", str='%s'", o.TextString)
-	}
+	// if o.TextString != "" { str += fmt.Sprintf(", str='%s'", o.TextString) }
 	
 	return str
 }
 
 // }}}
-
-func (r Report)ToCGIArgs() string { return r.Options.URLValues().Encode() }
-// These two are for html/template, so we can build URLs that aren't over-escaped
-func (r Report)CGIArgs() template.HTML { return template.HTML(r.ToCGIArgs()) }
-func (r Report)QuotedCGIArgs() template.JS { return template.JS("\""+r.ToCGIArgs()+"\"") }
-
 // {{{ o.URLValues
 
 // A bare minimum of args, to embed in track links, so tracks can render with report tooltips
@@ -378,60 +269,9 @@ func (o Options)URLValues() url.Values {
 
 // }}}
 
-/*
-	// {{{ r.ToCGIArgs
-
-// A bare minimum of args, to embed in track links, so tracks can render with report tooltips
-// and maps can see the geometry used
-func (r *Report)ToCGIArgs() string {
-	str := fmt.Sprintf("rep=%s&%s", r.Options.Name, widget.DateRangeToCGIArgs(r.Start, r.End))
-
-	if len(r.Tags) > 0 { str += fmt.Sprintf("&tags=%s", strings.Join(r.Tags,",")) }
-	if len(r.NotTags) > 0 { str += fmt.Sprintf("&nottags=%s", strings.Join(r.NotTags,",")) }
-	for i,wp := range r.Waypoints {
-		str += fmt.Sprintf("&waypoint%d=%s", i+1, wp)
-	}
-	for i,wp := range r.NotWaypoints {
-		str += fmt.Sprintf("&notwaypoint%d=%s", i+1, wp)
-	}
-
-	// TODO: inline dskey or ad-hoc GR
-	//// DIE
-	//
-	if !r.BoxCenter.IsNil() {
-		str += "&" + r.BoxCenter.ToCGIArgs("boxcenter")
-		if r.BoxRadiusKM > 0.0 { str += fmt.Sprintf("&boxradiuskm=%.2f", r.BoxRadiusKM) }
-		if r.BoxSideKM > 0.0 { str += fmt.Sprintf("&boxsidekm=%.2f", r.BoxSideKM) }
-		if r.BoxExcludes { str += "&boxexcludes=checked" }
-	}
-	if r.AltitudeMin > 0 { str += fmt.Sprintf("&altitudemin=%d", r.AltitudeMin) }
-	if r.AltitudeMax > 0 { str += fmt.Sprintf("&altitudemax=%d", r.AltitudeMax) }
-	
-	if !r.WindowStart.IsNil() {
-		str += "&" + r.WindowStart.ToCGIArgs("winstart")
-		str += "&" + r.WindowEnd.ToCGIArgs("winend")
-		if r.WindowMin > 0.0 { str += fmt.Sprintf("&winmin=%.0f", r.WindowMin) }
-		if r.WindowMax > 0.0 { str += fmt.Sprintf("&winmax=%.0f", r.WindowMax) }
-	}
-	//
-	/////
-
-	if r.TextString != "" { str += fmt.Sprintf("&textstring=%s", r.TextString) } // CGI Encoding ?
-	if r.AltitudeTolerance > 0.0 { str += fmt.Sprintf("&altitudetolerance=%.2f", r.AltitudeTolerance)}
-	if r.Duration != 0 { str += fmt.Sprintf("&duration=%s", r.Duration) }
-	if !r.ReferencePoint.IsNil() { str += "&" + r.ReferencePoint.ToCGIArgs("refpt") }
-	if !r.ReferencePoint2.IsNil() { str += "&" + r.ReferencePoint2.ToCGIArgs("refpt2") }
-	if r.RefDistanceKM > 0.0 { str += fmt.Sprintf("&refdistancekm=%.2f", r.RefDistanceKM) }
-
-	if r.TimeOfDay.IsInitialized() { str += "&"+r.TimeOfDay.ToCGIArgs("tod") }
-	
-	if r.TrackDataSource != "" { str += "&datasource="+r.TrackDataSource }
-
-	return str
-}
-
-// }}}
-*/
+func (r Report)ToCGIArgs() string { return r.Options.URLValues().Encode() }
+// This is for use from a html/template, so we can build URLs
+func (r Report)QuotedCGIArgs() template.JS { return template.JS("\""+r.ToCGIArgs()+"\"") }
 
 // {{{ -------------------------={ E N D }=----------------------------------
 

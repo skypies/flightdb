@@ -1,5 +1,8 @@
 package analysis
 
+// Report disabled; needs to move to the new restrictions model
+
+/*
 import (
 	"fmt"
 	"sort"
@@ -10,9 +13,9 @@ import (
 )
 
 func init() {
-	report.HandleReport("trains", TrainsReporter, "Flight Trains; within {duration}, when within {dist} of {refpoint}")
-	report.SummarizeReport("trains", TrainsSummarizer)
-	report.TrackSpec("trains", []string{"FA", "fr24"}) // *Not* ADSB; need data over ocean
+//	report.HandleReport("trains", TrainsReporter, "Flight Trains; within {duration}, when within {dist} of {refpoint}")
+//	report.SummarizeReport("trains", TrainsSummarizer)
+//	report.TrackSpec("trains", []string{"FA", "fr24"}) // *Not* ADSB; need data over ocean
 }
 
 // The few things we store about a flight
@@ -28,7 +31,6 @@ type ByTimeAsc []TrainsFlight
 func (a ByTimeAsc) Len() int           { return len(a) }
 func (a ByTimeAsc) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByTimeAsc) Less(i, j int) bool { return a[i].Time.Before(a[j].Time) }
-
 
 func TrainsReporter(r *report.Report, f *fdb.Flight, tis []fdb.TrackIntersection) (report.FlightReportOutcome, error) {
 	blob := TrainsBlob{Flights: []TrainsFlight{}}
@@ -102,3 +104,4 @@ func TrainsSummarizer(r *report.Report) {
 	
 	r.S[fmt.Sprintf("[Z] Max duration for entrainment")] = r.Options.Duration.String()
 }
+*/

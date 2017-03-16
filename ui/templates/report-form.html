@@ -193,7 +193,7 @@
               
           <tr><td>Saved sets</td><td>{{if .RestrictorSets}}
               <select name="grs_dskey">
-                <option value="">(please select)</option>
+                <option value="">(none selected)</option>
                 {{range .RestrictorSets}}
                 <option value="{{.DSKey}}">{{.OnelineString}}</option>{{end}}
               </select>
@@ -203,75 +203,6 @@
           <tr><td>Ad-hoc</td><td><br/><div class="box">
                 {{template "restrictors-gr-edit-form" .}}
           </div></td></tr>
-
-          <!--
-          <tr><td colspan="2"><b>Geo restrictions (1)</b>: Define a <b>{region}</b> of interest;
-              pick a center for a box. Leave
-              blank to report on all flights. Don't use regions less
-              than a few KM in size.<br/>
-          </td></tr>
-            
-          <tr>
-            <td>Center</td>
-            <td>
-              template "widget-waypoint-or-pos" dict "Waypoints" .Waypoints "Name" "boxcenter"
-            </td>
-          </tr>            
-          
-          <tr>
-            <td>Size (KM)</td>
-            <td>
-              Boxside <input type="text" name="boxsidekm" size="4" value=""/>
-            </td>
-          </tr>
-
-          <tr>
-            <td>Altitude (feet)</td>
-            <td>
-              Min:<input type="text" name="altitudemin" size="7" value=""/>,
-              Max:<input type="text" name="altitudemax" size="7" value=""/>
-              (blank == no limit)
-            </td>
-          </tr>
-
-          <tr>
-            <td>NOT logic</td>
-            <td>
-              Exclude, not include <input type="checkbox" name="boxexcludes"/>
-            </td>
-          </tr>
-          
-          <tr><td colspan="2"><br/><b>Geo restrictions (2)</b>:
-              And/or, define a geo <b>{window}</b> that flights must fly through.<br/>
-          </td></tr>
--->
-<!--
-Skyline Window
-37.495131, -122.368961
-37.206145, -122.048494
--->
-<!--
-          <tr>
-            <td>To</td>
-            <td>
-              template "widget-waypoint-or-pos" dict "Waypoints" .Waypoints "Name" "winstart"
-            </td>
-          </tr>            
-          <tr>
-            <td>From</td>
-            <td>
-              template "widget-waypoint-or-pos" dict "Waypoints" .Waypoints "Name" "winend"
-            </td>
-          </tr>
--->
-<!--          <tr>
-            <td>Window Altitude</td>
-            <td>
-              Min:<input type="text" name="winmin" size="7" value=""/>,
-              Max:<input type="text" name="winmax" size="7" value=""/>
-              (blank == no limit)
-            </td>
-          </tr>-->
           
           <tr><td colspan="2"><hr/></td></tr>
           <tr><td colspan="2"><b>Report-specific options</b> -
@@ -279,7 +210,7 @@ Skyline Window
           carefully at the report description for <b>{thing}</b> to
           see which.<br/><br/>
           </td></tr>
-
+<!--
           <tr>
             <td>Data Source [BROKEN]</td>
             <td>
@@ -289,7 +220,7 @@ Skyline Window
               let the report choose.
             </td>
           </tr>
-          
+--><input type="hidden" name="datasource" value="any"/>
           <tr>
             <td>Text string</td>
             <td>
@@ -358,10 +289,13 @@ Skyline Window
         <p style="text-align:center"><input class="button" type="submit" value="GENERATE"/></p>
         <br/>
         </div>
-
+        {{if .LogLevel}}
+        <input type="hidden" name="log" value="{{.LogLevel}}"/>
+        <p>Logging at level <code>{{.LogLevel}}</code>.</p>
+        {{end}}
+        <!--
         <p> Debug: <input type="text" name="debug" value="" size="1"/></p>
-        <input type="hidden" name="log" value="debug"/>
-
+-->
         <p>Instructions: <a href="https://goo.gl/2MVVSU">https://goo.gl/2MVVSU</a></p>
         
       </div>

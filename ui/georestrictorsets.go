@@ -417,13 +417,13 @@ func flightToRestrictedMapPoints(f *fdb.Flight, grs fdb.GeoRestrictorSet) []MapP
 // {{{ notes
 
 // To handle a new kind of restriction:
-//  * Declare a struct and the required methods to geo/newrestrictions.go
+//  * Declare a struct and the required methods to geo/restrictions.go
 //  * Add a bunch of form fields to ui/templates/restrictors-gr-edit-form.html; make sure to ...
 //     * tag the table with id="shortname" so it can be hidden/exposed
 //     * add an <option> to the <select>
 //     * use template params to initialize the form elements
-//  * Add a corresponding stanza to geoRestrictorIntoParams(), parsing form fields
-//  * Add a corresponding stanza to formValueGeoRestrictor(), writing out init template params
+//  * Add a corresponding stanza to GeoRestrictorAsValues(), expressing as key/val pairs
+//  * Add a corresponding stanza to FormValueGeoRestrictor(), parsing key/val pairs
 //  * Add a bunch of good tests to intersectabletrack_test.go
 
 // }}}

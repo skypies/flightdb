@@ -1,4 +1,4 @@
-package main
+package backend
 
 import(
 	"encoding/json"
@@ -24,7 +24,7 @@ func init() {
 }
 
 func ButtonPOST(anchor, action string, idspecs []string) string {
-	// Would be nice to view the complement - approaches of flights that did not match
+	action += "&colorby=altitude"
 	posty := fmt.Sprintf("<form action=\"%s\" method=\"post\" target=\"_blank\">", action)
 	posty += fmt.Sprintf("<button type=\"submit\" name=\"idspec\" value=\"%s\" "+
 		"class=\"btn-link\">%s</button>", strings.Join(idspecs,","), anchor)
@@ -55,6 +55,10 @@ func reportHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) 
 			"Title": fmt.Sprintf("Reports"),
 		}
 
+		if r.FormValue("log") != "" {
+			params["LogLevel"] = r.FormValue("log")
+		}
+		
 		fdb.BlankGeoRestrictorIntoParams(params)
 		
 		if opt.UserEmail != "" {
@@ -85,17 +89,19 @@ func reportHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) 
 		w.Write([]byte(fmt.Sprintf("OK\n--\n%s\n", string(jsonBytes))))//rep.Options)))
 		return
 	}
-	
+
 	idspecsAccepted := []string{}
 	idspecsRejectByRestrict := []string{}
 	idspecsRejectByReport := []string{}
 
 	query := db.QueryForTimeRangeWaypoint(rep.Tags, rep.Options.Waypoints, rep.Start,rep.End)
-		
 	iter := db.NewLongIterator(query)
 	n := 0
 	tStart := time.Now()
+	tBottomOfLoop := tStart
 	for iter.Iterate() {
+		rep.Stats.RecordValue("flightfetch", (time.Since(tBottomOfLoop).Nanoseconds()/1000))
+
 		if iter.Err() != nil { break }
 		f := iter.Flight()
 		n++
@@ -107,6 +113,8 @@ func reportHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) 
 			return
 		}
 
+		tBottomOfLoop = time.Now()
+	
 		switch outcome {
 		case report.RejectedByGeoRestriction:
 			idspecsRejectByRestrict = append(idspecsRejectByRestrict, f.IdSpecString())

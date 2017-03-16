@@ -16,19 +16,21 @@ window.onload = function() {
 };
 </script>
 
-<p> Restrictor Type:
-  <select name="gr_type" onchange="ShowSubform(this.value);">
-    <option value="squarebox" {{if .gr_type | eq "squarebox"}}selected="1"{{end}}>
-      Square Box</option>
-    <option value="verticalplane"{{if .gr_type | eq "verticalplane"}}selected="1"{{end}}>
-      Vertical Plane</option>
-  </select>
-</p>
-<hr/>
+<div><p>
+    <b> Restrictor Type: </b>
+    <select name="gr_type" onchange="ShowSubform(this.value);">
+      <option value="" {{if .gr_type | eq ""}}selected="1"{{end}}>(choose)</option>
+      <option value="squarebox" {{if .gr_type | eq "squarebox"}}selected="1"{{end}}>
+        Square Box</option>
+      <option value="verticalplane"{{if .gr_type | eq "verticalplane"}}selected="1"{{end}}>
+        Vertical Plane</option>
+    </select>
+  </p>
+  <br/>
+</div>
 
 <div id="squarebox">
   <table>
-    <tr><td valign="top"><b>Square Box</b></td></tr>
     <tr>
       <td>Center</td>
       <td>{{template "widget-waypoint-or-pos" nlldict "sb_center" . }}
@@ -37,6 +39,14 @@ window.onload = function() {
       <td>Side KM</td>
       <td>
         <input type="text" name="sb_sidekm" value={{if .sb_sidekm}}"{{.sb_sidekm}}"{{else}}"1"{{end}}/>
+      </td>
+    </tr>
+    <tr>
+      <td>Altitude</td>
+      <td>
+        Min:<input type="text" size="8" name="sb_altmin" value="{{if .sb_altmin}}{{.sb_altmin}}{{end}}"/>, 
+        Max:<input type="text" size="8" name="sb_altmax" value="{{if .sb_altmax}}{{.sb_altmax}}{{end}}"/>
+        (in feet; zero for no limit)
       </td>
     </tr>
     <tr>
@@ -51,7 +61,6 @@ window.onload = function() {
 
 <div id="verticalplane">
   <table>
-    <tr><td valign="top"><b>Vertical Plane</b></td></tr>
     <tr>
       <td>Start</td>
       <td>{{template "widget-waypoint-or-pos" nlldict "vp_start" . }}
@@ -59,6 +68,14 @@ window.onload = function() {
     <tr>
       <td>End</td>
       <td>{{template "widget-waypoint-or-pos" nlldict "vp_end" . }}
+    </tr>
+    <tr>
+      <td>Altitude</td>
+      <td>
+        Min:<input type="text" size="8" name="vp_altmin" value="{{if .vp_altmin}}{{.vp_altmin}}{{end}}"/>, 
+        Max:<input type="text" size="8" name="vp_altmax" value="{{if .vp_altmax}}{{.vp_altmax}}{{end}}"/>
+        (in feet; zero for no limit)
+      </td>
     </tr>
     <tr>
       <td>Exclusion</td>
