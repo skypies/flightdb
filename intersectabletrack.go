@@ -28,6 +28,7 @@ type RestrictorIntersectOutcome struct {
 type RestrictorSetIntersectOutcome struct {
 	Outcomes     []RestrictorIntersectOutcome 
 }
+
 // {{{ o.Satisfies
 
 // Satsifies applies the combination logic to the individual outcomes to get a final outcome.
