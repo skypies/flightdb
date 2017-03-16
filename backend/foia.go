@@ -22,8 +22,8 @@ import(
 	"github.com/skypies/geo"
 	"github.com/skypies/util/date"
 	"github.com/skypies/util/widget"
-	fdb "github.com/skypies/flightdb2"
-	"github.com/skypies/flightdb2/fgae"
+	fdb "github.com/skypies/flightdb"
+	"github.com/skypies/flightdb/fgae"
 )
 
 func init() {

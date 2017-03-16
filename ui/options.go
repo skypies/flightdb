@@ -9,9 +9,9 @@ import(
 	"golang.org/x/net/context"
 
 	"github.com/skypies/util/widget"
-	fdb "github.com/skypies/flightdb2"
-	"github.com/skypies/flightdb2/fpdf"
-	"github.com/skypies/flightdb2/report"
+	fdb "github.com/skypies/flightdb"
+	"github.com/skypies/flightdb/fpdf"
+	"github.com/skypies/flightdb/report"
 )
 
 

@@ -7,7 +7,7 @@ import(
 	"github.com/skypies/pi/airspace"
 	"github.com/skypies/geo"
 
-	fdb "github.com/skypies/flightdb2"
+	fdb "github.com/skypies/flightdb"
 )
 
 // {{{ snapshot2AirspaceAircraft

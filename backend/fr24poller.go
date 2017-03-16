@@ -12,10 +12,10 @@ import(
 	"golang.org/x/net/context"
 
 	"github.com/skypies/geo/sfo"
-	fdb "github.com/skypies/flightdb2"
-	"github.com/skypies/flightdb2/fgae"
-	"github.com/skypies/flightdb2/fr24"
-	"github.com/skypies/flightdb2/ref"
+	fdb "github.com/skypies/flightdb"
+	"github.com/skypies/flightdb/fgae"
+	"github.com/skypies/flightdb/fr24"
+	"github.com/skypies/flightdb/ref"
 )
 // dev_appserver.py --clear_datastore=yes ./ui.yaml
 

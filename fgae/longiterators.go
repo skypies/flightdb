@@ -2,7 +2,7 @@ package fgae
 
 import(
 	"google.golang.org/appengine/datastore"
-	fdb "github.com/skypies/flightdb2"
+	fdb "github.com/skypies/flightdb"
 )
 
 // LongIterator is a drop-in replacement, to allow the consumer to spend more than 60s

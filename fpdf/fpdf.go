@@ -8,7 +8,7 @@ import(
 	"time"
 	"github.com/jung-kurt/gofpdf" // https://godoc.org/github.com/jung-kurt/gofpdf
 	"github.com/skypies/geo/sfo"
-	fdb "github.com/skypies/flightdb2"
+	fdb "github.com/skypies/flightdb"
 )
 
 type ColorScheme int

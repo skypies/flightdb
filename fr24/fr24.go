@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/skypies/adsb"
-	fdb "github.com/skypies/flightdb2"
+	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/pi/airspace"
 	"github.com/skypies/geo"
 )

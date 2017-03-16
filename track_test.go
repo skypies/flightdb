@@ -1,4 +1,4 @@
-package flightdb2
+package flightdb
 
 // go test -v github.com/skypies/flightdb2
 

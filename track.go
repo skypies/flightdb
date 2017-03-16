@@ -1,4 +1,4 @@
-package flightdb2
+package flightdb
 
 import(
 	"bytes"
@@ -13,7 +13,7 @@ import(
 	"github.com/skypies/geo"
 	"github.com/skypies/geo/altitude"
 	"github.com/skypies/util/date"
-	"github.com/skypies/flightdb2/metar"
+	"github.com/skypies/flightdb/metar"
 )
 
 var(

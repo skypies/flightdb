@@ -6,7 +6,7 @@ import(
 	"time"
 	
 	"github.com/skypies/geo"
-	fdb "github.com/skypies/flightdb2"
+	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/util/date"
 )
 

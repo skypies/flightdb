@@ -10,7 +10,7 @@ import(
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/log"
 
-	fdb "github.com/skypies/flightdb2"
+	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/util/gaeutil"
 )
 

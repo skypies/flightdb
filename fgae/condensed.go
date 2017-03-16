@@ -10,7 +10,7 @@ import(
 	"google.golang.org/appengine/log"
 
 	"github.com/skypies/util/gaeutil"
-	fdb "github.com/skypies/flightdb2"
+	fdb "github.com/skypies/flightdb"
 )
 
 // {{{ db.FetchCondensedFlights

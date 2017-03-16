@@ -13,7 +13,7 @@ import (
 	"github.com/skypies/geo"
 	//"github.com/skypies/pi/airspace"
 
-	//fdb "github.com/skypies/flightdb2"
+	//fdb "github.com/skypies/flightdb"
 )
 
 type Flightaware struct {

@@ -20,7 +20,7 @@ import (
 	"github.com/skypies/util/widget"
 
 	adsblib "github.com/skypies/adsb"
-	fdb "github.com/skypies/flightdb2"
+	fdb "github.com/skypies/flightdb"
 )
 
 var(

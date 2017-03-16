@@ -11,7 +11,7 @@ import (
 
 	"google.golang.org/appengine/aetest"
 
-	fdb "github.com/skypies/flightdb2"
+	fdb "github.com/skypies/flightdb"
 )
 
 /* Misordered Frags

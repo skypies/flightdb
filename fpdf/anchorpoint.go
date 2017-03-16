@@ -4,7 +4,7 @@ import(
 	"fmt"
 
 	"github.com/skypies/geo"
-	fdb "github.com/skypies/flightdb2"
+	fdb "github.com/skypies/flightdb"
 )
 
 type AnchorPoint struct {

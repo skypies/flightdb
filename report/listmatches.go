@@ -8,7 +8,7 @@ import(
 	"github.com/skypies/util/date"
 	
 
-	fdb "github.com/skypies/flightdb2"
+	fdb "github.com/skypies/flightdb"
 )
 
 func init() {

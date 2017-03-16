@@ -1,4 +1,4 @@
-package flightdb2
+package flightdb
 
 import(
 	"bytes"

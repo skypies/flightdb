@@ -13,9 +13,9 @@ import(
 	"github.com/skypies/geo"
 	"github.com/skypies/geo/sfo"
 	"github.com/skypies/util/widget"
-	fdb "github.com/skypies/flightdb2"
-	"github.com/skypies/flightdb2/fgae"
-	"github.com/skypies/flightdb2/ref"
+	fdb "github.com/skypies/flightdb"
+	"github.com/skypies/flightdb/fgae"
+	"github.com/skypies/flightdb/ref"
 )
 
 var uriStem = "/fdb/restrictors"

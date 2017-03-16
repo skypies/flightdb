@@ -6,7 +6,7 @@ import(
 	"github.com/skypies/adsb"
 	"github.com/skypies/util/date"
 
-	fdb "github.com/skypies/flightdb2"
+	fdb "github.com/skypies/flightdb"
 )
 
 // Wrap the default query, so we can provide a higher level fluent query API

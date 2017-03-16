@@ -6,7 +6,7 @@ import(
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/user"
 
-	"github.com/skypies/flightdb2/metar"
+	"github.com/skypies/flightdb/metar"
 )
 
 // TODO: just embed / extract this data from the regular context

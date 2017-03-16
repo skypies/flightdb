@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"math"
 
-	fdb "github.com/skypies/flightdb2"
-	"github.com/skypies/flightdb2/report"
+	fdb "github.com/skypies/flightdb"
+	"github.com/skypies/flightdb/report"
 )
 
 func init() {

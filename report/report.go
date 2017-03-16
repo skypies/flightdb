@@ -8,7 +8,7 @@ import(
 
 	"github.com/skypies/util/date"
 	"github.com/skypies/util/histogram"
-	fdb "github.com/skypies/flightdb2"
+	fdb "github.com/skypies/flightdb"
 )
 
 type FlightReportOutcome int

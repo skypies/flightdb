@@ -12,7 +12,7 @@ import(
 	"github.com/skypies/geo"
 	"github.com/skypies/geo/sfo"
 
-	"github.com/skypies/flightdb2/fgae"
+	"github.com/skypies/flightdb/fgae"
 )
 
 func init() {

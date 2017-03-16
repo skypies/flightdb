@@ -8,8 +8,8 @@ import(
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/user"
 
-	_ "github.com/skypies/flightdb2/analysis" // populate the reports registry
-	"github.com/skypies/flightdb2/fgae"
+	_ "github.com/skypies/flightdb/analysis" // populate the reports registry
+	"github.com/skypies/flightdb/fgae"
 	"github.com/skypies/util/widget"
 )
 

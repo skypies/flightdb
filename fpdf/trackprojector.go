@@ -2,7 +2,7 @@ package fpdf
 
 import(
 	"github.com/skypies/geo"
-	fdb "github.com/skypies/flightdb2"
+	fdb "github.com/skypies/flightdb"
 )
 
 // A TrackProjector projects trackpoints into a 2D coordinate space (distNM by altitude)

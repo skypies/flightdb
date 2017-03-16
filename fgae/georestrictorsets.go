@@ -6,7 +6,7 @@ import(
 	"google.golang.org/appengine/datastore"
 
 	//"github.com/skypies/geo"
-	fdb "github.com/skypies/flightdb2"
+	fdb "github.com/skypies/flightdb"
 )
 
 const	kRestrictorSetKind = "RSet"

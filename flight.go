@@ -1,11 +1,11 @@
-package flightdb2
+package flightdb
 
 import(
 	"fmt"
 	"sort"
 	"time"
 	"github.com/skypies/geo/altitude"
-	"github.com/skypies/flightdb2/metar"
+	"github.com/skypies/flightdb/metar"
 	"github.com/skypies/util/date"
 )
 

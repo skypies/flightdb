@@ -7,7 +7,7 @@ import(
 	
 	"github.com/skypies/util/widget"
 
-	fdb "github.com/skypies/flightdb2"
+	fdb "github.com/skypies/flightdb"
 )
 
 // A few helper functions to make writing report routines a bit less cut-n-pasto

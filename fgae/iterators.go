@@ -2,7 +2,7 @@ package fgae
 
 import(
 	"google.golang.org/appengine/datastore"
-	fdb "github.com/skypies/flightdb2"
+	fdb "github.com/skypies/flightdb"
 )
 
 type Iterator struct {

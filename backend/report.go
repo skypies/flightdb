@@ -12,11 +12,11 @@ import(
 	
 	"github.com/skypies/geo/sfo"
 	"github.com/skypies/util/date"
-	fdb "github.com/skypies/flightdb2"
-	"github.com/skypies/flightdb2/fgae"
-	"github.com/skypies/flightdb2/ui"
-	"github.com/skypies/flightdb2/report"
-	_ "github.com/skypies/flightdb2/analysis" // populate the reports registry
+	fdb "github.com/skypies/flightdb"
+	"github.com/skypies/flightdb/fgae"
+	"github.com/skypies/flightdb/ui"
+	"github.com/skypies/flightdb/report"
+	_ "github.com/skypies/flightdb/analysis" // populate the reports registry
 )
 
 func init() {
