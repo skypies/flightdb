@@ -3,7 +3,7 @@
 {{template "js-overlays" . }}
 {{template "js-textboxes"}}
 
-{{if .Points}}  {{template "js-map-shapes" . }} {{end}}
+{{if .Shapes}}  {{template "js-map-shapes" . }} {{end}}
 {{if .IdSpecs}} {{template "js-map-ajax" . }}   {{end}}
 {{if or (.Heatmap) (.Usermap)}} {{template "js-heatmap"}} {{end}}
 
@@ -49,7 +49,7 @@ function initMap() {
     {{if .ClassBOverlay}}ClassBOverlay();{{end}}
     PathsOverlay();
     PaintLegend( {{.Legend}} );
-    {{if .Points}}ShapesOverlay();{{end}}
+    {{if .Shapes}}ShapesOverlay();{{end}}
     {{if .IdSpecs}}StreamVectors();{{end}}
 
     {{if .Heatmap}}

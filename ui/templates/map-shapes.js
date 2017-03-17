@@ -3,7 +3,7 @@
 function ShapesOverlay() {
     var infowindow = new google.maps.InfoWindow({ content: "holding..." });
 
-    points = {{.Points}}
+    points = {{.Shapes.PointsToJSMap}}
     for (var i in points) {
         var icon = points[i].icon
         if (!icon) { icon = "pink" }
@@ -23,7 +23,7 @@ function ShapesOverlay() {
         });
     }
 
-    lines = {{.Lines}}
+    lines = {{.Shapes.LinesToJSMap}}
     for (var i in lines) {
         var color = lines[i].color
         if (!color) { color = "#dd5508" }
@@ -43,7 +43,7 @@ function ShapesOverlay() {
         line.setMap(map)
     }
 
-    circles = {{.Circles}}
+    circles = {{.Shapes.CirclesToJSMap}}
     for (var i in circles) {
         var color = circles[i].color
         var circle = new google.maps.Circle({
@@ -58,6 +58,30 @@ function ShapesOverlay() {
             radius: circles[i].radiusmeters
         });
     }
+
+    icons = {{.Shapes.IconsToJSMap}}
+    for (var i in icons) {
+        zIndex = icons[i].zindex
+        if (!zIndex) { zIndex = 600 }
+        var newicon = arrowicon(icons[i].color, icons[i].rot);
+        var marker = new google.maps.Marker({
+            title: icons[i].text,
+            position: icons[i].center,
+            icon: newicon,
+            zIndex: zIndex,
+            map: map
+        });
+    }
 }
 
+function arrowicon(color,rotation) {
+    return {
+        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+        scale: 3,
+        strokeColor: color,
+        strokeWeight: 2,
+        rotation: rotation,
+    };
+}
+    
 {{end}}

@@ -20,6 +20,7 @@ var (
 		"dict": templateDict,                 // {{template "foo" dict "Key" "Val" "OtherArgs" . }}
 		"unprefixdict": templateUnprefixDict, // {{template "foo" unprefixdict "foo_prefix" . }}
 		"nlldict": templateExtractNLLParams,  // only used by the widget-waypoint-or-pos template
+		"selectdict": templateSelectDict,
 		"km2feet": templateKM2Feet,
 		"spacify": templateSpacifyFlightNumber,
 		"formatPdt": templateFormatPdt,
@@ -68,6 +69,15 @@ func templateUnprefixDict(prefix string, valueMap interface{}) map[string]interf
 		dict[strs[1]] = v
 	}
 	return dict
+}
+
+// This comes from complaints. Template functions are a mess right now :(
+func templateSelectDict(name, dflt string, vals interface{}) map[string]interface{} {
+	return map[string]interface{}{
+		"Name": name,
+		"Default": dflt,
+		"Vals": vals,
+	}
 }
 
 // Returns a dict containing all the paramters needed to render the waypoint-or-pos widget template.

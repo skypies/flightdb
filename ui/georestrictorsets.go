@@ -194,13 +194,10 @@ func rGrsViewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request
 	params := map[string]interface{}{
 		"Legend": legend,
 		"Waypoints": WaypointMapVar(sfo.KFixes),
-		"Circles": MapCirclesToJSVar(ms.Circles),
-		"Lines":  MapLinesToJSVar(ms.Lines),
-		"Points": MapPointsToJSVar(ms.Points),
+		"Shapes": ms,
 	}
 	getGoogleMapsParams(r, params)
 	params["MapsAPIKey"] = "AIzaSyDZd-t_YjSNGKmtmh6eR4Bt6eRR_w72b18"
-
 	
 	if err := templates.ExecuteTemplate(w, "map", params); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

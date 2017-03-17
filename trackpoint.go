@@ -220,6 +220,24 @@ func (from Trackpoint)InterpolateTo(to Trackpoint, ratio float64) InterpolatedTr
 }
 
 // }}}
+// {{{ tp.RepositionByTime
+
+// RepositionByTime returns a trackpoint that has been repositioned, assuming it was
+// travelling at constant velocity. The duration passed in determines how far to move in either
+// direction.
+func (s Trackpoint)RepositionByTime(d time.Duration) Trackpoint {
+	e := s
+
+	hDistMeters := geo.NMph2mps(s.GroundSpeed) * d.Seconds() // 1 knot == 1 NM/hour
+
+	e.Latlong = s.Latlong.MoveKM(s.Heading, hDistMeters/1000.0)
+	e.Altitude += (float64(s.VerticalRate) / 60.0) * d.Seconds() // vert rat in feet per minute
+	e.TimestampUTC = s.TimestampUTC.Add(d)
+	
+	return e
+}
+
+// }}}
 
 
 // {{{ -------------------------={ E N D }=----------------------------------

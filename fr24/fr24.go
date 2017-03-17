@@ -197,6 +197,11 @@ func currentListEntry2FlightIdentity(v []interface{}, id *fdb.Identity) {
 	
 // {{{ db.ParseCurrentList
 
+// ["cc51d4f",  "AD41CD",   36.3006,   -121.2479,  326,
+//  22216,      376,        "1064",    "T-MLAT2",  "B737"
+//  "N953WN",   1489779000, "LAX",     "SAT",      "WN1699",
+//  0,          -2176,      "SWA1699", 0]
+
 func (db *Fr24)ParseCurrentList(body []byte) ([]fdb.FlightSnapshot, error) {
 	jsonMap := map[string]interface{}{}
 	if err := json.Unmarshal(body, &jsonMap); err != nil { return nil, err }
@@ -219,6 +224,7 @@ func (db *Fr24)ParseCurrentList(body []byte) ([]fdb.FlightSnapshot, error) {
 				Heading:       v[4].(float64),
 				Latlong:       geo.Latlong{v[2].(float64), v[3].(float64)},
 				GroundSpeed:   v[6].(float64),
+				VerticalRate:  v[16].(float64),
 				Altitude:      v[5].(float64),
 				Squawk:        v[7].(string),
 			},
@@ -468,6 +474,7 @@ func SnapshotToAircraftData(fs fdb.FlightSnapshot) airspace.AircraftData {
 			Callsign: fs.Flight.NormalizedCallsignString(),
 			Altitude: int64(fs.Trackpoint.Altitude),
 			GroundSpeed: int64(fs.Trackpoint.GroundSpeed),
+			VerticalRate: int64(fs.Trackpoint.VerticalRate),
 			Track: int64(fs.Trackpoint.Heading),
 			Position: fs.Trackpoint.Latlong,
 		},

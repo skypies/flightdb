@@ -72,10 +72,7 @@ func WaypointMapVar(in map[string]geo.Latlong) template.JS {
 func MapHandler(w http.ResponseWriter, r *http.Request) {	
 	var params = map[string]interface{}{
 		"Legend": "purple={SERFR2,BRIXX1,WWAVS1}; cyan={BIGSUR3}",
-		"Waypoints": WaypointMapVar(sfo.KFixes),
 	}
-	getGoogleMapsParams(r, params)
-	params["Zoom"] = 9
 
 	if r.FormValue("heatmap") != "" {
 		params["Heatmap"] = r.FormValue("heatmap")
@@ -85,17 +82,28 @@ func MapHandler(w http.ResponseWriter, r *http.Request) {
 
 	}
 	
+	ms := NewMapShapes()	
 	if r.FormValue("boxes") != "" {
-		ms := NewMapShapes()	
 		for _,stem := range widget.FormValueCommaSepStrings(r,"boxes") {
 			box := geo.FormValueLatlongBox(r, stem)
 			for _,line := range box.ToLines() {
 				ms.AddLine(MapLine{Start:line.From, End:line.To, Color:"#ff0000"})
 			}
 		}
-		params["Lines"] = MapLinesToJSVar(ms.Lines)
-		params["Points"] = MapPointsToJSVar(ms.Points) // Just to trigger map-shapes mode
 	}
+
+	MapHandlerWithShapesParams(w, r, ms, params)
+}
+
+// }}}
+// {{{ MapHandlerWithShapesParams
+
+func MapHandlerWithShapesParams(w http.ResponseWriter, r *http.Request, ms *MapShapes, params map[string]interface{}) {	
+	getGoogleMapsParams(r, params)
+
+	params["Zoom"] = 9
+	params["Shapes"] = ms
+	params["Waypoints"] = WaypointMapVar(sfo.KFixes)
 	
 	if err := templates.ExecuteTemplate(w, "map", params); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

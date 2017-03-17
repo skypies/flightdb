@@ -298,10 +298,8 @@ func OutputTrackpointsOnAMap(ctx context.Context, w http.ResponseWriter, r *http
 	
 	var params = map[string]interface{}{
 		"Legend": legend,
-		"Points": MapPointsToJSVar(ms.Points),
-		"Lines": MapLinesToJSVar(ms.Lines),
-		"Circles": MapCirclesToJSVar(ms.Circles),
 		"Waypoints": WaypointMapVar(sfo.KFixes),
+		"Shapes": ms,
 	}
 
 	getGoogleMapsParams(r, params)
@@ -339,9 +337,7 @@ func OutputMapLinesOnAStreamingMap(ctx context.Context, w http.ResponseWriter, r
 	
 	var params = map[string]interface{}{
 		"Legend": legend,
-		"Points": MapPointsToJSVar(ms.Points),
-		"Lines": MapLinesToJSVar(ms.Lines),
-		"Circles": MapCirclesToJSVar(ms.Circles),
+		"Shapes": ms,
 		"IdSpecs": IdSpecsToJSVar(opt.IdSpecStrings),
 		"VectorURLPath": vectorURLPath,  // retire this when DBv1/v2ui.go and friends are gone
 		"TrackSpec": trackspec,

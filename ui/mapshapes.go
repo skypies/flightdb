@@ -15,42 +15,47 @@ type MapShapes struct {
 	Circles []MapCircle
 	Lines []MapLine
 	Points []MapPoint
+	Icons []MapIcon
 }
+
+// {{{ NewMapShapes
+
 func NewMapShapes() *MapShapes {
 	ms := MapShapes{
 		Circles: []MapCircle{},
 		Lines: []MapLine{},
 		Points: []MapPoint{},
+		Icons: []MapIcon{},
 	}
 	return &ms
 }
+
+// }}}
+// {{{ ms.Add [Line,Point,Circle,Icon]
+
 func (ms1 *MapShapes)Add(ms2 *MapShapes) {
 	ms1.Circles = append(ms1.Circles, ms2.Circles...)
 	ms1.Lines   = append(ms1.Lines,   ms2.Lines...)
 	ms1.Points  = append(ms1.Points,  ms2.Points...)
+	ms1.Icons   = append(ms1.Icons,   ms2.Icons...)
 }
+
 func (ms1 *MapShapes)AddLine(ml MapLine) { ms1.Lines = append(ms1.Lines, ml) }
 func (ms1 *MapShapes)AddPoint(mp MapPoint) { ms1.Points = append(ms1.Points, mp) }
 func (ms1 *MapShapes)AddCircle(mc MapCircle) { ms1.Circles = append(ms1.Circles, mc) }
+func (ms1 *MapShapes)AddIcon(mi MapIcon) { ms1.Icons = append(ms1.Icons, mi) }
 
+// }}}
+
+// {{{ MapCircle{}
 
 type MapCircle struct {
 	C *geo.LatlongCircle
 	Color string
 }
-func (mc MapCircle)ToJSStr(text string) string {
-	color := mc.Color
-	if color == "" { color = "#000000" }
-	return fmt.Sprintf("center :{lat:%f, lng:%f}, radiusmeters: %.0f, color:%q",
-		mc.C.Lat, mc.C.Long, mc.C.RadiusKM*1000.0, color)
-}
-func MapCirclesToJSVar(circles []MapCircle) template.JS {
-	str := "{\n"
-	for i,mc := range circles {
-		str += fmt.Sprintf("    %d: {%s},\n", i, mc.ToJSStr(""))
-	}
-	return template.JS(str + "  }\n")		
-}
+
+// }}}
+// {{{ MapPoint{}
 
 type MapPoint struct {
 	ITP   *fdb.InterpolatedTrackpoint
@@ -60,6 +65,41 @@ type MapPoint struct {
 	Icon   string  // The <foo> in /static/dot-<foo>.png
 	Text   string	
 }
+
+// }}}
+// {{{ MapLine{}
+
+type MapLine struct {
+	Start geo.Latlong `json:"s"`
+	End   geo.Latlong `json:"e"`
+
+	Color        string  `json:"color"`    // A hex color value (e.g. "#ff8822")
+	Opacity      float64 `json:"opacity"`
+}
+
+// }}}
+// {{{ MapIcon{}
+
+type MapIcon struct {
+	TP    *fdb.Trackpoint
+	ZIndex int
+	Color  string
+	Text   string
+}
+
+// }}}
+
+// {{{ mc.ToJSStr
+
+func (mc MapCircle)ToJSStr(text string) string {
+	color := mc.Color
+	if color == "" { color = "#000000" }
+	return fmt.Sprintf("center :{lat:%f, lng:%f}, radiusmeters: %.0f, color:%q",
+		mc.C.Lat, mc.C.Long, mc.C.RadiusKM*1000.0, color)
+}
+
+// }}}
+// {{{ mp.ToJSStr
 
 func (mp MapPoint)ToJSStr(text string) string {
 	if mp.Icon == "" { mp.Icon = "pink" }
@@ -93,14 +133,8 @@ func (mp MapPoint)ToJSStr(text string) string {
 	return str
 }
 
-
-type MapLine struct {
-	Start geo.Latlong `json:"s"`
-	End   geo.Latlong `json:"e"`
-
-	Color        string  `json:"color"`    // A hex color value (e.g. "#ff8822")
-	Opacity      float64 `json:"opacity"`
-}
+// }}}
+// {{{ ml.ToJSStr
 
 func (ml MapLine)ToJSStr(text string) string {
 	color,op := ml.Color, ml.Opacity
@@ -110,21 +144,65 @@ func (ml MapLine)ToJSStr(text string) string {
 		ml.Start.Lat, ml.Start.Long, ml.End.Lat, ml.End.Long, color, op) 
 }
 
-func MapPointsToJSVar(points []MapPoint) template.JS {
+// }}}
+// {{{ mi.ToJSStr
+
+func (mi MapIcon)ToJSStr() string {
+	color := mi.Color
+	if color == "" { color = "#000000" }
+	return fmt.Sprintf("center: {lat:%f, lng:%f}, rot: %.0f, color:%q, text:%q, zindex:%d",
+		mi.TP.Lat, mi.TP.Long, mi.TP.Heading, color, mi.Text, mi.ZIndex)
+}
+
+// }}}
+
+// These FooAsJSMap methods are invoked from the map-shapes.js template
+// {{{ ms.CirclesAsJSMap
+
+func (ms MapShapes)CirclesToJSMap() template.JS {
 	str := "{\n"
-	for i,mp := range points {
+	for i,mc := range ms.Circles {
+		str += fmt.Sprintf("    %d: {%s},\n", i, mc.ToJSStr(""))
+	}
+	return template.JS(str + "  }\n")		
+}
+
+// }}}
+// {{{ ms.PointsAsJSMap
+
+func (ms MapShapes)PointsToJSMap() template.JS {
+	str := "{\n"
+	for i,mp := range ms.Points {
 		str += fmt.Sprintf("    %d: {%s},\n", i, mp.ToJSStr(""))
 	}
 	return template.JS(str + "  }\n")		
 }
 
-func MapLinesToJSVar(lines []MapLine) template.JS {
+// }}}
+// {{{ ms.LinesAsJSMap
+
+func (ms MapShapes)LinesToJSMap() template.JS {
 	str := "{\n"
-	for i,ml := range lines {
+	for i,ml := range ms.Lines {
 		str += fmt.Sprintf("    %d: {%s},\n", i, ml.ToJSStr(""))
 	}
 	return template.JS(str + "  }\n")		
 }
+
+// }}}
+// {{{ ms.IconsAsJSMap
+
+func (ms MapShapes)IconsToJSMap() template.JS {
+	str := "{\n"
+	for i,mi := range ms.Icons {
+		str += fmt.Sprintf("    %d: {%s},\n", i, mi.ToJSStr())
+	}
+	return template.JS(str + "  }\n")		
+}
+
+// }}}
+
+// {{{ LatlongTimeBoxToMapLines
 
 func LatlongTimeBoxToMapLines(tb geo.LatlongTimeBox, color string) []MapLine {
 	maplines := []MapLine{}
@@ -135,6 +213,9 @@ func LatlongTimeBoxToMapLines(tb geo.LatlongTimeBox, color string) []MapLine {
 	}
 	return maplines
 }
+
+// }}}
+// {{{ TrackToMapPoints
 
 // This is a kind of abuse of ColoringStrategy from colorscheme.go
 func TrackToMapPoints(t *fdb.Track, icon, banner string, coloring ColoringStrategy) []MapPoint {
@@ -189,9 +270,20 @@ func TrackToMapPoints(t *fdb.Track, icon, banner string, coloring ColoringStrate
 		pointText := fmt.Sprintf("Point %d/%d\n%s", i, len(*t), banner)
 		
 		points = append(points, MapPoint{
-			TP: &tp, Icon:color,
+			TP: &tp,
+			Icon:color,
 			Text: pointText,
 		})
 	}
 	return points
 }
+
+// }}}
+
+// {{{ -------------------------={ E N D }=----------------------------------
+
+// Local variables:
+// folded-file: t
+// end:
+
+// }}}
