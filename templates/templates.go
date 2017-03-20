@@ -1,9 +1,9 @@
-package backend
-// TODO: mrege this with the UI one
+package templates
 
 import(
 	"errors"
 	"html/template"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -14,18 +14,28 @@ import(
 
 // value="{{sort .AStringSlice | flatten}}"
 var (
-	templates = template.Must(template.New("").Funcs(template.FuncMap{
+)
+
+func LoadTemplates(dir string) *template.Template {
+	t := template.New("").Funcs(template.FuncMap{
 		"add": templateAdd,
 		"flatten": templateFlatten,
 		"sort": templateSort,                 // <p value="{{sort .AStringSlice | flatten}}" />
 		"dict": templateDict,                 // {{template "foo" dict "Key" "Val" "OtherArgs" . }}
 		"unprefixdict": templateUnprefixDict, // {{template "foo" unprefixdict "foo_prefix" . }}
 		"nlldict": templateExtractNLLParams,  // only used by the widget-waypoint-or-pos template
+		"selectdict": templateSelectDict,
 		"km2feet": templateKM2Feet,
 		"spacify": templateSpacifyFlightNumber,
 		"formatPdt": templateFormatPdt,
-	}).ParseGlob("templates/*"))
-)
+	})
+	
+	if _, err := os.Stat(dir); ! os.IsNotExist(err) {
+		t = template.Must(t.ParseGlob(dir+"/*"))
+	}
+	return t
+}
+
 
 func templateAdd(a int, b int) int { return a + b }
 func templateKM2Feet(x float64) float64 { return x * 3280.84 }
@@ -69,6 +79,15 @@ func templateUnprefixDict(prefix string, valueMap interface{}) map[string]interf
 		dict[strs[1]] = v
 	}
 	return dict
+}
+
+// This comes from complaints. Template functions are a mess right now :(
+func templateSelectDict(name, dflt string, vals interface{}) map[string]interface{} {
+	return map[string]interface{}{
+		"Name": name,
+		"Default": dflt,
+		"Vals": vals,
+	}
 }
 
 // Returns a dict containing all the paramters needed to render the waypoint-or-pos widget template.

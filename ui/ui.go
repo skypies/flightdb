@@ -2,6 +2,7 @@ package ui
 
 import(
 	"fmt"
+	"html/template"
 	"time"
 	"net/http"
 	"golang.org/x/net/context"
@@ -10,8 +11,16 @@ import(
 
 	_ "github.com/skypies/flightdb/analysis" // populate the reports registry
 	"github.com/skypies/flightdb/fgae"
+	mytemplates "github.com/skypies/flightdb/templates"         // parse up the templates
 	"github.com/skypies/util/widget"
+
 )
+
+var templates *template.Template
+
+func init() {
+	templates = mytemplates.LoadTemplates("templates")
+}
 
 // A 'middleware' handler to parse out common fields, and stuff them into a context
 
