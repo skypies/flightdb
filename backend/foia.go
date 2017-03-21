@@ -30,7 +30,6 @@ func init() {
 	http.HandleFunc("/foia/load", foiaHandler)
 	http.HandleFunc("/foia/enqueue", multiEnqueueHandler)
 	http.HandleFunc("/foia/rm", rmHandler)
-	http.HandleFunc("/foia/verify", verifyHandler)
 }
 
 // {{{ foiaHandler
@@ -64,6 +63,7 @@ func foiaHandler(w http.ResponseWriter, r *http.Request) {
 
 // eb-foia
 // http://backend-dot-serfr0-fdb.appspot.com/foia/enqueue?date=range&range_from=2013/01/01&range_to=2016/06/24
+// http://backend-dot-serfr0-fdb.appspot.com/foia/enqueue?date=range&range_from=2016/06/25&range_to=2016/10/31
 
 // Writes them all into a batch queue
 func multiEnqueueHandler(w http.ResponseWriter, r *http.Request) {
@@ -144,29 +144,6 @@ func rmHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	str += "\nKeys all deleted :O\nTime taken: " + time.Since(tStart).String() + "\n"
-	
-	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(fmt.Sprintf("OK\n%s", str)))
-}
-
-// }}}
-// {{{ verifyHandler
-
-// Examine FOIA historical data from GCS, but do nothing to the DB
-func verifyHandler(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
-
-	date := r.FormValue("date")
-	if date == "" {
-		http.Error(w, "need 'date=20141231' arg", http.StatusInternalServerError)
-		return
-	}
-	
-	str,err := doStorageJunk(c, date)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 	
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(fmt.Sprintf("OK\n%s", str)))
@@ -409,6 +386,7 @@ func doStorageJunk(ctx context.Context, date string) (string, error) {
 				tStart = time.Now()
 				rows = [][]string{}
 				nFlights++
+				//runtime.GC() ??
 			}
 
 			rows = append(rows, row)

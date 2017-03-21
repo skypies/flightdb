@@ -16,6 +16,7 @@ import(
 	"github.com/skypies/adsb"
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/fgae"
+	"github.com/skypies/flightdb/db"
 )
 
 func init() {
@@ -39,7 +40,6 @@ func debugUserHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 
 func debugHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
-	db := fgae.FlightDB{C:ctx}
 	str := ""
 
 	//str += fmt.Sprintf("** Idspecs:-\n%#v\n\n", opt.IdSpecs())
@@ -51,11 +51,14 @@ func debugHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	nPts := 0
+
+	backend := db.AppengineDSProvider{}
 	
 	for _,idspec := range idspecs {
-		str += fmt.Sprintf("*** %s [%v]\n", idspec, idspec)
+		q := db.NewFlightQuery().ByIdSpec(idspec)
+		str += fmt.Sprintf("*** %s [%v]\n%s\nResults:-\n", idspec, idspec, q)
 
-		results,err := db.LookupAll(db.NewQuery().ByIdSpec(idspec))
+		results,err := db.GetAllByQuery(ctx, backend, q)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -64,7 +67,7 @@ func debugHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		for i,result := range results {
 			//s,e := result.Times()
 			//str += fmt.Sprintf("  * [%02d] %s,%s  %s\n", i, s,e, result.IdentityString())
-			str += fmt.Sprintf("  * [%02d] %s\n", i, result)
+			str += fmt.Sprintf(" [%02d] %s\n", i, result)
 			nPts += len(result.AnyTrack())
 		}
 		str += fmt.Sprintf("*** Total pts: %d\n", nPts)
