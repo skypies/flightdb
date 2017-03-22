@@ -3,6 +3,7 @@ package fgae
 import(
 	"google.golang.org/appengine/datastore"
 	fdb "github.com/skypies/flightdb"
+	"github.com/skypies/flightdb/db"
 )
 
 // LongIterator is a drop-in replacement, to allow the consumer to spend more than 60s
@@ -18,10 +19,15 @@ type LongIterator struct {
 }
 
 // Snarf down all the keys from the get go.
-func (db *FlightDB)NewLongIterator(q *Query) *LongIterator {
-	keys,err := q.KeysOnly().GetAll(db.C, nil)
+func (flightdb *FlightDB)NewLongIterator(q *db.Query) *LongIterator {
+	keyers,err := flightdb.Backend.GetAll(flightdb.Ctx(), q, nil)
+	//flightdb.LookupAllKeys(q) //q.KeysOnly().GetAll(db.C, nil)
+	keys := []*datastore.Key{}
+	for _, keyer := range keyers {
+		keys = append(keys, keyer.(*datastore.Key))
+	}
 	i := LongIterator{
-		DB: db,
+		DB: flightdb,
 		Keys: keys,
 		err: err,
 	}
@@ -48,7 +54,7 @@ func (iter *LongIterator)NextWithErr() (*fdb.Flight, error) {
 	iter.i++
 	
 	blob := fdb.IndexedFlightBlob{}
-	if err := datastore.Get(iter.DB.C, key, &blob); err != nil {
+	if err := datastore.Get(iter.DB.Ctx(), key, &blob); err != nil {
 		iter.DB.Infof("LongNextWithErr/Next fail: %v", err)
 		iter.err = err
 		return nil, err

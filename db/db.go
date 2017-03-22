@@ -54,6 +54,13 @@ func GetAllByQuery(ctx context.Context, backend FlightDBProvider, q *Query) ([]*
 }
 
 // }}}
+// {{{ GetKeysByQuery
+
+func GetKeysByQuery(ctx context.Context, backend FlightDBProvider, q *Query) ([]Keyer, error) {
+	return backend.GetAll(ctx, q.KeysOnly(), nil)
+}
+
+// }}}
 // {{{ PersistFlight
 
 func PersistFlight(ctx context.Context, backend FlightDBProvider, f *fdb.Flight) error {

@@ -3,6 +3,7 @@ package fgae
 import(
 	"google.golang.org/appengine/datastore"
 	fdb "github.com/skypies/flightdb"
+	"github.com/skypies/flightdb/db"
 )
 
 type Iterator struct {
@@ -13,10 +14,11 @@ type Iterator struct {
 	err error
 }
 
-func (db *FlightDB)NewIterator(q *Query) *Iterator {
+func (flightdb *FlightDB)NewIterator(q *db.Query) *Iterator {
+	aeQuery := db.AppengineDSProvider{}.FlattenQuery(q)
 	i := Iterator{
-		DB: db,
-		I: q.Run(db.C),
+		DB: flightdb,
+		I: aeQuery.Run(flightdb.Ctx()),
 	}
 	return &i
 }

@@ -12,14 +12,29 @@ import(
 type AppengineDSProvider struct {
 }
 
-func (p AppengineDSProvider)GetAll(ctx context.Context, q *Query, dst interface{}) ([]Keyer, error) {
-	aeQuery := datastore.NewQuery(q.Kind)
-	for _,filter := range q.Filters {
-		aeQuery = aeQuery.Filter(filter.Field, filter.Value)
+func (p AppengineDSProvider)FlattenQuery(in *Query) *datastore.Query {
+	out := datastore.NewQuery(in.Kind)
+	for _,filter := range in.Filters {
+		out = out.Filter(filter.Field, filter.Value)
 	}
-	if q.OrderStr != "" { aeQuery = aeQuery.Order(q.OrderStr) }
-	if q.LimitVal != 0 { aeQuery = aeQuery.Limit(q.LimitVal) }
+	if in.OrderStr != "" { out = out.Order(in.OrderStr) }
+	if in.LimitVal != 0  { out = out.Limit(in.LimitVal) }
+	return out
+}
 
+func (p AppengineDSProvider)UnpackKeyers(in []Keyer) []*datastore.Key {
+	out := []*datastore.Key{}
+	for _,keyer := range in {
+		out = append(out, keyer.(*datastore.Key))
+	}
+	return out
+}
+
+// The following functions implement FlightDBProvider.
+
+func (p AppengineDSProvider)GetAll(ctx context.Context, q *Query, dst interface{}) ([]Keyer, error) {
+	aeQuery := p.FlattenQuery(q)
+	
 	keys,err := aeQuery.GetAll(ctx, dst)
 	keyers := []Keyer{}
 	for _,k := range keys {

@@ -191,7 +191,7 @@ func track2frag(t fdb.Track, id,callsign string, start,length int) fdb.TrackFrag
 // It parses the debug log to figure out which trackpoints got added when, so it's brittle.
 func debugFragsHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
-	db := fgae.FlightDB{C:ctx}
+	db := fgae.NewDB(ctx)
 	str := ""
 
 	idspecs,err := opt.IdSpecs()

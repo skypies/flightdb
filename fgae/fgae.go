@@ -11,40 +11,48 @@ import(
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/urlfetch"
+
+	backend "github.com/skypies/flightdb/db"
 )
 
-const(
-	kFlightKind = "flight"
-)
-
-var(
-	Debug = false
-)
+const kFlightKind = "flight"
+var Debug = false
 
 type FlightDB struct {
-	C context.Context
-	StartTime time.Time
+	ctx        context.Context
+	StartTime  time.Time
+	Backend    backend.FlightDBProvider
 }
 
-func NewDB(r *http.Request) FlightDB {
+func NewDB(ctx context.Context) FlightDB {
+	return FlightDB{
+		ctx:ctx,
+		StartTime:time.Now(),
+		Backend: backend.AppengineDSProvider{},
+	}
+}
+func NewDBFromReq(r *http.Request) FlightDB {
 	ctx,_ := context.WithTimeout(appengine.NewContext(r), 10 * time.Minute)
-	return FlightDB{C:ctx, StartTime:time.Now()}
+	return NewDB(ctx)
 }
-func (db *FlightDB)HTTPClient() *http.Client {
-	return urlfetch.Client(db.C)
-}
-func (db *FlightDB)Ctx() context.Context { return db.C }
+
+func (db *FlightDB)Ctx() context.Context { return db.ctx }
+func (db *FlightDB)HTTPClient() *http.Client { return urlfetch.Client(db.Ctx()) }
 
 func (db *FlightDB)Debugf(format string, args ...interface{}) {
-	if Debug {log.Debugf(db.C,format,args...)}
+	if Debug {log.Debugf(db.Ctx(),format,args...)}
 }
-func (db *FlightDB)Infof(format string,args ...interface{}) {log.Infof(db.C,format,args...)}
-func (db *FlightDB)Errorf(format string,args ...interface{}) {log.Errorf(db.C,format,args...)}
-func (db *FlightDB)Warningf(format string,args ...interface{}) {log.Warningf(db.C,format,args...)}
-func (db *FlightDB)Criticalf(format string,args ...interface{}) {log.Criticalf(db.C,format,args...)}
+func (db *FlightDB)Infof(format string,args ...interface{}) {log.Infof(db.Ctx(),format,args...)}
+func (db *FlightDB)Errorf(format string,args ...interface{}) {log.Errorf(db.Ctx(),format,args...)}
+func (db *FlightDB)Warningf(format string,args ...interface{}) {log.Warningf(db.Ctx(),format,args...)}
+func (db *FlightDB)Criticalf(format string,args ...interface{}) {log.Criticalf(db.Ctx(),format,args...)}
 
 // Perff is a debugf with a 'step' arg, and adds its own latency timings
 func (db *FlightDB)Perff(step string, format string, args ...interface{}) {
 	payload := fmt.Sprintf(format, args...)
-	log.Debugf(db.C, "[%s] %9.6f %s", step, time.Since(db.StartTime).Seconds(), payload)
+	log.Debugf(db.Ctx(), "[%s] %9.6f %s", step, time.Since(db.StartTime).Seconds(), payload)
 }
+
+
+// Shim, to port client code over. Rip out later.
+func (flightdb FlightDB)NewQuery() *backend.Query { return backend.NewFlightQuery() }

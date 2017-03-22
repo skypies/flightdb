@@ -76,7 +76,7 @@ func trackHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db := fgae.FlightDB{C:ctx}
+	db := fgae.NewDB(ctx)
 	flights := []*fdb.Flight{}
 	for _,idspec := range idspecs {
 		if r.FormValue("all") != "" {

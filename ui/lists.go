@@ -9,6 +9,7 @@ import(
 	"github.com/skypies/util/widget"
 
 	fdb "github.com/skypies/flightdb"
+	backend "github.com/skypies/flightdb/db"
 	"github.com/skypies/flightdb/fgae"
 	//"github.com/skypies/flightdb/ref"
 )
@@ -20,15 +21,15 @@ func init() {
 // icaoid=A12345 - lookup recent flights on that airframe
 func listHandler(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
-	db := fgae.FlightDB{C:c}
+	db := fgae.NewDB(c)
 
 	tags := widget.FormValueCommaSepStrings(r, "tags")
 	flights := []*fdb.Flight{}
 	
 	//airframes := ref.NewAirframeCache(c)
-	query := db.QueryForRecent(tags, 200)
+	query := backend.QueryForRecent(tags, 200)
 	if r.FormValue("icaoid") != "" {
-		query = db.QueryForRecentIcaoId(r.FormValue("icaoid"), 200)
+		query = backend.QueryForRecentIcaoId(r.FormValue("icaoid"), 200)
 	}
 	
 	iter := db.NewIterator(query)

@@ -23,13 +23,14 @@ import(
 	"github.com/skypies/util/date"
 	"github.com/skypies/util/widget"
 	fdb "github.com/skypies/flightdb"
+	"github.com/skypies/flightdb/db"
 	"github.com/skypies/flightdb/fgae"
 )
 
 func init() {
 	http.HandleFunc("/foia/load", foiaHandler)
 	http.HandleFunc("/foia/enqueue", multiEnqueueHandler)
-	http.HandleFunc("/foia/rm", rmHandler)
+	//http.HandleFunc("/foia/rm", rmHandler)
 }
 
 // {{{ foiaHandler
@@ -100,32 +101,33 @@ func multiEnqueueHandler(w http.ResponseWriter, r *http.Request) {
 // {{{ rmHandler
 
 func rmHandler(w http.ResponseWriter, r *http.Request) {
-	c,_ := context.WithTimeout(appengine.NewContext(r), 9*time.Minute)
-	//c := appengine.NewContext(r)
-	db := fgae.FlightDB{C:c}
-
+	ctx,_ := context.WithTimeout(appengine.NewContext(r), 9*time.Minute)
+	backend := db.AppengineDSProvider{}
+	
 	n := 0
 	
 	max := widget.FormValueInt64(r,"n")
 	if max == 0 { max = 50000 }
-	q := 	db.NewQuery().ByTags([]string{"FOIA"}).Query.Limit(int(max)).KeysOnly()
+	q := 	db.NewFlightQuery().ByTags([]string{"FOIA"}).Limit(int(max))
 
 	tStart := time.Now()
 	str := "starting ...\n\n"
 	
 	for {
-		keys,err := q.GetAll(c,nil)
+		// FIXUP HERE
+		keyers,err := db.GetKeysByQuery(ctx, backend, q)	
 		if err != nil {
-			http.Error(w, fmt.Sprintf("GetAll (n=%d): %s", n, err.Error()), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("GetAll(n=%d): %s", n, err.Error()), http.StatusInternalServerError)
 			return
 		}
+		keys := backend.UnpackKeyers(keyers)
 		str += fmt.Sprintf("Found %d keys\n", len(keys))
 
 		if len(keys)==0 { break }
 
 		maxRm := 400
 		for len(keys)>maxRm {
-			if err := datastore.DeleteMulti(c, keys[0:maxRm-1]); err != nil {
+			if err := datastore.DeleteMulti(ctx, keys[0:maxRm-1]); err != nil {
 				str += fmt.Sprintf("keys remain: %d\n", len(keys))
 				http.Error(w, err.Error()+"\n--\n"+str, http.StatusInternalServerError)
 				return
@@ -134,7 +136,7 @@ func rmHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			keys = keys[maxRm:]
 		}
-		if err = datastore.DeleteMulti(c, keys); err != nil {
+		if err = datastore.DeleteMulti(ctx, keys); err != nil {
 			str += fmt.Sprintf("keys remain2: %d\n", len(keys))
 			http.Error(w, err.Error()+"\n"+str, http.StatusInternalServerError)
 			return
@@ -284,7 +286,7 @@ func addFlight(ctx context.Context, rows [][]string, tStart time.Time, debug str
 	str := ""
 
 	if true {// f.Callsign == "AAL1544" {
-		db := fgae.FlightDB{C:ctx}
+		db := fgae.NewDB(ctx)
 		if err := db.PersistFlight(f); err != nil {
 			return "", err
 		}

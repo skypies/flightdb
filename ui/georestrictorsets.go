@@ -37,7 +37,7 @@ func init() {
 
 func rListHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
-	db := fgae.FlightDB{C:ctx}
+	db := fgae.NewDB(ctx)
 
 	if rsets,err := db.LookupRestrictorSets(opt.UserEmail); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -79,7 +79,7 @@ func rGrsNewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request)
 // rGrsEditHandler   - (key [,form]) load it; if form, edit&save, chain to ./list; else render [grs-edit]
 func rGrsEditHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)	
-	db := fgae.FlightDB{C:ctx}
+	db := fgae.NewDB(ctx)
 
 	grs := fdb.GeoRestrictorSet{User:opt.UserEmail}
 	maybeLoadGRSDSKey(ctx, r, &grs)	// If we have a key, load it up to populate the grs
@@ -123,7 +123,7 @@ func rGrsEditHandler(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 // rGrsDeleteHandler - (key) delete it, chain to ./list
 func rGrsDeleteHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	db := fgae.FlightDB{C:ctx}
+	db := fgae.NewDB(ctx)
 
 	key := r.FormValue("grs_dskey")
 	if key == "" {
@@ -238,7 +238,7 @@ func rGrNewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) 
 // rGrEditHandler    - (key,index [,form]) if form, edit&save, chain to ./grs/edit; else render [gr-edit]
 func rGrEditHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)	
-	db := fgae.FlightDB{C:ctx}
+	db := fgae.NewDB(ctx)
 
 	grs,err := formValueDSKey(ctx, r)
 	if err != nil {
@@ -302,7 +302,7 @@ func rGrEditHandler(ctx context.Context, w http.ResponseWriter, r *http.Request)
 
 // rGrDeleteHandler  - (key,index)
 func rGrDeleteHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	db := fgae.FlightDB{C:ctx}
+	db := fgae.NewDB(ctx)
 
 	grs,err := formValueDSKey(ctx, r)
 	if err != nil {
@@ -347,7 +347,7 @@ func rDebHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 
 // Can't find a nice way to centralize this, as it needs fdb & fgae :/
 func maybeLoadGRSDSKey(ctx context.Context, r *http.Request, grs *fdb.GeoRestrictorSet) (error) {
-	db := fgae.FlightDB{C:ctx}
+	db := fgae.NewDB(ctx)
 
 	// TODO: move to grs_dskey or something
 	if dskey := r.FormValue("grs_dskey"); dskey == "" {
@@ -376,7 +376,7 @@ func formValueDSKey(ctx context.Context, r *http.Request) (fdb.GeoRestrictorSet,
 
 func formValueFlightsViaIdspecs(ctx context.Context, r *http.Request) ([]*fdb.Flight, error) {
 	opt,_ := GetUIOptions(ctx)	
-	db := fgae.FlightDB{C:ctx}
+	db := fgae.NewDB(ctx)
 
 	// This whole Airframe cache thing should be automatic, and upstream from here.
 	airframes := ref.NewAirframeCache(ctx)

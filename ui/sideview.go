@@ -45,7 +45,7 @@ func init() {
 
 func sideviewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
-	db := fgae.FlightDB{C:ctx}
+	db := fgae.NewDB(ctx)
 	
 	idspecs,err := opt.IdSpecs()
 	if err != nil {

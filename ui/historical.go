@@ -66,7 +66,7 @@ func historicalHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db := fgae.NewDB(r)
+	db := fgae.NewDBFromReq(r)
 
 	var t time.Time
 	if r.FormValue("epoch") != "" {

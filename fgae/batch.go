@@ -21,6 +21,7 @@ import (
 
 	adsblib "github.com/skypies/adsb"
 	fdb "github.com/skypies/flightdb"
+	"github.com/skypies/flightdb/db"
 )
 
 var(
@@ -128,9 +129,9 @@ func BatchFlightDayHandler(w http.ResponseWriter, r *http.Request) {
 	start,end := date.WindowForTime(day)
 	end = end.Add(-1 * time.Second)
 	
-	db := FlightDB{C:c}
+	dbhandle := NewDB(c)
 	q := db.QueryForTimeRange(tags,start,end)
-	keys,err := db.LookupAllKeys(q)
+	keys,err := dbhandle.LookupAllKeys(q)
 	if err != nil {
 		errStr := fmt.Sprintf("elapsed=%s; err=%v", time.Since(tStart), err)
 		http.Error(w, errStr, http.StatusInternalServerError)
@@ -220,7 +221,7 @@ func jobRetagHandler(r *http.Request, f *fdb.Flight) (string, error) {
 	str += fmt.Sprintf("\n*** URL: /fdb/tracks?idspec=%s\n", f.IdSpecString())
 	
 	if true {
-		db := FlightDB{C:c}
+		db := NewDB(c)
 		if err := db.PersistFlight(f); err != nil {
 			str += fmt.Sprintf("* Failed, with: %v\n", err)	
 			db.Errorf("%s", str)
@@ -244,7 +245,7 @@ func jobRetagHandler(r *http.Request, f *fdb.Flight) (string, error) {
 // should be in, or a new one.
 
 func jobMaybeBreakupFlight(r *http.Request, f *fdb.Flight) (string, error) {
-	db := FlightDB{C:appengine.NewContext(r)}
+	db := NewDB(appengine.NewContext(r))
 
 	mlat,adsb := f.Tracks["MLAT"],f.Tracks["ADSB"]
 	if adsb == nil {
@@ -460,7 +461,7 @@ func BatchInstanceHandler(w http.ResponseWriter, r *http.Request) {
 	str += fmt.Sprintf("\n*** URL: /fdb/tracks?idspec=%s\n", f.IdSpecString())
 	
 	if true {
-		db := FlightDB{C:c}
+		db := NewDB(c)
 		if err := db.PersistFlight(f); err != nil {
 			str += fmt.Sprintf("* Failed, with: %v\n", err)	
 			db.Errorf("%s", str)
@@ -524,7 +525,7 @@ func OldBatchInstanceHandler(w http.ResponseWriter, r *http.Request) {
 		str += "\n* deleted under old key\n"
 	}
 
-	db := FlightDB{C:c}
+	db := NewDB(c)
 	db.Infof("%s", str)
 	
 	w.Header().Set("Content-Type", "text/plain")

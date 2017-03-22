@@ -50,7 +50,7 @@ func LookupIdspec(db fgae.FlightDB, idspec fdb.IdSpec) ([]*fdb.Flight, error) {
 
 func jsonHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
-	db := fgae.FlightDB{C:ctx}
+	db := fgae.NewDB(ctx)
 
 	// This whole Airframe cache thing should be automatic, and upstream from here.
 	airframes := ref.NewAirframeCache(ctx)
@@ -102,7 +102,7 @@ func jsonHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 func snarfHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
 	client := urlfetch.Client(ctx)
-	db := fgae.FlightDB{C:ctx}
+	db := fgae.NewDB(ctx)
 
 	str := "Snarfer!\n--\n\n"
 

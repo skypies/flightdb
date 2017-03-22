@@ -127,7 +127,7 @@ func saveFIFOSet(c context.Context, s fdb.FIFOSet) error {
 // Need a grid of which fr24 data fields are provided by which call.
 
 func fr24PollHandler(w http.ResponseWriter, r *http.Request) {
-	db := fgae.NewDB(r)
+	db := fgae.NewDBFromReq(r)
 	fr,_ := fr24.NewFr24(db.HTTPClient())
 
 	db.Perff("fr24Poll_100", "making call")

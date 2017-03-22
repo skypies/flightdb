@@ -1,9 +1,13 @@
 package fgae
 
 import(
-	"google.golang.org/appengine/datastore"
+	//"google.golang.org/appengine/datastore"
+
 	fdb "github.com/skypies/flightdb"
+	"github.com/skypies/flightdb/db"
 )
+
+/*
 
 func (db FlightDB)getallByQuery(q *datastore.Query) ([]*fdb.Flight, error) {
 	blobs := []fdb.IndexedFlightBlob{}
@@ -25,19 +29,29 @@ func (db FlightDB)getallByQuery(q *datastore.Query) ([]*fdb.Flight, error) {
 	db.Debugf(" #--- ... found %d", len(flights))
 	return flights,nil
 }
+*/
 
-func (db FlightDB)LookupAllKeys(q *Query) ([]*datastore.Key, error) {
-	return q.Query.KeysOnly().GetAll(db.C, nil)
+func (flightdb FlightDB)getallByQuery(q *db.Query) ([]*fdb.Flight, error) {
+	return db.GetAllByQuery(flightdb.Ctx(), flightdb.Backend, q)
 }
 
-func (db FlightDB)LookupAll(q *Query) ([]*fdb.Flight, error) {
+func (flightdb FlightDB)LookupAllKeys(q *db.Query) ([]db.Keyer, error) {
+	backend := flightdb.Backend
+	if backend == nil {
+		backend = db.AppengineDSProvider{}
+	}
+	return backend.GetAll(flightdb.Ctx(), q.KeysOnly(), nil)
+	//return q.Query.KeysOnly().GetAll(db.C, nil)
+}
+
+func (flightdb FlightDB)LookupAll(q *db.Query) ([]*fdb.Flight, error) {
 	// Results are not ordered ... for timerange idspecs, would need to sort on Timeslots
-	return db.getallByQuery(q.Query) //.Order("-LastUpdate"))
+	return flightdb.getallByQuery(q) //.Order("-LastUpdate"))
 }
 
-func (db FlightDB)LookupMostRecent(q *Query) (*fdb.Flight, error) {
-	q.Query = q.Query.Order("-LastUpdate").Limit(1)	
-	if flights,err := db.getallByQuery(q.Query); err != nil {
+func (flightdb FlightDB)LookupMostRecent(q *db.Query) (*fdb.Flight, error) {
+	q.Order("-LastUpdate").Limit(1)	
+	if flights,err := flightdb.getallByQuery(q); err != nil {
 		return nil,err
 	} else if len(flights)==0 {
 		return nil,nil

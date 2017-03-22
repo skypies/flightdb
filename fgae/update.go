@@ -15,9 +15,9 @@ import(
 // Will be nil if we don't have the data we need to specify an ancestor ID
 func (db *FlightDB)rootKeyOrNil(f *fdb.Flight) *datastore.Key {
 	if f.IcaoId != "" {
-		return datastore.NewKey(db.C, kFlightKind, string(f.IcaoId), 0, nil)
+		return datastore.NewKey(db.Ctx(), kFlightKind, string(f.IcaoId), 0, nil)
 	} else if f.Callsign != "" {
-		return datastore.NewKey(db.C, kFlightKind, "c:"+f.Callsign, 0, nil)
+		return datastore.NewKey(db.Ctx(), kFlightKind, "c:"+f.Callsign, 0, nil)
 	}
 
 	return nil
@@ -46,7 +46,7 @@ func (db *FlightDB)findOrGenerateFlightKey(f *fdb.Flight) (*datastore.Key, error
 	if t := f.AnyTrack(); len(t) >= 0 {
 		intKey = t[0].TimestampUTC.Unix()
 	}
-	k := datastore.NewKey(db.C, kFlightKind, "", intKey, rootKey)
+	k := datastore.NewKey(db.Ctx(), kFlightKind, "", intKey, rootKey)
 	
 	//log.Debugf(db.C, "creating a new key: %v", k)
 	
@@ -60,7 +60,7 @@ func (db *FlightDB)PersistFlight(f *fdb.Flight) error {
 	if blob,err := f.ToBlob(); err != nil {
 		return err
 	} else {
-		_, err = datastore.Put(db.C, key, blob)
+		_, err = datastore.Put(db.Ctx(), key, blob)
 		if err != nil {
 			db.Errorf("PersistFlight[%s]: %v", f, err)
 		}
@@ -157,7 +157,7 @@ func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 
 	// Consult the airframe cache, and perhaps add some metadata, if not already present
 	if f.Airframe.Registration == "" {
-		airframes := ref.NewAirframeCache(db.C)
+		airframes := ref.NewAirframeCache(db.Ctx())
 		if af := airframes.Get(f.IcaoId); af != nil {
 			f.DebugLog += "-- AddFrag "+prefix+": found airframe\n"
 			f.Airframe = *af
