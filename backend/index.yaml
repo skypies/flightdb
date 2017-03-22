@@ -33,6 +33,12 @@ indexes:
 - kind: flight
   properties:
   - name: Ident
+  - name: Tags
+  - name: LastUpdate
+
+- kind: flight
+  properties:
+  - name: Ident
   - name: Timeslots
 
 - kind: flight
@@ -42,18 +48,10 @@ indexes:
   - name: LastUpdate
     direction: desc
 
-## These two indices is for an ad-hoc query
-- kind: flight
-  properties:
-  - name: Ident
-  - name: Tags
-  - name: LastUpdate
-
 - kind: flight
   properties:
   - name: Tags
   - name: LastUpdate
-##
 
 - kind: flight
   properties:

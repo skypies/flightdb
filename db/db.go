@@ -73,6 +73,20 @@ func GetAllByQuery(ctx context.Context, p DatastoreProvider, q *Query) ([]*fdb.F
 }
 
 // }}}
+// {{{ GetFirstByQuery
+
+// Returns first result, or nil (use Limit(1) to be more efficient)
+func GetFirstByQuery(ctx context.Context, p DatastoreProvider, q *Query) (*fdb.Flight, error) {
+	if flights,err := GetAllByQuery(ctx, p, q.Limit(1)); err != nil {
+		return nil,fmt.Errorf("GetFirstByQuery: %v", err)
+	} else if len(flights) == 0 {
+		return nil,nil
+	} else {
+		return flights[0],nil
+	}
+}
+
+// }}}
 // {{{ GetKeysByQuery
 
 func GetKeysByQuery(ctx context.Context, p DatastoreProvider, q *Query) ([]Keyer, error) {

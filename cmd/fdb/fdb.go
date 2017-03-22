@@ -46,7 +46,9 @@ func main() {
 
 		fmt.Printf("Running query: %s", q)
 
+		fmt.Printf(">>>>\n")
 		flights,err := db.GetAllByQuery(ctx, backend, q)
+		fmt.Printf("<<<<\n")
 		if err != nil { log.Fatal(err) }
 
 		for i,f := range flights {

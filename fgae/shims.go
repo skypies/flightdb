@@ -21,12 +21,6 @@ func (flightdb FlightDB)LookupAll(q *db.Query) ([]*fdb.Flight, error) {
 }
 
 func (flightdb FlightDB)LookupMostRecent(q *db.Query) (*fdb.Flight, error) {
-	q.Order("-LastUpdate").Limit(1)	
-	if flights,err := db.GetAllByQuery(flightdb.Ctx(), flightdb.Backend, q); err != nil {
-		return nil,err
-	} else if len(flights)==0 {
-		return nil,nil
-	} else {
-		return flights[0], nil
-	}
+	// Adding the ordering will break some queries, due to lack of indices
+	return db.GetFirstByQuery(flightdb.Ctx(), flightdb.Backend, q.Order("-LastUpdate"))
 }

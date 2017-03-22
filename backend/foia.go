@@ -2,13 +2,10 @@ package backend
 
 import(
 	"compress/gzip"
-	"encoding/csv"
 	"fmt"
 	"io"
 	"net/http"
 	"regexp"
-	"sort"
-	"strconv"
 	"time"
 
 	"cloud.google.com/go/storage"
@@ -18,12 +15,11 @@ import(
 	"google.golang.org/appengine/taskqueue"
 	"google.golang.org/appengine/log"	
 
-	"github.com/skypies/geo"
 	"github.com/skypies/util/date"
 	"github.com/skypies/util/widget"
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/db"
-	"github.com/skypies/flightdb/fgae"
+	"github.com/skypies/flightdb/faadata"
 )
 
 func init() {
@@ -38,24 +34,34 @@ func init() {
 
 // Load up FOIA historical data from GCS, and add new flights into the DB
 func foiaHandler(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
-	//c,_ := context.WithTimeout(appengine.NewContext(r), 9*time.Minute)
-	// db := FlightDB{C:c}
+	ctx := appengine.NewContext(r)
 
-	date := r.FormValue("date")
-	if date == "" {
+	datestr := r.FormValue("date")
+	if datestr == "" {
 		http.Error(w, "need 'date=20141231' arg", http.StatusInternalServerError)
 		return
 	}
 
-	str,err := doStorageJunk(c, date)
+	namepairs,err := getGCSFilenames(ctx,datestr)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	str := ""
+	for _,pair := range namepairs {
+		str += fmt.Sprintf("----------- %s|%s -----------\n", pair[0], pair[1])
+		output,err := loadGCSFile(ctx, pair[0], pair[1])
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		str += output
+	}
 	
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(fmt.Sprintf("OK\n%s", str)))
+	log.Infof(ctx, "FOIA loader for date=%s\n%s", datestr, str)
 }
 
 // }}}
@@ -150,9 +156,9 @@ func rmHandler(w http.ResponseWriter, r *http.Request) {
 
 // }}}
 
-// {{{ getCSVReader
+// {{{ getReader
 
-func getCSVReader(ctx context.Context, bucketName, fileName string) (*csv.Reader, error) {
+func getReader(ctx context.Context, bucketName, fileName string) (io.Reader, error) {
 	client, err := storage.NewClient(ctx)
 	if err != nil { return nil, err }
 
@@ -166,180 +172,38 @@ func getCSVReader(ctx context.Context, bucketName, fileName string) (*csv.Reader
 	if err != nil {
 		return nil, fmt.Errorf("GCS-Open+GZ %s|%s: %v", bucketName, fileName, err)
 	}
-	csvReader := csv.NewReader(gzipReader)
-
-	return csvReader, nil
+	return gzipReader,nil
+	//csvReader := csv.NewReader(gzipReader)
+	//return csvReader, nil
 }
 
 // }}}
-// {{{ rowToFlightSkeleton
-
-// [0]AIRCRAFT_ID, [1]FLIGHT_INDEX, [2]TRACK_INDEX,
-//   [3]SOURCE_FACILITY, [4]BEACON_CODE, [5]DEP_APRT, [6]ARR_APRT, [7]ACFT_TYPE,
-//   [8]LATITUDE, [9]LONGITUDE, [10]ALTITUDEx100ft,
-//   [11]TRACK_POINT_DATE_UTC, [12]TRACK_POINT_TIME_UTC
-// VOI902,2015020103105708,20150201065937NCT1024VOI902,
-//   NCT,1024,MMGL,OAK,A320,
-//   37.69849,-122.21049,1,
-//   20150201,07:24:04
-
-func rowToFlightSkeleton(row []string) *fdb.Flight {
-	f := &fdb.Flight{
-		Identity: fdb.Identity{
-			Callsign: row[0],
-			ForeignKeys: map[string]string{
-				"FAA": row[2],
-			},
-			Schedule: fdb.Schedule{
-				Origin: row[5],
-				Destination: row[6],
-			},
-		},
-		Airframe: fdb.Airframe{
-			EquipmentType: row[7],
-		},
-		Tracks: map[string]*fdb.Track{},
-		Tags: map[string]int{},
-		Waypoints: map[string]time.Time{},
-	}
-
-	f.ParseCallsign()
-
-	return f
-}
-
-// }}}
-// {{{ rowToTrackpoint
-
-func rowToTrackpoint(row []string) fdb.Trackpoint {
-	lat,_  := strconv.ParseFloat(row[8], 64)
-	long,_ := strconv.ParseFloat(row[9], 64)
-	alt,_  := strconv.ParseFloat(row[10], 64)
-
-	t,_ := time.Parse("20060102 15:04:05 MST", row[11] + " " + row[12] + " UTC")
-	
-	tp := fdb.Trackpoint{
-		DataSource:    "EB-FOIA", // Sigh; this should have gone in as EB-FOIA
-		TimestampUTC:  t,
-		Latlong:       geo.Latlong{Lat:lat, Long:long},
-		Altitude:      alt * 100.0,
-		Squawk:        row[4],
-	}
-
-	return tp
-}
-
-// }}}
-
-// {{{ rowsToFlight
-
-func rowsToFlight(rows [][]string, debug string) (*fdb.Flight, error) {
-	if len(rows) == 0 { return nil, fmt.Errorf("No rows!") }
-//	str := fmt.Sprintf("%s : %d rows\n", rows[0][0], len(rows))
-
-	t := fdb.Track{}
-	for _,row := range rows {
-		t = append(t, rowToTrackpoint(row))
-	}
-
-	sort.Sort(fdb.TrackByTimestampAscending(t))
-	
-	f := rowToFlightSkeleton(rows[0])
-	f.Tracks["FOIA"] = &t
-	f.SetTag("FOIA")
-
-	f.Analyse()
-	f.DebugLog += debug
-
-	return f, nil
-}
-
-// }}}
-// {{{ addFlight
-
-func addFlight(ctx context.Context, rows [][]string, tStart time.Time, debug string) (string, error) {
-	if len(rows) == 0 { return "", fmt.Errorf("No rows!") }
-//	str := fmt.Sprintf("%s : %d rows\n", rows[0][0], len(rows))
-
-	t := fdb.Track{}
-	for _,row := range rows {
-		t = append(t, rowToTrackpoint(row))
-	}
-
-	sort.Sort(fdb.TrackByTimestampAscending(t))
-	
-	f := rowToFlightSkeleton(rows[0])
-	f.Tracks["FOIA"] = &t
-	f.SetTag("FOIA")
-
-	tStartAnalyse := time.Now()
-	f.Analyse()
-	f.DebugLog += debug
-
-	f.DebugLog += fmt.Sprintf("** full load+parse: %dms (analyse: %dms)\n",
-		time.Since(tStart).Nanoseconds() / 1000000,
-		time.Since(tStartAnalyse).Nanoseconds() / 1000000)
-	
-	str := ""
-
-	if true {// f.Callsign == "AAL1544" {
-		db := fgae.NewDB(ctx)
-		if err := db.PersistFlight(f); err != nil {
-			return "", err
-		}
-		// str += fmt.Sprintf("* %s %v %v\n", f.Callsign, f.TagList(), f.WaypointList())
-	}
-	
-	return str,nil
-}
-
-// }}}
-// {{{ rowsAreSameFlight
-
-// The more recent FOIA data has data that looks like this on consecutive lines ...
-
-// 376147: QXE17,2016051028797150,20160510235032NCT6624QXE17,NCT,6624,EUG,SJC,DH8D,37.34841,-121.91391,3,20160511,00:40:59
-// 376148: QXE17,2016051028797150,20160510235032NCT6624QXE17,NCT,6624,EUG,SJC,DH8D,37.35002,-121.91558,3,20160511,00:41:04
-// 376149: QXE17,2016051028735155,20160510011647NCT4514QXE17,NCT,4514,SJC,RNO,DH8D,37.36278,-121.92703,6,20160510,01:16:47
-// 376150: QXE17,2016051028735155,20160510011647NCT4514QXE17,NCT,4514,SJC,RNO,DH8D,37.3649,-121.92945,9,20160510,01:16:52
-
-// ... so the flight number isn't enough to disambiguate. So use the
-// FAA's FLIGHT_INDEX value; if that also changes, then it's a
-// separate flight, even if the flightnumber doesn't change.
-
-func rowsAreSameFlight(r1, r2 []string) bool {
-	return r1[0] == r2[0] && r1[1] == r2[1]
-}
-
-// }}}
-// {{{ doStorageJunk
+// {{{ getGCSFilenames
 
 // PA naming: faa-foia     FOIA-2015-006790/Offload_track_table  /Offload_track_20150104.txt.gz
 // RG naming: rg-foia      2014                                  /Offload_track_IFR_20140104.txt.gz
 // EB naming: eastbay-foia eb-foia/2015                          /Offload_track_IFR_20150104.txt.gz
-func doStorageJunk(ctx context.Context, date string) (string, error) {
-	frags := regexp.MustCompile("^(\\d{4})").FindStringSubmatch(date)
+func getGCSFilenames(ctx context.Context, datestr string) ([][]string, error) {
+	frags := regexp.MustCompile("^(\\d{4})").FindStringSubmatch(datestr)
 	if len(frags) == 0 {
-		return "", fmt.Errorf("date '%s' did not match YYYYMMDD", date)
+		return nil, fmt.Errorf("date '%s' did not match YYYYMMDD", datestr)
 	}
 
 	dir := "eb-foia/" + frags[0]  // Strip off the year from the datestring
 	bucketName := "eastbay-foia"
 
-	tStart := time.Now()
-	log.Infof(ctx, "FOIAUPLOAD starting %s (%s)", date, dir)
+	log.Infof(ctx, "FOIAUPLOAD starting %s (%s)", datestr, dir)
 	
 	client, err := storage.NewClient(ctx)
-	if err != nil { return "",err }
+	if err != nil { return nil,err }
 
 	bucket := client.Bucket(bucketName)
 	q := &storage.Query{
-		//Delimiter: "/",
-		Prefix: dir + "/Offload_track_IFR_"+date,
+		Prefix: dir + "/Offload_track_IFR_" + datestr,
 	}
 
-	str := ""
-	names := []string{}
+	//str := ""
+	namepairs := [][]string{}
 	it := bucket.Objects(ctx, q)
 	for {
     oa, err := it.Next()
@@ -347,183 +211,71 @@ func doStorageJunk(ctx context.Context, date string) (string, error) {
 			break
     }
     if err != nil {
-			return "", fmt.Errorf("GCS-Readdir [gs://%s]%s': %v", bucketName, q.Prefix, err)
+			return nil, fmt.Errorf("GCS-Readdir [gs://%s]%s': %v", bucketName, q.Prefix, err)
     }
-		str += fmt.Sprintf("%8db %s {%s}\n", oa.Size, oa.Updated.Format("2006.01.02"), oa.Name)
-		names = append(names, oa.Name)
+		log.Infof(ctx, "%8db %s {%s}\n", oa.Size, oa.Updated.Format("2006.01.02"), oa.Name)
+		namepairs = append(namepairs, []string{bucketName, oa.Name})
 	}
 
-	nFlights := 0
-	for _,filename := range names {
-		str += fmt.Sprintf("Flights loaded from %s|%s\n", bucketName, filename)
-		allDebug := fmt.Sprintf("Flights loaded from %s|%s", bucketName, filename)
-		csvReader,err := getCSVReader(ctx, bucketName, filename)
-		if err != nil {
-			log.Errorf(ctx, "FOIAUPLOAD ERR/CSV %s %v", err)
-			return "", err
-		}
+	return namepairs,nil
+}
 
-		csvReader.Read() // Discard header row
+// }}}
+// {{{ loadGCSFile
 
-		rows := [][]string{}		
-		i := 1
-		tStart := time.Now()
-		for {
-			row,err := csvReader.Read()
-			if err == io.EOF { break }
-			if err != nil { return "", err }
+func loadGCSFile(ctx context.Context, bucketname, filename string) (string, error) {
+	src := bucketname+","+filename
+	str := fmt.Sprintf("Flights loaded from %s\n", src)
 
-			// If this row appears to be a different flight than the one we're accumulating, flush
-			if len(rows)>0 && !rowsAreSameFlight(row, rows[0]) {
-				thisDebug := fmt.Sprintf("%s:%d-%d", allDebug, i-len(rows), i-1)
-				if deb,err := addFlight(ctx, rows, tStart, thisDebug); err != nil {
-					log.Errorf(ctx, "FOIAUPLOAD ERR/Add %s %v\n%s", err, deb)
-					return deb,err
-				} else {
-					str += deb
-				}
-				tStart = time.Now()
-				rows = [][]string{}
-				nFlights++
-				//runtime.GC() ??
-			}
+	tStart := time.Now()
 
-			rows = append(rows, row)
-			i++
-		}
-
-		if len(rows)>0 {
-			thisDebug := fmt.Sprintf("%s:%d-%d", allDebug, i-len(rows), i-1)
-			if deb,err := addFlight(ctx, rows, tStart, thisDebug); err != nil {
-				log.Errorf(ctx, "FOIAUPLOAD ERR/Add %s %v\n%s", err, deb)
-				return deb,err
-			} else {
-				str += deb
-			}
-			nFlights++
-		}
-		str += fmt.Sprintf("-- File read, %d rows\n", i)
+	ioReader,err := getReader(ctx, bucketname, filename)
+	if err != nil {
+		err = fmt.Errorf("loadGCSFile(%s): %v", src, err)
+		log.Errorf(ctx, "%v", err)
+		return "", err
 	}
 
-	str += fmt.Sprintf("-- %s all done, %d flights, took %s\n", date, nFlights, time.Since(tStart))
+	n,str,err := faadata.ReadFrom(ctx, src, ioReader, foiaIdempotentAdd)
+	if err != nil {
+		err = fmt.Errorf("loadGCSFile(%s): %v", src, err)
+		log.Errorf(ctx, "%v", err)
+		return "", err
+	}
+	
+	str += fmt.Sprintf("-- %s all done, %d added, took %s\n", src, n, time.Since(tStart))
+
 	log.Infof(ctx, "FOIAUPLOAD finished %s (%d flights added, took %s)\n%s",
-		date, nFlights, time.Since(tStart), str)
+		src, n, time.Since(tStart), str)
 	
 	return str,nil
 }
 
 // }}}
 
-// {{{ processFoiaDatafile
+// {{{ foiaIdempotentAdd
 
-type FoiaFlightFunction func(context.Context, *fdb.Flight) (string, error)
-
-// PA naming: faa-foia  FOIA-2015-006790/Offload_track_table  /Offload_track_20150104.txt.gz
-// RG naming: rg-foia   2014                                  /txt.Offload_track_IFR_20140104.gz
-func processFoiaDatafile(ctx context.Context, date string, foiaFunc FoiaFlightFunction) (string,error) {
-	frags := regexp.MustCompile("^(\\d{4})").FindStringSubmatch(date)
-	if len(frags) == 0 {
-		return "", fmt.Errorf("date '%s' did not match YYYYMMDD", date)
-	}
-
-	dir := frags[0]
-	bucketName := "rg-foia"
-
-	tStart := time.Now()
+func foiaIdempotentAdd(ctx context.Context, f *fdb.Flight) (bool, string, error) {
+	p := db.AppengineDSProvider{}
+	q := db.NewFlightQuery().ByIdSpec(f.IdSpec()).ByTags([]string{"FOIA"})
+	prefix := f.IdentityString()
 	
-	client, err := storage.NewClient(ctx)
-	if err != nil { return "",err }
+	if flight,err := db.GetFirstByQuery(ctx, p, q); err != nil {
+		err = fmt.Errorf("foiaCallback(%s): %v", f.IdSpecString(), err)
+		return false,fmt.Sprintf("ERROR lookup %s: %v\n", prefix, err), err
 
-	bucket := client.Bucket(bucketName)
-	q := &storage.Query{
-		//Delimiter: "/",
-		Prefix: dir + "/Offload_track_IFR_"+date,
+	} else if flight != nil {
+		return false,fmt.Sprintf("already exists: %s (%s)\n", prefix, flight.IdentityString()), nil
+
+	} else if err := db.PersistFlight(ctx, p, f); err != nil {
+		err = fmt.Errorf("foiaCallback(%s): %v", f.IdSpecString(), err)
+		return false, fmt.Sprintf("ERROR save %s: %v\n", prefix, err), err
 	}
 
-	str := ""
-	names := []string{}
-	it := bucket.Objects(ctx, q)
-	for {
-    oa, err := it.Next()
-    if err == iterator.Done {
-			break
-    }
-    if err != nil {
-			return "", fmt.Errorf("GCS-Readdir [gs://%s]%s': %v", bucketName, q.Prefix, err)
-    }
-		str += fmt.Sprintf("%8db %s {%s}\n", oa.Size, oa.Updated.Format("2006.01.02"), oa.Name)
-		names = append(names, oa.Name)
-	}
-
-	//objs,err := bucket.List(ctx, q)
-	//if err != nil { return "", fmt.Errorf("GCS-Readdir: %v", err) }
-	//for _,oa := range objs.Results {
-	//	str += fmt.Sprintf("%8db %s {%s}\n", oa.Size, oa.Updated.Format("2006.01.02"), oa.Name)
-	//	names = append(names, oa.Name)
-	//}
-
-	nFlights := 0
-	for _,filename := range names {
-		str += fmt.Sprintf("Flights loaded from %s|%s\n", bucketName, filename)
-		allDebug := fmt.Sprintf("Flights loaded from %s|%s", bucketName, filename)
-		csvReader,err := getCSVReader(ctx, bucketName, filename)
-		if err != nil {
-			log.Errorf(ctx, "FOIAPROC ERR/CSV %s %v", err)
-			return "", err
-		}
-
-		csvReader.Read() // Discard header row
-
-		rows := [][]string{}		
-		i := 1
-		for {
-			row,err := csvReader.Read()
-			if err == io.EOF { break }
-			if err != nil { return "", err }
-
-			if len(rows)>0 && row[0] != rows[0][0] {
-				thisDebug := fmt.Sprintf("%s:%d-%d", allDebug, i-len(rows), i-1)
-
-				if f,err := rowsToFlight(rows, thisDebug); err != nil {
-					log.Errorf(ctx, "FOIAPROC ERR/parse %v", err)
-					return "", err
-				} else if deb,err := foiaFunc(ctx, f); err != nil {
-					log.Errorf(ctx, "FOIAPROC ERR/callback %v\n%s", err, deb)
-					str += fmt.Sprintf("**PROB %v\n%s", err, deb)
-				} else {
-					str += fmt.Sprintf("* %s %v %v\n", f.Callsign, f.TagList(), f.WaypointList())
-				}
-				
-				rows = [][]string{}
-				nFlights++
-			}
-
-			rows = append(rows, row)
-			i++
-		}
-
-		if len(rows)>0 {
-			thisDebug := fmt.Sprintf("%s:%d-%d", allDebug, i-len(rows), i-1)
-			if deb,err := addFlight(ctx, rows, time.Now(), thisDebug); err != nil {
-				log.Errorf(ctx, "FOIAPROC ERR/Add %s %v\n%s", err, deb)
-				return deb,err
-			} else {
-				str += deb
-			}
-			nFlights++
-		}
-		str += fmt.Sprintf("-- File read, %d rows\n", i)
-	}
-
-	str += fmt.Sprintf("-- %s all done, %d flights, took %s\n", date, nFlights, time.Since(tStart))
-	log.Infof(ctx, "FOIAPROC finished %s (%d flights added, took %s)\n%s",
-		date, nFlights, time.Since(tStart), str)
-	
-	return str,nil
+	return true, fmt.Sprintf("saved: %s\n", prefix), nil
 }
 
 // }}}
-
 
 // {{{ -------------------------={ E N D }=----------------------------------
 
