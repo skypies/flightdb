@@ -87,7 +87,7 @@ func (p CloudDSProvider)DecodeKey(encoded string) (Keyer, error) {
 }
 
 
-func (p CloudDSProvider)NewIncompleteKey(ctx context.Context, kind, name string, root Keyer) Keyer {
+func (p CloudDSProvider)NewIncompleteKey(ctx context.Context, kind string, root Keyer) Keyer {
 	key := datastore.IncompleteKey(kind, p.unpackKeyer(root))
 	return Keyer(key)
 }
