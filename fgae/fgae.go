@@ -15,13 +15,12 @@ import(
 	backend "github.com/skypies/flightdb/db"
 )
 
-const kFlightKind = "flight"
 var Debug = false
 
 type FlightDB struct {
 	ctx        context.Context
 	StartTime  time.Time
-	Backend    backend.FlightDBProvider
+	Backend    backend.DatastoreProvider
 }
 
 func NewDB(ctx context.Context) FlightDB {
@@ -52,7 +51,3 @@ func (db *FlightDB)Perff(step string, format string, args ...interface{}) {
 	payload := fmt.Sprintf(format, args...)
 	log.Debugf(db.Ctx(), "[%s] %9.6f %s", step, time.Since(db.StartTime).Seconds(), payload)
 }
-
-
-// Shim, to port client code over. Rip out later.
-func (flightdb FlightDB)NewQuery() *backend.Query { return backend.NewFlightQuery() }

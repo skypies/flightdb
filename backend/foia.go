@@ -15,7 +15,6 @@ import(
 	"golang.org/x/net/context"
 	"google.golang.org/api/iterator"
 	"google.golang.org/appengine"
-	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/taskqueue"
 	"google.golang.org/appengine/log"	
 
@@ -102,7 +101,7 @@ func multiEnqueueHandler(w http.ResponseWriter, r *http.Request) {
 
 func rmHandler(w http.ResponseWriter, r *http.Request) {
 	ctx,_ := context.WithTimeout(appengine.NewContext(r), 9*time.Minute)
-	backend := db.AppengineDSProvider{}
+	p := db.AppengineDSProvider{}
 	
 	n := 0
 	
@@ -114,34 +113,32 @@ func rmHandler(w http.ResponseWriter, r *http.Request) {
 	str := "starting ...\n\n"
 	
 	for {
-		// FIXUP HERE
-		keyers,err := db.GetKeysByQuery(ctx, backend, q)	
+		keyers,err := db.GetKeysByQuery(ctx, p, q)	
 		if err != nil {
 			http.Error(w, fmt.Sprintf("GetAll(n=%d): %s", n, err.Error()), http.StatusInternalServerError)
 			return
 		}
-		keys := backend.UnpackKeyers(keyers)
-		str += fmt.Sprintf("Found %d keys\n", len(keys))
+		str += fmt.Sprintf("Found %d keys\n", len(keyers))
 
-		if len(keys)==0 { break }
+		if len(keyers)==0 { break }
 
 		maxRm := 400
-		for len(keys)>maxRm {
-			if err := datastore.DeleteMulti(ctx, keys[0:maxRm-1]); err != nil {
-				str += fmt.Sprintf("keys remain: %d\n", len(keys))
+		for len(keyers)>maxRm {
+			if err := p.DeleteMulti(ctx, keyers[0:maxRm-1]); err != nil {
+				str += fmt.Sprintf("keys remain: %d\n", len(keyers))
 				http.Error(w, err.Error()+"\n--\n"+str, http.StatusInternalServerError)
 				return
 			} else {
 				n += maxRm
 			}
-			keys = keys[maxRm:]
+			keyers = keyers[maxRm:]
 		}
-		if err = datastore.DeleteMulti(ctx, keys); err != nil {
-			str += fmt.Sprintf("keys remain2: %d\n", len(keys))
+		if err = p.DeleteMulti(ctx, keyers); err != nil {
+			str += fmt.Sprintf("keys remain2: %d\n", len(keyers))
 			http.Error(w, err.Error()+"\n"+str, http.StatusInternalServerError)
 			return
 		} else {
-			n += len(keys)
+			n += len(keyers)
 		}
 	}
 

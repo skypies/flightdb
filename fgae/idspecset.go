@@ -4,8 +4,8 @@ package fgae
 // flights.
 
 import(
-	"google.golang.org/appengine/datastore"
 	"golang.org/x/net/context"
+	"github.com/skypies/flightdb/db"
 )
 
 // Wrap up in a datastore-friendly struct
@@ -15,11 +15,12 @@ type IdSpecSetStruct struct {
 
 // Returns a serialized key to look it up again
 func IdSpecSetSave(ctx context.Context, idspecstrings []string) (string, error) {
-	incompletekey := datastore.NewIncompleteKey(ctx, "IdSpecSet", nil)
+	p := db.AppengineDSProvider{}
+	incompletekey := p.NewIncompleteKey(ctx, "IdSpecSet", nil)
 
 	data := IdSpecSetStruct{IdSpecStrings:idspecstrings}
 	
-	if finalkey,err := datastore.Put(ctx, incompletekey, &data); err != nil {
+	if finalkey,err := p.Put(ctx, incompletekey, &data); err != nil {
 		return "", err
 	} else {
 		return finalkey.Encode(), nil
@@ -27,11 +28,12 @@ func IdSpecSetSave(ctx context.Context, idspecstrings []string) (string, error) 
 }
 
 func IdSpecSetLoad(ctx context.Context, keystring string) ([]string, error) {
-	key,err := datastore.DecodeKey(keystring)
+	p := db.AppengineDSProvider{}
+	keyer,err := p.DecodeKey(keystring)
 	if err != nil { return nil, err }
 
 	data := IdSpecSetStruct{}
-  err = datastore.Get(ctx, key, &data)
+  err = p.Get(ctx, keyer, &data)
 	
 	return data.IdSpecStrings, err
 }

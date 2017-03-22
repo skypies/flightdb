@@ -8,6 +8,7 @@ import(
 	"github.com/skypies/geo"
 
 	fdb "github.com/skypies/flightdb"
+	"github.com/skypies/flightdb/db"
 )
 
 // {{{ snapshot2AirspaceAircraft
@@ -44,10 +45,10 @@ func snapshot2AircraftData(fs fdb.FlightSnapshot, id adsb.IcaoId) airspace.Aircr
 
 // {{{ db.LookupHistoricalAirspace
 
-func (db FlightDB)LookupHistoricalAirspace(t time.Time, pos geo.Latlong, max int) (airspace.Airspace, error) {
+func (flightdb FlightDB)LookupHistoricalAirspace(t time.Time, pos geo.Latlong, max int) (airspace.Airspace, error) {
 	as := airspace.NewAirspace()
-
-	flights,err := db.LookupAll(db.NewQuery().ByTime(t.UTC()))
+	
+	flights,err := flightdb.LookupAll(db.NewFlightQuery().ByTime(t.UTC()))
 	if err != nil { return as, err }
 	//db.Infof("LookupHistorical for %s: found %d", t, len(flights))
 	for _,f := range flights {

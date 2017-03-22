@@ -4,14 +4,11 @@ import(
 	"net/http"
 	
 	"google.golang.org/appengine"
-	//"google.golang.org/appengine/log"
 
 	"github.com/skypies/util/widget"
 
 	fdb "github.com/skypies/flightdb"
-	backend "github.com/skypies/flightdb/db"
-	"github.com/skypies/flightdb/fgae"
-	//"github.com/skypies/flightdb/ref"
+	"github.com/skypies/flightdb/db"
 )
 
 func init() {
@@ -20,27 +17,26 @@ func init() {
 
 // icaoid=A12345 - lookup recent flights on that airframe
 func listHandler(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
-	db := fgae.NewDB(c)
+	ctx := appengine.NewContext(r)
+	p := db.AppengineDSProvider{}
 
 	tags := widget.FormValueCommaSepStrings(r, "tags")
 	flights := []*fdb.Flight{}
 	
 	//airframes := ref.NewAirframeCache(c)
-	query := backend.QueryForRecent(tags, 200)
+	query := db.QueryForRecent(tags, 200)
 	if r.FormValue("icaoid") != "" {
-		query = backend.QueryForRecentIcaoId(r.FormValue("icaoid"), 200)
+		query = db.QueryForRecentIcaoId(r.FormValue("icaoid"), 200)
 	}
 	
-	iter := db.NewIterator(query)
-	for iter.Iterate() {
-		if iter.Err() != nil { break }
-		f := iter.Flight()
+	it := db.NewFlightIterator(ctx, p, query)
+	for it.Iterate(ctx) {
+		f := it.Flight()
 		f.PruneTrackContents() // Save on RAM
 		flights = append(flights, f)
 	}
-	if iter.Err() != nil {
-		http.Error(w, iter.Err().Error(), http.StatusInternalServerError)
+	if it.Err() != nil {
+		http.Error(w, it.Err().Error(), http.StatusInternalServerError)
 		return
 	}
 	

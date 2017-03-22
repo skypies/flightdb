@@ -96,15 +96,14 @@ func reportHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) 
 	idspecsRejectByReport := []string{}
 
 	query := db.QueryForTimeRangeWaypoint(rep.Tags, rep.Options.Waypoints, rep.Start,rep.End)
-	iter := flightdb.NewLongIterator(query)
+	it := db.NewFlightIterator(ctx, flightdb.Backend, query)
 	n := 0
 	tStart := time.Now()
 	tBottomOfLoop := tStart
-	for iter.Iterate() {
+	for it.Iterate(ctx) {
 		rep.Stats.RecordValue("flightfetch", (time.Since(tBottomOfLoop).Nanoseconds()/1000))
 
-		if iter.Err() != nil { break }
-		f := iter.Flight()
+		f := it.Flight()
 		n++
 		
 		outcome,err := rep.Process(f)
@@ -125,8 +124,8 @@ func reportHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) 
 			idspecsAccepted = append(idspecsAccepted, f.IdSpecString())
 		}
 	}
-	if iter.Err() != nil {
-		errStr := fmt.Sprintf("Iter err after %d (%s): %v", n, time.Since(tStart), iter.Err().Error())
+	if it.Err() != nil {
+		errStr := fmt.Sprintf("Iter err after %d (%s): %v", n, time.Since(tStart), it.Err())
 		http.Error(w, errStr, http.StatusInternalServerError)
 		return
 	}

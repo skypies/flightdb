@@ -6,17 +6,17 @@ import(
 	"fmt"
 	"time"
 
-	"google.golang.org/appengine/datastore"
+	"golang.org/x/net/context"
 	"google.golang.org/appengine/log"
 
 	"github.com/skypies/util/gaeutil"
 	fdb "github.com/skypies/flightdb"
-	backend "github.com/skypies/flightdb/db"
+	"github.com/skypies/flightdb/db"
 )
 
 // {{{ db.FetchCondensedFlights
 
-func (db FlightDB)FetchCondensedFlights(s,e time.Time, tags []string) ([]fdb.CondensedFlight,error,string) {
+func (flightdb FlightDB)FetchCondensedFlights(s,e time.Time, tags []string) ([]fdb.CondensedFlight,error,string) {
 	key := fmt.Sprintf("condensed-%d:%d-%v", s.Unix(), e.Unix(), tags)
 	str := fmt.Sprintf("Aloha!\n* s: %s\n* e: %s\nt: %v\nk: %s\n\n", s, e, tags, key)
 
@@ -25,21 +25,21 @@ func (db FlightDB)FetchCondensedFlights(s,e time.Time, tags []string) ([]fdb.Con
 	}
 	
 	// If we've already processed this day, load the object
-	if data,err := gaeutil.LoadSingletonFromDatastore(db.Ctx(), key); err == nil {
+	if data,err := gaeutil.LoadSingletonFromDatastore(flightdb.Ctx(), key); err == nil {
 		buf := bytes.NewBuffer(data)
 		cfs := []fdb.CondensedFlight{}
 		if err := gob.NewDecoder(buf).Decode(&cfs); err != nil {
-			log.Errorf(db.Ctx(), "condense: could not decode: %v", err)
+			log.Errorf(flightdb.Ctx(), "condense: could not decode: %v", err)
 		}
 		str += fmt.Sprintf("found %d OK\n", len(cfs))
 		return cfs,nil,str
 
-	} else if err != datastore.ErrNoSuchEntity {
+	} else if err != gaeutil.ErrNoSuchEntityDS {
 		return []fdb.CondensedFlight{}, fmt.Errorf("condense load: %v",err), str
 	}
 
 	// OK, do it the hard way
-	cfs,err,fetchstr := db.FetchCondensedFlightsIndividually(s,e,tags);
+	cfs,err,fetchstr := fetchCondensedFlightsIndividually(flightdb.Ctx(), flightdb.Backend, s,e,tags);
 	str += "--\n" + fetchstr + "--\n"
 	if err != nil {
 		return []fdb.CondensedFlight{}, err, str
@@ -49,7 +49,7 @@ func (db FlightDB)FetchCondensedFlights(s,e time.Time, tags []string) ([]fdb.Con
 	var buf bytes.Buffer
 	if err := gob.NewEncoder(&buf).Encode(cfs); err != nil {
 		return []fdb.CondensedFlight{}, fmt.Errorf("condense encode: %v",err), str
-	} else if err := gaeutil.SaveSingletonToDatastore(db.Ctx(), key, buf.Bytes()); err != nil {
+	} else if err := gaeutil.SaveSingletonToDatastore(flightdb.Ctx(), key, buf.Bytes()); err != nil {
 		return []fdb.CondensedFlight{}, fmt.Errorf("condense save: %v",err), str
 	}
 	str += fmt.Sprintf("singleton persisted, %d bytes, with %d\n", buf.Len(), len(cfs))
@@ -58,43 +58,33 @@ func (db FlightDB)FetchCondensedFlights(s,e time.Time, tags []string) ([]fdb.Con
 }
 
 // }}}
-// {{{ db.FetchCondensedFlightsIndividually
 
-func (db FlightDB)FetchCondensedFlightsIndividually(s,e time.Time, tags []string) ([]fdb.CondensedFlight,error,string) {
+// {{{ fetchCondensedFlightsIndividually
+
+func fetchCondensedFlightsIndividually(ctx context.Context, p db.DatastoreProvider, s,e time.Time, tags []string) ([]fdb.CondensedFlight,error,string) {
 	str := "# individual lookup\n"
 
 	ret := []fdb.CondensedFlight{}
-	
-	q := backend.QueryForTimeRange(tags, s, e)
-	iter := db.NewIterator(q)
+
+	q := db.QueryForTimeRange(tags, s, e)
+	it := db.NewFlightIterator(ctx, p, q)
 	i := 0
 	tStart := time.Now()
-	for iter.Iterate() {
-		if iter.Err() != nil { break }
-		cf := iter.Flight().Condense()
+	for it.Iterate(ctx) {
+		cf := it.Flight().Condense()
 		ret = append(ret, *cf)
 		if i<50 {
 			str += fmt.Sprintf("# [%3d] %s\n", i, cf)
 		}
 		i++
 	}
-	if iter.Err() != nil {
-		return ret,iter.Err(),str
+	if it.Err() != nil {
+		return ret,it.Err(),str
 	}
 
 	str += fmt.Sprintf("# All done ! %d results, took %s\n", i, time.Since(tStart))
 	return ret,nil,str
 }
-
-/*
-
-New tag - :NORCAL: ?
-Or OR tags ?
-
-singleton persisted, 106166 bytes, with  650 (elapsed:  6.388675654s) [:NORCAL]
-singleton persisted, 336626 bytes, with 3396 (elapsed: 28.469733166s) []
-
- */
 
 // }}}
 

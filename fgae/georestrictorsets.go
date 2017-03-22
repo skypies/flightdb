@@ -3,34 +3,34 @@ package fgae
 import(
 	"fmt"
 	"strings"
-	"google.golang.org/appengine/datastore"
+	"golang.org/x/net/context"
 
 	//"github.com/skypies/geo"
 	fdb "github.com/skypies/flightdb"
+	"github.com/skypies/flightdb/db"
 )
 
 const	kRestrictorSetKind = "RSet"
 
-func (db *FlightDB)userToRootKey(user string) *datastore.Key {
-	return datastore.NewKey(db.Ctx(), kRestrictorSetKind, strings.ToLower(user), 0, nil)
+func userToRootKey(ctx context.Context, p db.DatastoreProvider, user string) db.Keyer {
+	return p.NewNameKey(ctx, kRestrictorSetKind, strings.ToLower(user), nil)
 }
 
 // {{{ db.LookupRestrictorSets
 
-func (db *FlightDB)LookupRestrictorSets(userEmail string) ([]fdb.GeoRestrictorSet, error) {
-	q := datastore.NewQuery(kRestrictorSetKind).
-		Ancestor(db.userToRootKey(userEmail))
-//		Filter("User = ", strings.ToLower(userEmail))
+func (flightdb *FlightDB)LookupRestrictorSets(userEmail string) ([]fdb.GeoRestrictorSet, error) {
+	q := db.NewQuery(kRestrictorSetKind).
+		Ancestor(userToRootKey(flightdb.Ctx(), flightdb.Backend, userEmail))
 
 	blobs := []fdb.IndexedRestrictorSetBlob{}
-	keys, err := q.GetAll(db.Ctx(), &blobs)
+	keyers, err := flightdb.Backend.GetAll(flightdb.Ctx(), q, &blobs)
 	if err != nil {
 		return nil, err
 	}
 
 	rsets := []fdb.GeoRestrictorSet{}
 	for i,blob := range blobs {
-		if rset,err := blob.ToRestrictorSet(keys[i].Encode()); err != nil {
+		if rset,err := blob.ToRestrictorSet(keyers[i].Encode()); err != nil {
 			return nil, err
 		} else {
 			rsets = append(rsets, *rset)
@@ -43,14 +43,16 @@ func (db *FlightDB)LookupRestrictorSets(userEmail string) ([]fdb.GeoRestrictorSe
 // }}}
 // {{{ db.PersistRestrictorSet
 
-func (db *FlightDB)PersistRestrictorSet(grs fdb.GeoRestrictorSet) error {
+func (flightdb *FlightDB)PersistRestrictorSet(grs fdb.GeoRestrictorSet) error {
 	strings.ToLower(grs.User)
 
-	key := datastore.NewIncompleteKey(db.Ctx(), kRestrictorSetKind, db.userToRootKey(grs.User))
+	// Default to an incomplete key (i.e. a new thing), but overwrite if we have a real key
+	keyer := flightdb.Backend.NewIncompleteKey(flightdb.Ctx(), kRestrictorSetKind,
+		userToRootKey(flightdb.Ctx(), flightdb.Backend, grs.User))
 
 	if grs.DSKey != "" {
 		var err error
-		key,err = datastore.DecodeKey(grs.DSKey)
+		keyer,err = flightdb.Backend.DecodeKey(grs.DSKey)
 		if err != nil {
 			return fmt.Errorf("PersistRestrictorSet[%s]: bad key '%s': %v", grs, grs.DSKey, err)
 		}
@@ -61,7 +63,7 @@ func (db *FlightDB)PersistRestrictorSet(grs fdb.GeoRestrictorSet) error {
 		return fmt.Errorf("PersistRestrictorSet[%s]: ToBlob err: %v", grs, err)
 	}
 
-	_,err = datastore.Put(db.Ctx(), key, blob)
+	_,err = flightdb.Backend.Put(flightdb.Ctx(), keyer, blob)
 	if err != nil {
 		return fmt.Errorf("PersistRestrictorSet[%s]: Put err: %v", grs, err)
 	}
@@ -72,12 +74,13 @@ func (db *FlightDB)PersistRestrictorSet(grs fdb.GeoRestrictorSet) error {
 // }}}
 // {{{ db.LoadRestrictorSet
 
-func (db *FlightDB)LoadRestrictorSet(dskey string) (fdb.GeoRestrictorSet, error) {
+func (flightdb *FlightDB)LoadRestrictorSet(dskey string) (fdb.GeoRestrictorSet, error) {
+	p := flightdb.Backend
 	blob := fdb.IndexedRestrictorSetBlob{}
-
-	if key,err := datastore.DecodeKey(dskey); err != nil {
+	
+	if keyer,err := p.DecodeKey(dskey); err != nil {
 		return fdb.GeoRestrictorSet{}, fmt.Errorf("LoadRestrictorSet '%s' : %v", dskey, err)
-	} else if err := datastore.Get(db.Ctx(), key, &blob); err != nil {
+	} else if err := p.Get(flightdb.Ctx(), keyer, &blob); err != nil {
 		return fdb.GeoRestrictorSet{}, fmt.Errorf("LoadRestrictorSet '%s' : %v", dskey, err)
 	}
 
@@ -91,10 +94,12 @@ func (db *FlightDB)LoadRestrictorSet(dskey string) (fdb.GeoRestrictorSet, error)
 // }}}
 // {{{ db.DeleteRestrictorSet
 
-func (db *FlightDB)DeleteRestrictorSet(dskey string) (error) {
-	if key,err := datastore.DecodeKey(dskey); err != nil {
+func (flightdb *FlightDB)DeleteRestrictorSet(dskey string) (error) {
+	p := flightdb.Backend
+
+	if keyer,err := p.DecodeKey(dskey); err != nil {
 		return fmt.Errorf("DeleteRestrictorSet '%s' : %v", dskey, err)
-	} else if err := datastore.Delete(db.Ctx(), key); err != nil {
+	} else if err := p.Delete(flightdb.Ctx(), keyer); err != nil {
 		return fmt.Errorf("DeleteRestrictorSet '%s' : %v", dskey, err)
 	}
 	return nil

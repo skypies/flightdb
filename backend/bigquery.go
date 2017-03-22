@@ -151,14 +151,9 @@ func writeBigQueryFlightsGCSFile(r *http.Request, datestring, foldername,filenam
 	n := 0
 
 	q := db.QueryForTimeRange(tags, s, e)
-	iter := flightdb.NewLongIterator(q)
-	for {
-		f,err := iter.NextWithErr();
-		if err != nil {
-			return 0,fmt.Errorf("iterator [%s,%s] failed at %s: %v", s,e, time.Now(), err)
-		} else if f == nil {
-			break // we're all done with this iterator
-		}
+	it := db.NewFlightIterator(ctx, flightdb.Backend, q)
+	for it.Iterate(ctx) {
+		f := it.Flight()
 
 		// A flight that straddles midnight will have timeslots either
 		// side, and so will end up showing in the results for two
@@ -176,6 +171,9 @@ func writeBigQueryFlightsGCSFile(r *http.Request, datestring, foldername,filenam
 		if err := encoder.Encode(fbq); err != nil {
 			return 0,err
 		}
+	}
+	if it.Err() != nil {
+		return 0,fmt.Errorf("iterator [%s,%s] failed at %s: %v", s,e, time.Now(), it.Err())
 	}
 
 	if err := gcsHandle.Close(); err != nil {

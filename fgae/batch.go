@@ -12,7 +12,6 @@ import (
 
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
-	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/taskqueue"
 
@@ -35,19 +34,15 @@ var(
 
 // A super widget
 func formValueFlightByKey(r *http.Request) (*fdb.Flight, error) {
-	c,_ := context.WithTimeout(appengine.NewContext(r), 10*time.Minute)
+	ctx,_ := context.WithTimeout(appengine.NewContext(r), 10*time.Minute)
+	p := db.AppengineDSProvider{}
 
-	key,err := datastore.DecodeKey(r.FormValue("flightkey"))
+	keyer,err := p.DecodeKey(r.FormValue("flightkey"))
 	if err != nil {
 		return nil, err
 	}
 
-	blob := fdb.IndexedFlightBlob{}
-	if err := datastore.Get(c, key, &blob); err != nil {
-		return nil, err
-	}
-
-	return blob.ToFlight(key.Encode())
+	return db.GetByKey(ctx, p, keyer)
 }
 
 // }}}
@@ -116,7 +111,8 @@ func BatchFlightDateRangeHandler(w http.ResponseWriter, r *http.Request) {
 
 // Dequeue a single day, and enqueue a job for each flight on that day
 func BatchFlightDayHandler(w http.ResponseWriter, r *http.Request) {
-	c,_ := context.WithTimeout(appengine.NewContext(r), 10*time.Minute)
+	ctx,_ := context.WithTimeout(appengine.NewContext(r), 10*time.Minute)
+	p := db.AppengineDSProvider{}
 
 	job := r.FormValue("job")
 	if job == "" {
@@ -129,9 +125,8 @@ func BatchFlightDayHandler(w http.ResponseWriter, r *http.Request) {
 	start,end := date.WindowForTime(day)
 	end = end.Add(-1 * time.Second)
 	
-	dbhandle := NewDB(c)
 	q := db.QueryForTimeRange(tags,start,end)
-	keys,err := dbhandle.LookupAllKeys(q)
+	keyers,err := db.GetKeysByQuery(ctx, p, q)
 	if err != nil {
 		errStr := fmt.Sprintf("elapsed=%s; err=%v", time.Since(tStart), err)
 		http.Error(w, errStr, http.StatusInternalServerError)
@@ -139,25 +134,25 @@ func BatchFlightDayHandler(w http.ResponseWriter, r *http.Request) {
 	}	
 
 	str := fmt.Sprintf("* start: %s\n* end  : %s\n* tags : %q\n* n    : %d\n",
-		start,end,tags,len(keys))
+		start,end,tags,len(keyers))
 
 	n := 0
-	for i,k := range keys {
-		if i<10 { str += " "+InstanceUrl+"?job="+job+"flightkey="+k.Encode() + "\n" }
+	for i,keyer := range keyers {
+		if i<10 { str += " "+InstanceUrl+"?job="+job+"flightkey="+keyer.Encode() + "\n" }
 		n++
 
 		t := taskqueue.NewPOSTTask(InstanceUrl, map[string][]string{
-			"flightkey": {k.Encode()},
+			"flightkey": {keyer.Encode()},
 			"job": {job},
 		})
-		if _,err := taskqueue.Add(c, t, QueueName); err != nil {
+		if _,err := taskqueue.Add(ctx, t, QueueName); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		n++
 	}
 
-	log.Infof(c, "enqueued %d batch items for '%s'", n, job)
+	log.Infof(ctx, "enqueued %d batch items for '%s'", n, job)
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(fmt.Sprintf("OK, batch, enqueued %d tasks for %s\n%s", n, job, str)))
@@ -376,160 +371,6 @@ func jobMaybeBreakupFlight(r *http.Request, f *fdb.Flight) (string, error) {
 	}
 	
 	return str, nil
-}
-
-// }}}
-
-// {{{ BatchHandler
-
-// This enqueues tasks for each key in the DB.
-func BatchHandler(w http.ResponseWriter, r *http.Request) {
-	c,_ := context.WithTimeout(appengine.NewContext(r), 10*time.Minute)
-	// db := FlightDB{C:c}
-
-	str := "Kicking off the batch run\n"
-	tStart := time.Now()
-
-	q := datastore.NewQuery(kFlightKind).Filter("Tags = ", "FOIA")
-	
-	keys,err := q.KeysOnly().GetAll(c, nil)
-	if err != nil {
-		errStr := fmt.Sprintf("elapsed=%s; err=%v", time.Since(tStart), err)
-		http.Error(w, errStr, http.StatusInternalServerError)
-		return
-	}
-	
-	str += fmt.Sprintf("Hello - we found %d keys\n", len(keys))
-
-	for i,k := range keys {
-		if i<10 { str += " /fdb/batch/instance?k="+k.Encode() + "\n" }
-	
-		t := taskqueue.NewPOSTTask("/fdb/batch/instance", map[string][]string{
-			"k": {k.Encode()},
-		})
-		if _,err := taskqueue.Add(c, t, "batch"); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		
-		// if i>10 { break }
-	}
-	
-	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(fmt.Sprintf("OK\n%s", str)))
-}
-
-// }}}
-// {{{ BatchInstanceHandler
-
-// /fdb/batch/instance?k=agxzfnNlcmZyMC1mZGJyDgsSBmZsaWdodBiK8QQM
-
-// This handler re-analyses all the flight objects.
-func BatchInstanceHandler(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
-	str := fmt.Sprintf("OK\nbatch, for [%s]\n", r.FormValue("k"))
-	
-	key,err := datastore.DecodeKey(r.FormValue("k"))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	blob := fdb.IndexedFlightBlob{}
-	if err := datastore.Get(c, key, &blob); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	f,err := blob.ToFlight(key.Encode())
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	str += fmt.Sprintf("* pulled up %s\n", f)
-
-	str += fmt.Sprintf("\n* Pre WP: %v\n", f.WaypointList())
-	str += fmt.Sprintf("* Pre Tags: %v\n", f.TagList())
-	str += fmt.Sprintf("* Pre IndexingTags: %v\n", f.IndexTagList())
-
-	f.Analyse()
-
-	str += fmt.Sprintf("\n* Post WP: %v\n", f.WaypointList())
-	str += fmt.Sprintf("* Post Tags: %v\n", f.TagList())
-	str += fmt.Sprintf("* Post IndexingTags: %v\n", f.IndexTagList())
-
-	str += fmt.Sprintf("\n*** URL: /fdb/tracks?idspec=%s\n", f.IdSpecString())
-	
-	if true {
-		db := NewDB(c)
-		if err := db.PersistFlight(f); err != nil {
-			str += fmt.Sprintf("* Failed, with: %v\n", err)	
-			db.Errorf("%s", str)
-		}
-		db.Infof("%s", str)
-	}
-	
-	
-	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(str))
-}
-
-// }}}
-
-// {{{ OldBatchInstanceHandler
-
-// /fdb/batch/instance?k=agxzfnNlcmZyMC1mZGJyDgsSBmZsaWdodBiK8QQM
-
-// This handler re-keys all the flight objects.
-func OldBatchInstanceHandler(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
-	str := fmt.Sprintf("OK\nbatch, for [%s]\n", r.FormValue("k"))
-	
-	key,err := datastore.DecodeKey(r.FormValue("k"))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	blob := fdb.IndexedFlightBlob{}
-	if err := datastore.Get(c, key, &blob); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	f,err := blob.ToFlight(key.Encode())
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	str += fmt.Sprintf("* pulled up %s\n", f)
-
-	icaoId := string(f.IcaoId)
-	if icaoId == "" {
-		str += "* No IcaoID in flight, bailing"
-	} else {
-		rootKey := datastore.NewKey(c, kFlightKind, string(f.IcaoId), 0, nil)
-		newKey := datastore.NewIncompleteKey(c, kFlightKind, rootKey)
-		str += fmt.Sprintf("** old: %#v\n**root: %#v\n** new: %#v\n", key, rootKey, newKey)
-
-		if _,err := datastore.Put(c, newKey, &blob); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		str += "\n* added under new key!\n"
-		
-		if err := datastore.Delete(c, key); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		str += "\n* deleted under old key\n"
-	}
-
-	db := NewDB(c)
-	db.Infof("%s", str)
-	
-	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(str))
 }
 
 // }}}
