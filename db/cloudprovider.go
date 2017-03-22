@@ -22,6 +22,7 @@ func (p CloudDSProvider)flattenQuery(in *Query) *datastore.Query {
 	}
 	if in.OrderStr != "" { out = out.Order(in.OrderStr) }
 	if in.KeysOnlyVal    { out = out.KeysOnly() }
+	if in.LimitVal != 0  { out = out.Limit(in.LimitVal) }
 	return out
 }
 
