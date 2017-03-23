@@ -60,20 +60,20 @@ func (p CloudDSProvider)GetAll(ctx context.Context, q *Query, dst interface{}) (
 func (p CloudDSProvider)Get(ctx context.Context, keyer Keyer, dst interface{}) error {
 	dsClient, err := datastore.NewClient(ctx, p.Project)
 	if err != nil { return err }
-	return dsClient.Get(ctx, keyer.(*datastore.Key), dst)
+	return dsClient.Get(ctx, p.unpackKeyer(keyer), dst)
 }
 
 func (p CloudDSProvider)Put(ctx context.Context, keyer Keyer, src interface{}) (Keyer, error) {
 	dsClient, err := datastore.NewClient(ctx, p.Project)
 	if err != nil { return nil,err }
 
-	key,error := dsClient.Put(ctx, keyer.(*datastore.Key), src)
+	key,error := dsClient.Put(ctx, p.unpackKeyer(keyer), src)
 	return Keyer(key), error
 }	
 func (p CloudDSProvider)Delete(ctx context.Context, keyer Keyer) error {
 	dsClient, err := datastore.NewClient(ctx, p.Project)
 	if err != nil { return err }
-	return dsClient.Delete(ctx, keyer.(*datastore.Key))
+	return dsClient.Delete(ctx, p.unpackKeyer(keyer))
 }	
 func (p CloudDSProvider)DeleteMulti(ctx context.Context, keyers []Keyer) error {
 	dsClient, err := datastore.NewClient(ctx, p.Project)

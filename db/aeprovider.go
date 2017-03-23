@@ -51,15 +51,15 @@ func (p AppengineDSProvider)GetAll(ctx context.Context, q *Query, dst interface{
 }
 
 func (p AppengineDSProvider)Get(ctx context.Context, keyer Keyer, dst interface{}) error {
-	return datastore.Get(ctx, keyer.(*datastore.Key), dst)
+	return datastore.Get(ctx, p.unpackKeyer(keyer), dst)
 }
 
 func (p AppengineDSProvider)Put(ctx context.Context, keyer Keyer, src interface{}) (Keyer, error) {
-	key,error := datastore.Put(ctx, keyer.(*datastore.Key), src)
+	key,error := datastore.Put(ctx, p.unpackKeyer(keyer), src)
 	return Keyer(key), error
 }	
 func (p AppengineDSProvider)Delete(ctx context.Context, keyer Keyer) error {
-	return datastore.Delete(ctx, keyer.(*datastore.Key))
+	return datastore.Delete(ctx, p.unpackKeyer(keyer))
 }	
 func (p AppengineDSProvider)DeleteMulti(ctx context.Context, keyers []Keyer) error {
 	return datastore.DeleteMulti(ctx, p.unpackKeyers(keyers))

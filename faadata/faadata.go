@@ -3,7 +3,6 @@ package faadata
 // TODO: move the foia handlers over to this.
 
 import(
-	"encoding/csv"
 	"fmt"
 	"io"
 	"sort"
@@ -16,7 +15,7 @@ import(
 
 // {{{ makeFlight
 
-func makeFlight(rows []Row, tStart time.Time, logstr string) (*fdb.Flight, error) {
+func makeFlight(rows []Row, tStart time.Time, genesisStr string) (*fdb.Flight, error) {
 	if len(rows) == 0 { return nil, fmt.Errorf("No rows!") }
 
 	t := fdb.Track{}
@@ -33,10 +32,10 @@ func makeFlight(rows []Row, tStart time.Time, logstr string) (*fdb.Flight, error
 	tStartAnalyse := time.Now()
 	f.Analyse()
 
-	f.DebugLog += logstr + "\n"
-	f.DebugLog += fmt.Sprintf("** full load+parse: %dms (analyse: %dms)\n",
-		time.Since(tStart).Nanoseconds() / 1000000,
-		time.Since(tStartAnalyse).Nanoseconds() / 1000000)
+	f.DebugLog += fmt.Sprintf("%s\n** full load+parse: %dus (analyse: %dus)\n",
+		genesisStr,
+		time.Since(tStart).Nanoseconds() / 1000,
+		time.Since(tStartAnalyse).Nanoseconds() / 1000)
 	
 	return f,nil
 }
@@ -48,29 +47,37 @@ func makeFlight(rows []Row, tStart time.Time, logstr string) (*fdb.Flight, error
 type NewFlightCallback func(context.Context, *fdb.Flight) (bool, string, error)
 
 func ReadFrom(ctx context.Context, name string, rdr io.Reader, cb NewFlightCallback) (int, string,error) {
-	rowReader := NewRowReader(csv.NewReader(rdr))
 
 	str := fmt.Sprintf("---- Flights loaded from %s\n", name)
-	rows := []Row{}
 	i := 1
-	nFlights := 0
+	nFlightsAdded := 0
+	nPossibleFlights := 0
 	tStart := time.Now()
 
+	rows := []Row{}
+	rowReader := NewRowReader(rdr)
+	
 	for {
 		row,err := rowReader.Read()
 		if err == io.EOF { break }
-		if err != nil { return nFlights,str,err }
+		if err != nil { return nFlightsAdded,str,err }
 
+		//if nPossibleFlights > 100 {
+		//	rows = nil
+		//	break
+		//}
+		
 		// If this row appears to be a different flight than the one we're accumulating, flush
-		if len(rows)>0 && !row.FromSameFlightAs(rows[0]) { //!rowsAreSameFlight(row, rows[0]) {
+		if len(rows)>0 && !row.FromSameFlightAs(rows[0]) {
 			logPrefix := fmt.Sprintf("%s:%d-%d", name, i-len(rows), i-1)
 			
 			if f,err := makeFlight(rows, tStart, "Genesis: "+logPrefix+"\n"); err != nil {
-				return nFlights,str,err
+				return nFlightsAdded,str,err
 			} else if added,subStr,err := cb(ctx,f); err != nil {
-				return nFlights,str, err
+				return nFlightsAdded,str, err
 			} else {
-				if added { nFlights++ }
+				nPossibleFlights++
+				if added { nFlightsAdded++ }
 				if subStr != "" {
 					str += logPrefix + ": " + subStr
 				}
@@ -87,20 +94,21 @@ func ReadFrom(ctx context.Context, name string, rdr io.Reader, cb NewFlightCallb
 		logPrefix := fmt.Sprintf("%s:%d-%d", name, i-len(rows), i-1)
 
 		if f,err := makeFlight(rows, tStart, logPrefix); err != nil {
-			return nFlights,str,err
+			return nFlightsAdded,str,err
 		} else if added,subStr,err := cb(ctx,f); err != nil {
-			return nFlights,str,err
+			return nFlightsAdded,str,err
 		} else {
-			if added { nFlights++ }
+			if added { nFlightsAdded++ }
 			if subStr != "" {
 				str += logPrefix + ": " + subStr
 			}
 		}
 	}
 
-	str += fmt.Sprintf("---- File read, %d rows, % flights added\n", i, nFlights)
+	str += fmt.Sprintf("---- File read, %d rows, %d flights added (out of %d proposed)\n", i,
+		nFlightsAdded, nPossibleFlights)
 
-	return nFlights,str,nil
+	return nFlightsAdded,str,nil
 }
 
 // }}}

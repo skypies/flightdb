@@ -3,6 +3,7 @@ package faadata
 import(
 	"encoding/csv"
 	"fmt"
+	"io"
 	"strconv"
 	"time"
 
@@ -47,9 +48,11 @@ type RowReader struct {
 	headers   []string
 }
 
-func NewRowReader(csvreader *csv.Reader) *RowReader {
-	rdr := RowReader{csvreader: csvreader}
-	rdr.headers,_ = csvreader.Read() // Discard err, we'll see it when we try to get a row
+func NewRowReader(ioreader io.Reader) *RowReader {
+	rdr := RowReader{
+		csvreader: csv.NewReader(ioreader),
+	}
+	rdr.headers,_ = rdr.csvreader.Read() // Discard err, we'll get it when we try to get next row
 	return &rdr
 }
 
@@ -81,17 +84,17 @@ type Row map[string]string
 func (r Row)ToFlightSkeleton() *fdb.Flight {	
 	f := &fdb.Flight{
 		Identity: fdb.Identity{
-			Callsign: r["AIRCRAFT_ID"], //row[0],
+			Callsign: r["AIRCRAFT_ID"],
 			ForeignKeys: map[string]string{
-				"FAA": r["TRACK_INDEX"], //row[2],
+				"FAA": r["TRACK_INDEX"],
 			},
 			Schedule: fdb.Schedule{
-				Origin: r["DEP_APRT"], //row[5],
-				Destination: r["ARR_APRT"], //row[6],
+				Origin: r["DEP_APRT"],
+				Destination: r["ARR_APRT"],
 			},
 		},
 		Airframe: fdb.Airframe{
-			EquipmentType: r["ACFT_TYPE"], //row[7],
+			EquipmentType: r["ACFT_TYPE"],
 		},
 		Tracks: map[string]*fdb.Track{},
 		Tags: map[string]int{},
@@ -107,19 +110,19 @@ func (r Row)ToFlightSkeleton() *fdb.Flight {
 // {{{ row.ToTrackpoint
 
 func (r Row)ToTrackpoint() fdb.Trackpoint {
-	lat,_  := strconv.ParseFloat(r["LATITUDE"], 64) //row[8], 64)
-	long,_ := strconv.ParseFloat(r["LONGITUDE"], 64) //row[9], 64)
-	alt,_  := strconv.ParseFloat(r["ALTITUDEx100ft"], 64) //row[10], 64)
+	lat,_  := strconv.ParseFloat(r["LATITUDE"], 64)
+	long,_ := strconv.ParseFloat(r["LONGITUDE"], 64)
+	alt,_  := strconv.ParseFloat(r["ALTITUDEx100ft"], 64)
 
 	tStr := fmt.Sprintf("%s %s UTC", r["TRACK_POINT_DATE_UTC"], r["TRACK_POINT_TIME_UTC"])
-	t,_ := time.Parse("20060102 15:04:05 MST", tStr) //row[11] + " " + row[12] + " UTC")
+	t,_ := time.Parse("20060102 15:04:05 MST", tStr)
 	
 	tp := fdb.Trackpoint{
 		DataSource:    "EB-FOIA", // Make configurable ?
 		TimestampUTC:  t,
 		Latlong:       geo.Latlong{Lat:lat, Long:long},
 		Altitude:      alt * 100.0,
-		Squawk:        r["BEACON_CODE"], //row[4],
+		Squawk:        r["BEACON_CODE"],
 	}
 
 	return tp
@@ -135,13 +138,13 @@ func (r Row)ToTrackpoint() fdb.Trackpoint {
 // 376149: QXE17,2016051028735155,20160510011647NCT4514QXE17,NCT,4514,SJC,RNO,DH8D,37.36278,-121.92703,6,20160510,01:16:47
 // 376150: QXE17,2016051028735155,20160510011647NCT4514QXE17,NCT,4514,SJC,RNO,DH8D,37.3649,-121.92945,9,20160510,01:16:52
 
-// ... so the flight number isn't enough to disambiguate. So use the
-// FAA's FLIGHT_INDEX value; if that also changes, then it's a
-// separate flight, even if the flightnumber doesn't change.
+// ... so the flight number isn't enough to disambiguate distinct
+// flights. Use the FAA's FLIGHT_INDEX value; if that also changes,
+// then it's a separate flight, even if the flightnumber doesn't
+// change.
 
 func (r1 Row)FromSameFlightAs(r2 Row) bool {
 	return r1["AIRCRAFT_ID"] == r2["AIRCRAFT_ID"] && r1["FLIGHT_INDEX"] == r2["FLIGHT_INDEX"]
-	//return r1[0] == r2[0] && r1[1] == r2[1]
 }
 
 // }}}

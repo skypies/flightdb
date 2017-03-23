@@ -156,9 +156,9 @@ func rmHandler(w http.ResponseWriter, r *http.Request) {
 
 // }}}
 
-// {{{ getReader
+// {{{ getGCSReader
 
-func getReader(ctx context.Context, bucketName, fileName string) (io.Reader, error) {
+func getGCSReader(ctx context.Context, bucketName, fileName string) (io.Reader, error) {
 	client, err := storage.NewClient(ctx)
 	if err != nil { return nil, err }
 
@@ -173,8 +173,6 @@ func getReader(ctx context.Context, bucketName, fileName string) (io.Reader, err
 		return nil, fmt.Errorf("GCS-Open+GZ %s|%s: %v", bucketName, fileName, err)
 	}
 	return gzipReader,nil
-	//csvReader := csv.NewReader(gzipReader)
-	//return csvReader, nil
 }
 
 // }}}
@@ -229,7 +227,7 @@ func loadGCSFile(ctx context.Context, bucketname, filename string) (string, erro
 
 	tStart := time.Now()
 
-	ioReader,err := getReader(ctx, bucketname, filename)
+	ioReader,err := getGCSReader(ctx, bucketname, filename)
 	if err != nil {
 		err = fmt.Errorf("loadGCSFile(%s): %v", src, err)
 		log.Errorf(ctx, "%v", err)
