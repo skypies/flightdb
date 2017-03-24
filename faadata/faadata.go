@@ -66,7 +66,7 @@ func ReadFrom(ctx context.Context, name string, rdr io.Reader, cb NewFlightCallb
 		//	rows = nil
 		//	break
 		//}
-		
+
 		// If this row appears to be a different flight than the one we're accumulating, flush
 		if len(rows)>0 && !row.FromSameFlightAs(rows[0]) {
 			logPrefix := fmt.Sprintf("%s:%d-%d", name, i-len(rows), i-1)
@@ -105,8 +105,8 @@ func ReadFrom(ctx context.Context, name string, rdr io.Reader, cb NewFlightCallb
 		}
 	}
 
-	str += fmt.Sprintf("---- File read, %d rows, %d flights added (out of %d proposed)\n", i,
-		nFlightsAdded, nPossibleFlights)
+	str = fmt.Sprintf("---- File read, %d rows, %d flights added (out of %d proposed)\n", i,
+		nFlightsAdded, nPossibleFlights) + str
 
 	return nFlightsAdded,str,nil
 }

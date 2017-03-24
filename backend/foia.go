@@ -34,7 +34,7 @@ func init() {
 
 // Load up FOIA historical data from GCS, and add new flights into the DB
 func foiaHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
+	ctx,_ := context.WithTimeout(appengine.NewContext(r), 10*time.Minute)
 
 	datestr := r.FormValue("date")
 	if datestr == "" {
@@ -233,6 +233,7 @@ func loadGCSFile(ctx context.Context, bucketname, filename string) (string, erro
 		log.Errorf(ctx, "%v", err)
 		return "", err
 	}
+	log.Infof(ctx, "opened %s, about to faadata.ReadFrom\n", src)
 
 	n,str,err := faadata.ReadFrom(ctx, src, ioReader, foiaIdempotentAdd)
 	if err != nil {
@@ -243,8 +244,8 @@ func loadGCSFile(ctx context.Context, bucketname, filename string) (string, erro
 	
 	str += fmt.Sprintf("-- %s all done, %d added, took %s\n", src, n, time.Since(tStart))
 
-	log.Infof(ctx, "FOIAUPLOAD finished %s (%d flights added, took %s)\n%s",
-		src, n, time.Since(tStart), str)
+	log.Infof(ctx, "FOIAUPLOAD finished %s (%d flights added, took %s)\n", src, n, time.Since(tStart))
+	log.Infof(ctx, str)
 	
 	return str,nil
 }
@@ -259,14 +260,14 @@ func foiaIdempotentAdd(ctx context.Context, f *fdb.Flight) (bool, string, error)
 	prefix := f.IdentityString()
 	
 	if flight,err := db.GetFirstByQuery(ctx, p, q); err != nil {
-		err = fmt.Errorf("foiaCallback(%s): %v", f.IdSpecString(), err)
+		err = fmt.Errorf("foiaCallback(%s).GetFirst: %v", f.IdSpecString(), err)
 		return false,fmt.Sprintf("ERROR lookup %s: %v\n", prefix, err), err
 
 	} else if flight != nil {
 		return false,fmt.Sprintf("already exists: %s (%s)\n", prefix, flight.IdentityString()), nil
 
 	} else if err := db.PersistFlight(ctx, p, f); err != nil {
-		err = fmt.Errorf("foiaCallback(%s): %v", f.IdSpecString(), err)
+		err = fmt.Errorf("foiaCallback(%s).Persist: %v", f.IdSpecString(), err)
 		return false, fmt.Sprintf("ERROR save %s: %v\n", prefix, err), err
 	}
 

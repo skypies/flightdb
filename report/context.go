@@ -30,6 +30,7 @@ var(
 		"robert.holbrook@gmail.com",
 		"jtsunnyvaleair1@gmail.com",
 		"mthurd2003@gmail.com",
+		"fabrice.beretta@gmail.com",
 	}
 )
 
