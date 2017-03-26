@@ -167,6 +167,7 @@ func (it IntersectableTrack)SatisfiesRestrictorSet(grs GeoRestrictorSet) Restric
 //  restrictions, and (b) the line to it from previous point intersects the bounded plane.
 func (it IntersectableTrack)SatisfiesRestrictor(gr geo.Restrictor) RestrictorIntersectOutcome {
 	outcome := it.satisfiesQuadtree(gr)
+
 	outcome.Debug += gr.GetDebug()
 	return outcome
 }
@@ -175,16 +176,18 @@ func (it IntersectableTrack)SatisfiesRestrictor(gr geo.Restrictor) RestrictorInt
 
 // {{{ it.findSubtrackWithQuadtree
 
+// Returns a pruned track that may intersect the restrictor, and how many trackpoints were
+// skipped to get there (or -1 if no subtrack found)
 // Unhandled edge cases:
 // * no points inside area. But pads box by 0.5KM, which is prob as much as we should trust ...
 // * a track that goes in, then out, then in and out again; we include the 'out' bits
-func (it IntersectableTrack)findSubtrackWithQuadtree(gr geo.Restrictor) Track {
-	if it.qt == nil { return Track{} }
+func (it IntersectableTrack)findSubtrackWithQuadtree(gr geo.Restrictor) (Track,int) {
+	if it.qt == nil { return Track{},-1 }
 
 	bounded := it.qt.InBound(bbox2bound(gr.BoundingBox()).GeoPad(500)) // GeoPad in meters
 	if len(bounded) == 0 {
 		gr.Debugf("** qt: no points found inside bounding box\n")
-		return Track{}
+		return Track{},-1
 	}
 
 	gr.Debugf("** qt: have bounded %d points:-\n", len(bounded))
@@ -193,10 +196,10 @@ func (it IntersectableTrack)findSubtrackWithQuadtree(gr geo.Restrictor) Track {
 		qtp := bounded[0].(QTPoint)
 		if gr.OverlapsAltitude(int64(qtp.Trackpoint.Altitude)).IsDisjoint() {
 			gr.Debugf("** qt: sole point failed altitude\n")
-			return Track{}
+			return Track{},-1
 		}
 		gr.Debugf("** qt: sole point; I,J=%d\n", qtp.I)
-		return append([]Trackpoint{}, it.Track[qtp.I])
+		return append([]Trackpoint{}, it.Track[qtp.I]), qtp.I
 	}
 
 	iStart,iEnd := 9999999,-9999999
@@ -216,10 +219,10 @@ func (it IntersectableTrack)findSubtrackWithQuadtree(gr geo.Restrictor) Track {
 	
 	gr.Debugf("** qt: found range [%d,%d)\n", iStart, iEnd)
 	if iEnd < 0 {
-		return Track{}
+		return Track{},-1
 	}
 
-	return it.Track[iStart:iEnd+1]
+	return it.Track[iStart:iEnd+1], iStart
 }
 
 // }}}
@@ -230,8 +233,30 @@ func (it IntersectableTrack)findSubtrackWithQuadtree(gr geo.Restrictor) Track {
 // * a track that goes in, then out, then in and out again; we include the 'out' bits
 func (it IntersectableTrack)satisfiesQuadtree(gr geo.Restrictor) RestrictorIntersectOutcome {
 	if it.qt == nil {	return RestrictorIntersectOutcome{} }
-	subIt := IntersectableTrack{Track: it.findSubtrackWithQuadtree(gr)}
-	return subIt.satisfiesRefImpl(gr)
+
+	subTrack,offset := it.findSubtrackWithQuadtree(gr)
+	outcome := IntersectableTrack{Track: subTrack}.satisfiesRefImpl(gr)
+
+	// If we satisified a non-exluder, or failed to satisfy an excluder, then we had an intersection
+	// we should fixup
+	if outcome.Satisfies != gr.IsExclusion() {
+		// outcome is relative to the subtrack; make it relative to the original track
+		outcome.I += offset
+		outcome.J += offset
+		outcome.Start = it.Track[outcome.I]
+		outcome.End = it.Track[outcome.J]
+
+		// Decorate trackpoints
+		it.Track[outcome.I].AnalysisDisplay = AnalysisDisplayHighlight
+		it.Track[outcome.J].AnalysisDisplay = AnalysisDisplayHighlight
+		for i:=outcome.I; i<=outcome.J; i++ {
+			it.Track[i].AnalysisAnnotation += fmt.Sprintf("* Point satisfied georestriction %s\n", gr)
+		}
+		it.Track[outcome.I].AnalysisAnnotation += fmt.Sprintf("* First point to satisfy\n")
+		it.Track[outcome.J].AnalysisAnnotation += fmt.Sprintf("* Last point to satisfy\n")
+	}
+
+	return outcome
 }
 
 // }}}

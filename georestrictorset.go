@@ -138,6 +138,21 @@ func FormValueGeoRestrictor(r *http.Request) (geo.Restrictor, error) {
 			IsExcluding: widget.FormValueCheckbox(r, "vp_isexcluding"),
 		}
 
+	case "polygon":
+		poly := geo.NewPolygon()
+		for i:=0; i<6; i++ {
+			if namedPt := sfo.FormValueNamedLatlong(r, fmt.Sprintf("poly_p%d", i)); !namedPt.IsNil() {
+				poly.AddPoint(namedPt.Latlong)
+			}
+		}
+		gr = geo.PolygonRestriction{
+			Debugger: new(geo.DebugLog),
+			Polygon: poly,
+			AltitudeMin: widget.FormValueInt64(r, "poly_altmin"),
+			AltitudeMax: widget.FormValueInt64(r, "poly_altmax"),
+			IsExcluding: widget.FormValueCheckbox(r, "poly_isexcluding"),
+		}
+
 	default:
 		return nil, fmt.Errorf("formValueGeoRestrictor: Fell out of switch")
 	}
@@ -177,6 +192,19 @@ func GeoRestrictorAsValues(gr geo.Restrictor) url.Values {
 		}
 		v.Set("vp_altmin", fmt.Sprintf("%d", t.AltitudeMin))
 		v.Set("vp_altmax", fmt.Sprintf("%d", t.AltitudeMax))
+
+	case geo.PolygonRestriction:
+		v.Set("gr_type", "polygon")
+		for i,pos := range t.GetPoints() {
+			widget.AddPrefixedValues(v, pos.Values(), fmt.Sprintf("poly_p%d", i+1))
+		}
+		if t.IsExcluding {
+			v.Set("poly_isexcluding", "1")
+		} else {
+			v.Set("poly_isexcluding", "")
+		}
+		v.Set("poly_altmin", fmt.Sprintf("%d", t.AltitudeMin))
+		v.Set("poly_altmax", fmt.Sprintf("%d", t.AltitudeMax))
 	}
 
 	return v

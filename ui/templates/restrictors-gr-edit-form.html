@@ -2,7 +2,7 @@
 
 <script>
 function ShowSubform(val) {
-    subforms = ['squarebox','verticalplane']
+    subforms = ['squarebox','verticalplane','polygon']
     for (var i = 0; i < subforms.length; i++) {
         if (subforms[i] != val) {
             document.getElementById(subforms[i]).style.display = 'none';
@@ -24,6 +24,8 @@ window.onload = function() {
         Square Box</option>
       <option value="verticalplane"{{if .gr_type | eq "verticalplane"}}selected="1"{{end}}>
         Vertical Plane</option>
+      <option value="polygon"{{if .gr_type | eq "polygon"}}selected="1"{{end}}>
+        Arbitrary Polygon</option>
     </select>
   </p>
   <br/>
@@ -86,4 +88,51 @@ window.onload = function() {
     </tr>
   </table>
 </div>
+
+<div id="polygon">
+  <table>
+    <tr><td colspan="2">Add vertices in order, clockwise. Concavity is OK.</td></tr>
+    <tr>
+      <td>Point 1</td>
+      <td>{{template "widget-waypoint-or-pos" nlldict "poly_p1" . }}
+    </tr>
+    <tr>
+      <td>Point 2</td>
+      <td>{{template "widget-waypoint-or-pos" nlldict "poly_p2" . }}
+    </tr>
+    <tr>
+      <td>Point 3</td>
+      <td>{{template "widget-waypoint-or-pos" nlldict "poly_p3" . }}
+    </tr>
+    <tr>
+      <td>Point 4</td>
+      <td>{{template "widget-waypoint-or-pos" nlldict "poly_p4" . }}
+    </tr>
+    <tr>
+      <td>Point 5</td>
+      <td>{{template "widget-waypoint-or-pos" nlldict "poly_p5" . }}
+    </tr>
+    <tr>
+      <td>Point 6</td>
+      <td>{{template "widget-waypoint-or-pos" nlldict "poly_p6" . }}
+    </tr>
+
+    <tr>
+      <td>Altitude</td>
+      <td>
+        Min:<input type="text" size="8" name="poly_altmin" value="{{if .poly_altmin}}{{.poly_altmin}}{{end}}"/>, 
+        Max:<input type="text" size="8" name="poly_altmax" value="{{if .poly_altmax}}{{.poly_altmax}}{{end}}"/>
+        (in feet; zero for no limit)
+      </td>
+    </tr>
+    <tr>
+      <td>Exclusion</td>
+      <td>
+        <input type="checkbox" name="poly_isexcluding" {{if .poly_isexcluding}}checked="yes"{{end}}>
+        (invert logic; flights must not intersect)
+      </td>
+    </tr>
+  </table>
+</div>
+
 {{end}}
