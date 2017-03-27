@@ -330,6 +330,9 @@ func (f *Flight)ArbitraryTimeslots(d time.Duration) []time.Time {
 	// ARGH
 	// This is a mess; depending on which tracks are available, we end up with very
 	// smaller or larger timespans. So we pick the likely smallest in all cases, ADSB.	
+	// Note from 2017Q1: we're seeing more and more skypi flights with a mix of MLAT and ADSB
+	// tracks, that stack or overlap. We may need to merge into a synthetic 'Skypi' track
+	// or something.
 	if f.HasTrack("ADSB") {
 		s,e := f.Tracks["ADSB"].Times()
 		return date.Timeslots(s,e,d)
