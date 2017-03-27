@@ -14,6 +14,19 @@ function ShowSubform(val) {
 window.onload = function() {
   ShowSubform({{.gr_type}});
 };
+
+// This function is just for the polygon UI
+// But it is useless, as the nll widget executes at template render time :/
+// Could maybe pre-render but hide, as per style="display:block", and reveal dynamically -
+// but would need to not hide default data for pre-existing polygons.
+function AddPolyPoint() {
+    var n = document.getElementById("points").childElementCount;
+    console.log("Oh, we saw"+n+" points");
+    var newp = document.createElement('p');
+    newp.innerHTML = "foo bar";
+    document.getElementById("points").appendChild(newp)
+}
+
 </script>
 
 <div><p>
@@ -89,50 +102,35 @@ window.onload = function() {
   </table>
 </div>
 
-<div id="polygon">
-  <table>
-    <tr><td colspan="2">Add vertices in order, clockwise. Concavity is OK.</td></tr>
-    <tr>
-      <td>Point 1</td>
-      <td>{{template "widget-waypoint-or-pos" nlldict "poly_p1" . }}
-    </tr>
-    <tr>
-      <td>Point 2</td>
-      <td>{{template "widget-waypoint-or-pos" nlldict "poly_p2" . }}
-    </tr>
-    <tr>
-      <td>Point 3</td>
-      <td>{{template "widget-waypoint-or-pos" nlldict "poly_p3" . }}
-    </tr>
-    <tr>
-      <td>Point 4</td>
-      <td>{{template "widget-waypoint-or-pos" nlldict "poly_p4" . }}
-    </tr>
-    <tr>
-      <td>Point 5</td>
-      <td>{{template "widget-waypoint-or-pos" nlldict "poly_p5" . }}
-    </tr>
-    <tr>
-      <td>Point 6</td>
-      <td>{{template "widget-waypoint-or-pos" nlldict "poly_p6" . }}
-    </tr>
+<div id="polygon" style="text-align:left">
+  <p>Add vertices in order, clockwise. Concavity is OK. After you save, view it on the map to see what it looks like.</p><br/>
+  <div class="box">
+    <div id="points">
+      <p>Point 1: {{template "widget-waypoint-or-pos" nlldict "poly_p1" . }}</p>
+      <p>Point 2: {{template "widget-waypoint-or-pos" nlldict "poly_p2" . }}</p>
+      <p>Point 3: {{template "widget-waypoint-or-pos" nlldict "poly_p3" . }}</p>
+      <p>Point 4: {{template "widget-waypoint-or-pos" nlldict "poly_p4" . }}</p>
+      <p>Point 5: {{template "widget-waypoint-or-pos" nlldict "poly_p5" . }}</p>
+      <p>Point 6: {{template "widget-waypoint-or-pos" nlldict "poly_p6" . }}</p>
+      <p>Point 7: {{template "widget-waypoint-or-pos" nlldict "poly_p7" . }}</p>
+      <p>Point 8: {{template "widget-waypoint-or-pos" nlldict "poly_p8" . }}</p>
+      <p>Point 9: {{template "widget-waypoint-or-pos" nlldict "poly_p9" . }}</p>
+    </div>
 
-    <tr>
-      <td>Altitude</td>
-      <td>
-        Min:<input type="text" size="8" name="poly_altmin" value="{{if .poly_altmin}}{{.poly_altmin}}{{end}}"/>, 
-        Max:<input type="text" size="8" name="poly_altmax" value="{{if .poly_altmax}}{{.poly_altmax}}{{end}}"/>
-        (in feet; zero for no limit)
-      </td>
-    </tr>
-    <tr>
-      <td>Exclusion</td>
-      <td>
-        <input type="checkbox" name="poly_isexcluding" {{if .poly_isexcluding}}checked="yes"{{end}}>
-        (invert logic; flights must not intersect)
-      </td>
-    </tr>
-  </table>
+
+    <!-- <p><a id="small_ro_button" class="fakebutton" href="#" onclick="AddPolyPoint();">ADD POINT</a></p> -->
+  </div><br/><br/>
+  
+  <p>Altitude limits:
+    <input type="text" size="8" name="poly_altmin"
+           value="{{if .poly_altmin}}{{.poly_altmin}}{{end}}"/>, to
+    <input type="text" size="8" name="poly_altmax"
+           value="{{if .poly_altmax}}{{.poly_altmax}}{{end}}"/>(in feet; zero for no limit)</p>
+
+  <p>Exclusion logic:
+    <input type="checkbox" name="poly_isexcluding" {{if .poly_isexcluding}}checked="yes"{{end}}>
+    (invert logic; flights must not intersect)
+    </p>
 </div>
 
 {{end}}
