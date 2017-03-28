@@ -300,8 +300,8 @@ func (it IntersectableTrack)satisfiesAreaRefImpl(gr geo.Restrictor) RestrictorIn
 		if lookingForEntry {
 			if hOverlap.IsDisjoint() { continue }
 			gr.Debugf("** crawl: [%d,%d] is (first?) horizontal intersecting line (h:%v, v:%v)\n",
-				i-1, i, hOverlap, vOverlap)
-
+				i-1, i, hOverlap, vOverlap)				
+				
 			if vOverlap.IsDisjoint() {
 				gr.Debugf("** crawl: no vertical overlap, so moving on (%v)\n", vOverlap)
 				continue

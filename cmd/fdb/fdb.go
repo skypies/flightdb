@@ -28,7 +28,7 @@ func init() {
 	flag.IntVar(&fVerbosity, "v", 0, "verbosity level")
 	flag.BoolVar(&fFoiaOnly, "foia", false, "FOIA data only")
 	flag.BoolVar(&fInPdt, "pdt", true, "show timestamps in PDT")
-	flag.IntVar(&fLimit, "limit", 10, "how many matches to retrieve")
+	flag.IntVar(&fLimit, "limit", 40, "how many matches to retrieve")
 	flag.StringVar(&fIcaoId, "icao", "", "ICAO id for airframe (6-digit hex)")
 	flag.StringVar(&fCallsign, "callsign", "", "Callsign, or maybe registration, for a flight")
 	flag.Parse()
@@ -39,11 +39,12 @@ func queryFromArgs() *db.Query {
 	q := db.NewFlightQuery()
 	q.Limit(fLimit)
 	if fFoiaOnly {q.ByTags([]string{"FOIA"}) }
-		// last updated stuff
-		//cutoff,err := time.Parse("2006-01-02 15:04 -0700 MST", "2017-01-01 04:00 -0700 PDT")
-		//if false && err == nil  {
-		//	q.Filter("LastUpdate > ", cutoff).Limit(100)
-		//}
+
+	// last updated stuff
+	//cutoff,err := time.Parse("2006-01-02 15:04 -0700 MST", "2017-01-01 04:00 -0700 PDT")
+	//if false && err == nil  {
+	//	q.Filter("LastUpdate > ", cutoff).Limit(100)
+	//}
 
 	if fIcaoId != "" { q.ByIcaoId(adsb.IcaoId(fIcaoId)) }
 	if fCallsign != "" { q.ByCallsign(fCallsign) }
@@ -54,7 +55,7 @@ func queryFromArgs() *db.Query {
 }
 
 func runQuery(q *db.Query) {
-	fmt.Printf("Running query %s", q)
+	fmt.Printf("Running query %s\n", q)
 
 	flights,err := db.GetAllByQuery(ctx, p, q)
 	if err != nil { log.Fatal(err) }

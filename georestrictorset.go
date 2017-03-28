@@ -140,7 +140,7 @@ func FormValueGeoRestrictor(r *http.Request) (geo.Restrictor, error) {
 
 	case "polygon":
 		poly := geo.NewPolygon()
-		for i:=0; i<6; i++ {
+		for i:=0; i<10; i++ {
 			if namedPt := sfo.FormValueNamedLatlong(r, fmt.Sprintf("poly_p%d", i)); !namedPt.IsNil() {
 				poly.AddPoint(namedPt.Latlong)
 			}

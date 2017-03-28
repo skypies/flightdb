@@ -167,6 +167,18 @@ func rGrsViewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request
 		}
 	}	
 
+	// Look for CGI args for arbitrary points (p1, p2, ...) and lines (l1, l2, ...)
+	for i:=1; i<=9; i++ {
+		lPrefix := fmt.Sprintf("l%d",i)
+		if line := geo.FormValueLatlongLine(r, lPrefix); ! line.From.IsNil() {
+			ms.AddLine(MapLine{Start:line.From, End:line.To, Color:"#0808ff"})
+		}
+		pPrefix := fmt.Sprintf("p%d",i)
+		if pos := geo.FormValueLatlong(r, pPrefix); ! pos.IsNil() {
+			ms.AddPoint(MapPoint{Pos:&pos, Text:pPrefix})
+		}
+	}
+	
 	flights,err := formValueFlightsViaIdspecs(ctx, r)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("rGrViewHandler, idspecs err: %v", err), http.StatusBadRequest)
@@ -185,10 +197,6 @@ func rGrsViewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request
 	p1,p2 := geo.FormValueLatlong(r, "pos1"),geo.FormValueLatlong(r, "pos2")
 	if !p1.IsNil() && !p2.IsNil() {
 		ms.AddLine(MapLine{Start:p1, End:p2, Color:"#0808ff"})
-/*		log.Infof("Hand-intersecting the problem case\n")
-		for _,gr := range grs.R {
-			
-		}*/
 	}
 
 	params := map[string]interface{}{
