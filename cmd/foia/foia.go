@@ -12,16 +12,16 @@ import(
 
 	"github.com/skypies/geo"
 	"github.com/skypies/util/date"
+	"github.com/skypies/util/dsprovider"
 	"github.com/skypies/util/histogram"
 	
 	fdb "github.com/skypies/flightdb"
-	"github.com/skypies/flightdb/db"
 	"github.com/skypies/flightdb/faadata"
 )
 
 var(
 	ctx = context.Background()
-	p = db.CloudDSProvider{"serfr0-fdb"}
+	p = dsprovider.CloudDSProvider{"serfr0-fdb"}
 	fDryRun bool
 	fCmd    string
 )

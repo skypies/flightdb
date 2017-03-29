@@ -13,6 +13,8 @@ import(
 	"google.golang.org/appengine/urlfetch"
 
 	"github.com/skypies/util/dsprovider"
+
+	fdb "github.com/skypies/flightdb"
 )
 
 var Debug = false
@@ -50,4 +52,44 @@ func (db *FlightDB)Criticalf(format string,args ...interface{}) {log.Criticalf(d
 func (db *FlightDB)Perff(step string, format string, args ...interface{}) {
 	payload := fmt.Sprintf(format, args...)
 	log.Debugf(db.Ctx(), "[%s] %9.6f %s", step, time.Since(db.StartTime).Seconds(), payload)
+}
+
+
+func (db *FlightDB)NewQuery() *FQuery {
+	return NewFlightQuery()
+}
+
+func (db *FlightDB)NewIterator(fq *FQuery) *FlightIterator {
+	return NewFlightIterator(db.Ctx(), db.Backend, fq)
+}
+
+func (db *FlightDB)PersistFlight(f *fdb.Flight) error {
+	return persistFlight(db.Ctx(), db.Backend, f)
+}
+
+func (db *FlightDB)LookupAll(fq *FQuery) ([]*fdb.Flight, error) {
+	// Results are not ordered ... for timerange idspecs, would need to sort on Timeslots
+	return getAllByQuery(db.Ctx(), db.Backend, fq)
+}
+
+func (db *FlightDB)LookupKey(keyer dsprovider.Keyer) (*fdb.Flight, error) {
+	// Results are not ordered ... for timerange idspecs, would need to sort on Timeslots
+	return getByKey(db.Ctx(), db.Backend, keyer)
+}
+
+func (db *FlightDB)LookupAllKeys(fq *FQuery) ([]dsprovider.Keyer, error) {
+	return getKeysByQuery(db.Ctx(), db.Backend, fq)
+}
+
+func (db *FlightDB)LookupFirst(fq *FQuery) (*fdb.Flight, error) {
+	return getFirstByQuery(db.Ctx(), db.Backend, fq)
+}
+
+func (db *FlightDB)LookupMostRecent(fq *FQuery) (*fdb.Flight, error) {
+	// Adding the ordering will break some queries, due to lack of indices
+	return db.LookupFirst(fq.Order("-LastUpdate"))
+}
+
+func (db *FlightDB)DeleteAllKeys(keyers []dsprovider.Keyer) error {
+	return db.Backend.DeleteMulti(db.Ctx(), keyers)
 }

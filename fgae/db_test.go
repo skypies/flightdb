@@ -1,6 +1,4 @@
-package db
-
-// cd flightdb/db && goapp test
+package fgae
 
 import (
 	"fmt"
@@ -14,7 +12,6 @@ import (
 
 	"github.com/skypies/util/dsprovider"
 	fdb "github.com/skypies/flightdb"
-	"github.com/skypies/flightdb/db"
 	"github.com/skypies/flightdb/faadata" // for quick ascii loading of trackpoints
 )
 
@@ -69,11 +66,11 @@ func testPersistAndLookups(t *testing.T, p dsprovider.DatastoreProvider) {
 
 	flights := loadFlights(t, fakeFlights)
 	for _,f := range flights {
-		if err := db.PersistFlight(ctx,p,f); err != nil { t.Fatal(err) }
+		if err := persistFlight(ctx,p,f); err != nil { t.Fatal(err) }
 	}
 	
-	run := func(expected int, q *db.FQuery) {
-		if results,err := db.GetAllByQuery(ctx, p, q); err != nil {
+	run := func(expected int, q *FQuery) {
+		if results,err := getAllByQuery(ctx, p, q); err != nil {
 			t.Fatal(err)
 		} else if len(results) != expected {
 			t.Errorf("expected %d results, saw %d; query: %s", expected, len(results), q)
@@ -81,12 +78,12 @@ func testPersistAndLookups(t *testing.T, p dsprovider.DatastoreProvider) {
 		}
 	}
 
-	run(len(flights), db.NewFlightQuery())
-	run(3,            db.NewFlightQuery().Limit(3))
-	run(1,            db.NewFlightQuery().ByCallsign(flights[0].Callsign))
+	run(len(flights), NewFlightQuery())
+	run(3,            NewFlightQuery().Limit(3))
+	run(1,            NewFlightQuery().ByCallsign(flights[0].Callsign))
 
 	// Now delete something
-	first,err := db.GetFirstByQuery(ctx, p, db.NewFlightQuery())
+	first,err := getFirstByQuery(ctx, p, NewFlightQuery())
 	if err != nil || first == nil {
 		t.Errorf("db.GetFirstByQuery: %v / %v\n", err, first)
 	} else if keyer,err := p.DecodeKey(first.GetDatastoreKey()); err != nil {
@@ -95,7 +92,7 @@ func testPersistAndLookups(t *testing.T, p dsprovider.DatastoreProvider) {
 		t.Errorf("p.Delete: %v\n", err)
 	}
 
-	run(len(flights)-1, db.NewFlightQuery())
+	run(len(flights)-1, NewFlightQuery())
 }
 
 // }}}
@@ -103,7 +100,7 @@ func testPersistAndLookups(t *testing.T, p dsprovider.DatastoreProvider) {
 func TestPersistAndLookups(t *testing.T) {
 	testPersistAndLookups(t, dsprovider.AppengineDSProvider{})
 	// Sadly, the aetest framework hangs on the first Put from the cloud client
-	// testPersistAndLookups(t, db.CloudDSProvider{appid})
+	// testPersistAndLookups(t, dsprovider.CloudDSProvider{appid})
 }
 
 var (

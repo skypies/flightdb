@@ -2,14 +2,13 @@ package ui
 
 import(
 	"net/http"
-	
+
 	"google.golang.org/appengine"
 
-	"github.com/skypies/util/dsprovider"
 	"github.com/skypies/util/widget"
 
 	fdb "github.com/skypies/flightdb"
-	"github.com/skypies/flightdb/db"
+	"github.com/skypies/flightdb/fgae"
 )
 
 func init() {
@@ -19,18 +18,18 @@ func init() {
 // icaoid=A12345 - lookup recent flights on that airframe
 func listHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
-	p := dsprovider.AppengineDSProvider{}
+	db := fgae.NewDB(ctx)
 
 	tags := widget.FormValueCommaSepStrings(r, "tags")
 	flights := []*fdb.Flight{}
 	
 	//airframes := ref.NewAirframeCache(c)
-	query := db.QueryForRecent(tags, 200)
+	query := fgae.QueryForRecent(tags, 200)
 	if r.FormValue("icaoid") != "" {
-		query = db.QueryForRecentIcaoId(r.FormValue("icaoid"), 200)
+		query = fgae.QueryForRecentIcaoId(r.FormValue("icaoid"), 200)
 	}
 	
-	it := db.NewFlightIterator(ctx, p, query)
+	it := db.NewIterator(query)
 	for it.Iterate(ctx) {
 		f := it.Flight()
 		f.PruneTrackContents() // Save on RAM

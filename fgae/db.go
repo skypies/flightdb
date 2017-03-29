@@ -1,4 +1,4 @@
-package db
+package fgae
 
 import(
 	"fmt"
@@ -23,9 +23,10 @@ import(
 
 // Functions in this file work on top of any implementation of the DatastoreProvider interface
 
-// {{{ GetByKey
+// As of now, all of these routines are called solely by the wrappers in fgae.go (and db_test)
+// {{{ getByKey
 
-func GetByKey(ctx context.Context, p ds.DatastoreProvider, keyer ds.Keyer) (*fdb.Flight, error) {
+func getByKey(ctx context.Context, p ds.DatastoreProvider, keyer ds.Keyer) (*fdb.Flight, error) {
 	blob := fdb.IndexedFlightBlob{}
 
 	if err := p.Get(ctx, keyer, &blob); err != nil {
@@ -38,9 +39,9 @@ func GetByKey(ctx context.Context, p ds.DatastoreProvider, keyer ds.Keyer) (*fdb
 }
 
 // }}}
-// {{{ GetAllByQuery
+// {{{ getAllByQuery
 
-func GetAllByQuery(ctx context.Context, p ds.DatastoreProvider, fq *FQuery) ([]*fdb.Flight, error) {
+func getAllByQuery(ctx context.Context, p ds.DatastoreProvider, fq *FQuery) ([]*fdb.Flight, error) {
 	blobs := []fdb.IndexedFlightBlob{}
 
 	keyers, err := p.GetAll(ctx, (*ds.Query)(fq), &blobs)
@@ -61,11 +62,11 @@ func GetAllByQuery(ctx context.Context, p ds.DatastoreProvider, fq *FQuery) ([]*
 }
 
 // }}}
-// {{{ GetFirstByQuery
+// {{{ getFirstByQuery
 
 // Returns first result, or nil (use Limit(1) to be more efficient)
-func GetFirstByQuery(ctx context.Context, p ds.DatastoreProvider, fq *FQuery) (*fdb.Flight, error) {
-	if flights,err := GetAllByQuery(ctx, p, fq.Limit(1)); err != nil {
+func getFirstByQuery(ctx context.Context, p ds.DatastoreProvider, fq *FQuery) (*fdb.Flight, error) {
+	if flights,err := getAllByQuery(ctx, p, fq.Limit(1)); err != nil {
 		return nil,fmt.Errorf("GetFirstByQuery: %v", err)
 	} else if len(flights) == 0 {
 		return nil,nil
@@ -75,18 +76,18 @@ func GetFirstByQuery(ctx context.Context, p ds.DatastoreProvider, fq *FQuery) (*
 }
 
 // }}}
-// {{{ GetKeysByQuery
+// {{{ getKeysByQuery
 
-func GetKeysByQuery(ctx context.Context, p ds.DatastoreProvider, fq *FQuery) ([]ds.Keyer, error) {
+func getKeysByQuery(ctx context.Context, p ds.DatastoreProvider, fq *FQuery) ([]ds.Keyer, error) {
 	keyers, err := p.GetAll(ctx, (*ds.Query)(fq).KeysOnly(), nil)
 	if err != nil { err = fmt.Errorf("GetKeysByQuery: %v", err) }
 	return keyers,err
 }
 
 // }}}
-// {{{ PersistFlight
+// {{{ persistFlight
 
-func PersistFlight(ctx context.Context, p ds.DatastoreProvider, f *fdb.Flight) error {
+func persistFlight(ctx context.Context, p ds.DatastoreProvider, f *fdb.Flight) error {
 	keyer,err := findOrGenerateFlightKey(ctx, p, f)
 	if err != nil { return fmt.Errorf("PersistFlight: %v", err) }
 	

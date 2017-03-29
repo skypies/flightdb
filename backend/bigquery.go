@@ -17,7 +17,6 @@ import (
 	"github.com/skypies/util/widget"
 
 	"github.com/skypies/flightdb/fgae"
-	"github.com/skypies/flightdb/db"
 )
 
 func init() {
@@ -147,11 +146,11 @@ func writeBigQueryFlightsGCSFile(r *http.Request, datestring, foldername,filenam
 	s := date.Datestring2MidnightPdt(datestring)
 	e := s.AddDate(0,0,1).Add(-1 * time.Second) // +23:59:59 (or 22:59 or 24:59 when going in/out DST)
 
-	flightdb := fgae.NewDB(ctx)
 	n := 0
 
-	q := db.QueryForTimeRange(tags, s, e)
-	it := db.NewFlightIterator(ctx, flightdb.Backend, q)
+	db := fgae.NewDB(ctx)
+	q := fgae.QueryForTimeRange(tags, s, e)
+	it := db.NewIterator(q)
 	for it.Iterate(ctx) {
 		f := it.Flight()
 

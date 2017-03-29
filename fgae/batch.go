@@ -16,12 +16,10 @@ import (
 	"google.golang.org/appengine/taskqueue"
 
 	"github.com/skypies/util/date"
-	"github.com/skypies/util/dsprovider"
 	"github.com/skypies/util/widget"
 
 	adsblib "github.com/skypies/adsb"
 	fdb "github.com/skypies/flightdb"
-	"github.com/skypies/flightdb/db"
 )
 
 var(
@@ -36,14 +34,14 @@ var(
 // A super widget
 func formValueFlightByKey(r *http.Request) (*fdb.Flight, error) {
 	ctx,_ := context.WithTimeout(appengine.NewContext(r), 10*time.Minute)
-	p := dsprovider.AppengineDSProvider{}
+	db := NewDB(ctx)
 
-	keyer,err := p.DecodeKey(r.FormValue("flightkey"))
+	keyer,err := db.Backend.DecodeKey(r.FormValue("flightkey"))
 	if err != nil {
 		return nil, err
 	}
 
-	return db.GetByKey(ctx, p, keyer)
+	return db.LookupKey(keyer)
 }
 
 // }}}
@@ -113,7 +111,7 @@ func BatchFlightDateRangeHandler(w http.ResponseWriter, r *http.Request) {
 // Dequeue a single day, and enqueue a job for each flight on that day
 func BatchFlightDayHandler(w http.ResponseWriter, r *http.Request) {
 	ctx,_ := context.WithTimeout(appengine.NewContext(r), 10*time.Minute)
-	p := dsprovider.AppengineDSProvider{}
+	db := NewDB(ctx)
 
 	job := r.FormValue("job")
 	if job == "" {
@@ -126,8 +124,8 @@ func BatchFlightDayHandler(w http.ResponseWriter, r *http.Request) {
 	start,end := date.WindowForTime(day)
 	end = end.Add(-1 * time.Second)
 	
-	q := db.QueryForTimeRange(tags,start,end)
-	keyers,err := db.GetKeysByQuery(ctx, p, q)
+	q := QueryForTimeRange(tags,start,end)
+	keyers,err := db.LookupAllKeys(q)
 	if err != nil {
 		errStr := fmt.Sprintf("elapsed=%s; err=%v", time.Since(tStart), err)
 		http.Error(w, errStr, http.StatusInternalServerError)

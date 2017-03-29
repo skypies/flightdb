@@ -8,14 +8,14 @@ import(
 
 	"github.com/skypies/adsb"
 	"github.com/skypies/util/date"
+	"github.com/skypies/util/dsprovider"
 
 	fdb "github.com/skypies/flightdb"
-	"github.com/skypies/flightdb/db"
+	"github.com/skypies/flightdb/fgae"
 )
 
 var(
 	ctx = context.Background()
-	p = db.CloudDSProvider{"serfr0-fdb"}
 	fVerbosity int
 	fFoiaOnly bool
 	fInPdt bool
@@ -35,10 +35,10 @@ func init() {
 }
 
 // Based on the various command line flags
-func queryFromArgs() *db.Query {
-	q := db.NewFlightQuery()
-	q.Limit(fLimit)
-	if fFoiaOnly {q.ByTags([]string{"FOIA"}) }
+func queryFromArgs() *fgae.FQuery {
+	fq := fgae.NewFlightQuery()
+	fq.Limit(fLimit)
+	if fFoiaOnly {fq.ByTags([]string{"FOIA"}) }
 
 	// last updated stuff
 	//cutoff,err := time.Parse("2006-01-02 15:04 -0700 MST", "2017-01-01 04:00 -0700 PDT")
@@ -46,18 +46,21 @@ func queryFromArgs() *db.Query {
 	//	q.Filter("LastUpdate > ", cutoff).Limit(100)
 	//}
 
-	if fIcaoId != "" { q.ByIcaoId(adsb.IcaoId(fIcaoId)) }
-	if fCallsign != "" { q.ByCallsign(fCallsign) }
+	if fIcaoId != "" { fq.ByIcaoId(adsb.IcaoId(fIcaoId)) }
+	if fCallsign != "" { fq.ByCallsign(fCallsign) }
 
-	q.Order("-LastUpdate")
+	fq.Order("-LastUpdate")
 	
-	return q
+	return fq
 }
 
-func runQuery(q *db.Query) {
-	fmt.Printf("Running query %s\n", q)
+func runQuery(fq *fgae.FQuery) {
+	fmt.Printf("Running query %s\n", fq)
 
-	flights,err := db.GetAllByQuery(ctx, p, q)
+	db := fgae.NewDB(ctx)
+	db.Backend = dsprovider.CloudDSProvider{"serfr0-fdb"}
+	
+	flights,err := db.LookupAll(fq)
 	if err != nil { log.Fatal(err) }
 
 	for i,f := range flights {

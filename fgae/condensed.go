@@ -13,7 +13,6 @@ import(
 	"github.com/skypies/util/dsprovider"
 
 	fdb "github.com/skypies/flightdb"
-	"github.com/skypies/flightdb/db"
 )
 
 // {{{ db.FetchCondensedFlights
@@ -68,8 +67,8 @@ func fetchCondensedFlightsIndividually(ctx context.Context, p dsprovider.Datasto
 
 	ret := []fdb.CondensedFlight{}
 
-	q := db.QueryForTimeRange(tags, s, e)
-	it := db.NewFlightIterator(ctx, p, q)
+	q := QueryForTimeRange(tags, s, e)
+	it := NewFlightIterator(ctx, p, q)
 	i := 0
 	tStart := time.Now()
 	for it.Iterate(ctx) {

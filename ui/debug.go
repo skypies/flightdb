@@ -14,10 +14,8 @@ import(
 	"google.golang.org/appengine/user"
 
 	"github.com/skypies/adsb"
-	"github.com/skypies/util/dsprovider"
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/fgae"
-	"github.com/skypies/flightdb/db"
 )
 
 func init() {
@@ -40,6 +38,7 @@ func debugUserHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 // {{{ debugHandler
 
 func debugHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	db := fgae.NewDB(ctx)
 	opt,_ := GetUIOptions(ctx)
 	str := ""
 
@@ -52,14 +51,11 @@ func debugHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	nPts := 0
-
-	backend := dsprovider.AppengineDSProvider{}
-	
 	for _,idspec := range idspecs {
-		q := db.NewFlightQuery().ByIdSpec(idspec)
+		q := db.NewQuery().ByIdSpec(idspec)
 		str += fmt.Sprintf("*** %s [%v]\n%s\nResults:-\n", idspec, idspec, q)
 
-		results,err := db.GetAllByQuery(ctx, backend, q)
+		results,err := db.LookupAll(q)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

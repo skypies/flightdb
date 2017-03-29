@@ -14,7 +14,6 @@ import(
 	"github.com/skypies/util/date"
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/fgae"
-	"github.com/skypies/flightdb/db"
 	"github.com/skypies/flightdb/ui"
 	"github.com/skypies/flightdb/report"
 	_ "github.com/skypies/flightdb/analysis" // populate the reports registry
@@ -43,7 +42,7 @@ func maybeButtonPOST(idspecs []string, title string, url string) string {
 
 func reportHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := ui.GetUIOptions(ctx)
-	flightdb := fgae.NewDB(ctx)
+	db := fgae.NewDB(ctx)
 
 	if r.FormValue("rep") == "" {
 		// Show blank form
@@ -63,7 +62,7 @@ func reportHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) 
 		fdb.BlankGeoRestrictorIntoParams(params)
 		
 		if opt.UserEmail != "" {
-			if rsets,err := flightdb.LookupRestrictorSets(opt.UserEmail); err != nil {
+			if rsets,err := db.LookupRestrictorSets(opt.UserEmail); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			} else {
@@ -95,8 +94,8 @@ func reportHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) 
 	idspecsRejectByRestrict := []string{}
 	idspecsRejectByReport := []string{}
 
-	query := db.QueryForTimeRangeWaypoint(rep.Tags, rep.Options.Waypoints, rep.Start,rep.End)
-	it := db.NewFlightIterator(ctx, flightdb.Backend, query)
+	query := fgae.QueryForTimeRangeWaypoint(rep.Tags, rep.Options.Waypoints, rep.Start,rep.End)
+	it := db.NewIterator(query)
 	n := 0
 	tStart := time.Now()
 	tBottomOfLoop := tStart

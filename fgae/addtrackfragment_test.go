@@ -12,7 +12,6 @@ import (
 	"google.golang.org/appengine/aetest"
 
 	fdb "github.com/skypies/flightdb"
-	"github.com/skypies/flightdb/db"
 	"github.com/skypies/flightdb/fgae"
 )
 
@@ -75,12 +74,11 @@ func TestMisorderedFrags(t *testing.T) {
 	if err != nil { t.Fatal(err) }
 	defer done()
 
-	flightdb := fgae.NewDB(ctx)
-	p := db.AppengineDSProvider{}
+	db := fgae.NewDB(ctx)
 	
 	idspec,_ := fdb.NewIdSpec("A5BB1B@1483403847:1483407465")  // Has to match the frags
 	
-	if results,err := db.GetAllByQuery(ctx, p, db.NewFlightQuery().ByIdSpec(idspec)); err != nil {
+	if results,err := db.LookupAll(db.NewQuery().ByIdSpec(idspec)); err != nil {
 		t.Fatal(err)
 	} else if len(results) != 0 {
 		t.Errorf("Expected no flight objects, but found %d:-\n", len(results))
@@ -96,13 +94,13 @@ func TestMisorderedFrags(t *testing.T) {
 	nPts := 0
 	for _,frag := range frags {
 		time.Sleep(1000 * time.Millisecond) // the test datastore gets confused if we go any quicker
-		if err := flightdb.AddTrackFragment(&frag); err != nil {
+		if err := db.AddTrackFragment(&frag); err != nil {
 			t.Fatal(err)
 		}
 		nPts += len(frag.Track)
 	}
 
-	results,err := db.GetAllByQuery(ctx, p, db.NewFlightQuery().ByIdSpec(idspec))
+	results,err := db.LookupAll(db.NewQuery().ByIdSpec(idspec))
 	if err != nil { t.Fatal(err) }
 
 	if len(results) != 1 {

@@ -1,4 +1,4 @@
-package db
+package fgae
 
 // This package contains flight query builders that sit on top of db/query.go
 

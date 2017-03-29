@@ -16,11 +16,10 @@ import(
 	"google.golang.org/appengine/log"	
 
 	"github.com/skypies/util/date"
-	"github.com/skypies/util/dsprovider"
 	"github.com/skypies/util/widget"
 	fdb "github.com/skypies/flightdb"
-	"github.com/skypies/flightdb/db"
 	"github.com/skypies/flightdb/faadata"
+	"github.com/skypies/flightdb/fgae"
 )
 
 func init() {
@@ -108,19 +107,19 @@ func multiEnqueueHandler(w http.ResponseWriter, r *http.Request) {
 
 func rmHandler(w http.ResponseWriter, r *http.Request) {
 	ctx,_ := context.WithTimeout(appengine.NewContext(r), 9*time.Minute)
-	p := dsprovider.AppengineDSProvider{}
+	db := fgae.NewDB(ctx)
 	
 	n := 0
 	
 	max := widget.FormValueInt64(r,"n")
 	if max == 0 { max = 50000 }
-	q := 	db.NewFlightQuery().ByTags([]string{"FOIA"}).Limit(int(max))
+	q := 	db.NewQuery().ByTags([]string{"FOIA"}).Limit(int(max))
 
 	tStart := time.Now()
 	str := "starting ...\n\n"
 	
 	for {
-		keyers,err := db.GetKeysByQuery(ctx, p, q)	
+		keyers,err := db.LookupAllKeys(q)	
 		if err != nil {
 			http.Error(w, fmt.Sprintf("GetAll(n=%d): %s", n, err.Error()), http.StatusInternalServerError)
 			return
@@ -131,7 +130,7 @@ func rmHandler(w http.ResponseWriter, r *http.Request) {
 
 		maxRm := 400
 		for len(keyers)>maxRm {
-			if err := p.DeleteMulti(ctx, keyers[0:maxRm-1]); err != nil {
+			if err := db.DeleteAllKeys(keyers[0:maxRm-1]); err != nil {
 				str += fmt.Sprintf("keys remain: %d\n", len(keyers))
 				http.Error(w, err.Error()+"\n--\n"+str, http.StatusInternalServerError)
 				return
@@ -140,7 +139,7 @@ func rmHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			keyers = keyers[maxRm:]
 		}
-		if err = p.DeleteMulti(ctx, keyers); err != nil {
+		if err = db.DeleteAllKeys(keyers); err != nil {
 			str += fmt.Sprintf("keys remain2: %d\n", len(keyers))
 			http.Error(w, err.Error()+"\n"+str, http.StatusInternalServerError)
 			return
@@ -256,18 +255,18 @@ func loadGCSFile(ctx context.Context, bucketname, filename string) (string, erro
 // {{{ foiaIdempotentAdd
 
 func foiaIdempotentAdd(ctx context.Context, f *fdb.Flight) (bool, string, error) {
-	p := dsprovider.AppengineDSProvider{}
-	q := db.NewFlightQuery().ByIdSpec(f.IdSpec()).ByTags([]string{"FOIA"})
+	db := fgae.NewDB(ctx)
+	q := db.NewQuery().ByIdSpec(f.IdSpec()).ByTags([]string{"FOIA"})
 	prefix := f.IdentityString()
 	
-	if flight,err := db.GetFirstByQuery(ctx, p, q); err != nil {
+	if flight,err := db.LookupFirst(q); err != nil {
 		err = fmt.Errorf("foiaCallback(%s).GetFirst: %v", f.IdSpecString(), err)
 		return false,fmt.Sprintf("ERROR lookup %s: %v\n", prefix, err), err
 
 	} else if flight != nil {
 		return false,fmt.Sprintf("already exists: %s (%s)\n", prefix, flight.IdentityString()), nil
 
-	} else if err := db.PersistFlight(ctx, p, f); err != nil {
+	} else if err := db.PersistFlight(f); err != nil {
 		err = fmt.Errorf("foiaCallback(%s).Persist: %v", f.IdSpecString(), err)
 		return false, fmt.Sprintf("ERROR save %s: %v\n", prefix, err), err
 	}
