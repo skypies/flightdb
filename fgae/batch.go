@@ -16,6 +16,7 @@ import (
 	"google.golang.org/appengine/taskqueue"
 
 	"github.com/skypies/util/date"
+	"github.com/skypies/util/dsprovider"
 	"github.com/skypies/util/widget"
 
 	adsblib "github.com/skypies/adsb"
@@ -35,7 +36,7 @@ var(
 // A super widget
 func formValueFlightByKey(r *http.Request) (*fdb.Flight, error) {
 	ctx,_ := context.WithTimeout(appengine.NewContext(r), 10*time.Minute)
-	p := db.AppengineDSProvider{}
+	p := dsprovider.AppengineDSProvider{}
 
 	keyer,err := p.DecodeKey(r.FormValue("flightkey"))
 	if err != nil {
@@ -112,7 +113,7 @@ func BatchFlightDateRangeHandler(w http.ResponseWriter, r *http.Request) {
 // Dequeue a single day, and enqueue a job for each flight on that day
 func BatchFlightDayHandler(w http.ResponseWriter, r *http.Request) {
 	ctx,_ := context.WithTimeout(appengine.NewContext(r), 10*time.Minute)
-	p := db.AppengineDSProvider{}
+	p := dsprovider.AppengineDSProvider{}
 
 	job := r.FormValue("job")
 	if job == "" {

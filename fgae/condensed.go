@@ -10,6 +10,8 @@ import(
 	"google.golang.org/appengine/log"
 
 	"github.com/skypies/util/gaeutil"
+	"github.com/skypies/util/dsprovider"
+
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/db"
 )
@@ -61,7 +63,7 @@ func (flightdb FlightDB)FetchCondensedFlights(s,e time.Time, tags []string) ([]f
 
 // {{{ fetchCondensedFlightsIndividually
 
-func fetchCondensedFlightsIndividually(ctx context.Context, p db.DatastoreProvider, s,e time.Time, tags []string) ([]fdb.CondensedFlight,error,string) {
+func fetchCondensedFlightsIndividually(ctx context.Context, p dsprovider.DatastoreProvider, s,e time.Time, tags []string) ([]fdb.CondensedFlight,error,string) {
 	str := "# individual lookup\n"
 
 	ret := []fdb.CondensedFlight{}

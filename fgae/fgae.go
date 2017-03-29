@@ -12,7 +12,7 @@ import(
 	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/urlfetch"
 
-	backend "github.com/skypies/flightdb/db"
+	"github.com/skypies/util/dsprovider"
 )
 
 var Debug = false
@@ -20,14 +20,14 @@ var Debug = false
 type FlightDB struct {
 	ctx        context.Context
 	StartTime  time.Time
-	Backend    backend.DatastoreProvider
+	Backend    dsprovider.DatastoreProvider
 }
 
 func NewDB(ctx context.Context) FlightDB {
 	return FlightDB{
 		ctx:ctx,
 		StartTime:time.Now(),
-		Backend: backend.AppengineDSProvider{},
+		Backend: dsprovider.AppengineDSProvider{},
 	}
 }
 func NewDBFromReq(r *http.Request) FlightDB {

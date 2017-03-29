@@ -12,9 +12,10 @@ import (
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/aetest" // Also used for testing Cloud API
 
+	"github.com/skypies/util/dsprovider"
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/db"
-	"github.com/skypies/flightdb/faadata"
+	"github.com/skypies/flightdb/faadata" // for quick ascii loading of trackpoints
 )
 
 const appid = "mytestapp"
@@ -61,7 +62,7 @@ func newConsistentContext() (context.Context, func(), error) {
 
 // {{{ testPersistLookups
 
-func testPersistAndLookups(t *testing.T, p db.DatastoreProvider) {
+func testPersistAndLookups(t *testing.T, p dsprovider.DatastoreProvider) {
 	ctx, done, err := newConsistentContext()
 	if err != nil { t.Fatal(err) }
 	defer done()
@@ -71,7 +72,7 @@ func testPersistAndLookups(t *testing.T, p db.DatastoreProvider) {
 		if err := db.PersistFlight(ctx,p,f); err != nil { t.Fatal(err) }
 	}
 	
-	run := func(expected int, q *db.Query) {
+	run := func(expected int, q *db.FQuery) {
 		if results,err := db.GetAllByQuery(ctx, p, q); err != nil {
 			t.Fatal(err)
 		} else if len(results) != expected {
@@ -100,7 +101,7 @@ func testPersistAndLookups(t *testing.T, p db.DatastoreProvider) {
 // }}}
 
 func TestPersistAndLookups(t *testing.T) {
-	testPersistAndLookups(t, db.AppengineDSProvider{})
+	testPersistAndLookups(t, dsprovider.AppengineDSProvider{})
 	// Sadly, the aetest framework hangs on the first Put from the cloud client
 	// testPersistAndLookups(t, db.CloudDSProvider{appid})
 }

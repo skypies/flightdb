@@ -3,12 +3,15 @@ package db
 import(
 	"fmt"
 	"golang.org/x/net/context"
+	ds "github.com/skypies/util/dsprovider"
 	fdb "github.com/skypies/flightdb"
 )
 
-/*  import "github.com/skypies/flightdb/db"
+/*
+    import "github.com/skypies/util/dsprovider"  // datastore providers
+    import "github.com/skypies/flightdb/db"      // flight specific stuff on top of datastore
 
-    backend := db.AppengineDSProvider{}  // Or db.CloudDSProvider{"projname"}, if outside appengine
+    backend := dsprovider.AppengineDSProvider{}  // or .CloudDSProvider{"projname"}, if outside ae
 	
     q := db.NewFlightQuery().ByIdSpec(idspec)
     flights,err := db.GetAllByQuery(ctx, backend, q)
@@ -18,26 +21,11 @@ import(
     _,err := db.PersistFlight(ctx, backend, flights[0])
  */
 
-type DatastoreProvider interface {
-	Get(ctx context.Context, keyer Keyer, dst interface{}) error
-	GetAll(ctx context.Context, q *Query, dst interface{}) ([]Keyer, error)
-	Put(ctx context.Context, keyer Keyer, src interface{}) (Keyer, error)
-	Delete(ctx context.Context, keyer Keyer) error
-	DeleteMulti(ctx context.Context, keyers []Keyer) error
-	
-	NewIncompleteKey(ctx context.Context, kind string, root Keyer) Keyer
-	NewNameKey(ctx context.Context, kind, name string, root Keyer) Keyer
-	NewIDKey(ctx context.Context, kind string, id int64, root Keyer) Keyer
-	DecodeKey(encoded string) (Keyer, error)
-
-	// Infof, etc ?
-}
-
 // Functions in this file work on top of any implementation of the DatastoreProvider interface
 
 // {{{ GetByKey
 
-func GetByKey(ctx context.Context, p DatastoreProvider, keyer Keyer) (*fdb.Flight, error) {
+func GetByKey(ctx context.Context, p ds.DatastoreProvider, keyer ds.Keyer) (*fdb.Flight, error) {
 	blob := fdb.IndexedFlightBlob{}
 
 	if err := p.Get(ctx, keyer, &blob); err != nil {
@@ -52,10 +40,10 @@ func GetByKey(ctx context.Context, p DatastoreProvider, keyer Keyer) (*fdb.Fligh
 // }}}
 // {{{ GetAllByQuery
 
-func GetAllByQuery(ctx context.Context, p DatastoreProvider, q *Query) ([]*fdb.Flight, error) {
+func GetAllByQuery(ctx context.Context, p ds.DatastoreProvider, fq *FQuery) ([]*fdb.Flight, error) {
 	blobs := []fdb.IndexedFlightBlob{}
 
-	keyers, err := p.GetAll(ctx, q, &blobs)
+	keyers, err := p.GetAll(ctx, (*ds.Query)(fq), &blobs)
 	if err != nil {
 		return nil, fmt.Errorf("GetAllByQuery: %v", err)
 	}
@@ -76,8 +64,8 @@ func GetAllByQuery(ctx context.Context, p DatastoreProvider, q *Query) ([]*fdb.F
 // {{{ GetFirstByQuery
 
 // Returns first result, or nil (use Limit(1) to be more efficient)
-func GetFirstByQuery(ctx context.Context, p DatastoreProvider, q *Query) (*fdb.Flight, error) {
-	if flights,err := GetAllByQuery(ctx, p, q.Limit(1)); err != nil {
+func GetFirstByQuery(ctx context.Context, p ds.DatastoreProvider, fq *FQuery) (*fdb.Flight, error) {
+	if flights,err := GetAllByQuery(ctx, p, fq.Limit(1)); err != nil {
 		return nil,fmt.Errorf("GetFirstByQuery: %v", err)
 	} else if len(flights) == 0 {
 		return nil,nil
@@ -89,8 +77,8 @@ func GetFirstByQuery(ctx context.Context, p DatastoreProvider, q *Query) (*fdb.F
 // }}}
 // {{{ GetKeysByQuery
 
-func GetKeysByQuery(ctx context.Context, p DatastoreProvider, q *Query) ([]Keyer, error) {
-	keyers, err := p.GetAll(ctx, q.KeysOnly(), nil)
+func GetKeysByQuery(ctx context.Context, p ds.DatastoreProvider, fq *FQuery) ([]ds.Keyer, error) {
+	keyers, err := p.GetAll(ctx, (*ds.Query)(fq).KeysOnly(), nil)
 	if err != nil { err = fmt.Errorf("GetKeysByQuery: %v", err) }
 	return keyers,err
 }
@@ -98,7 +86,7 @@ func GetKeysByQuery(ctx context.Context, p DatastoreProvider, q *Query) ([]Keyer
 // }}}
 // {{{ PersistFlight
 
-func PersistFlight(ctx context.Context, p DatastoreProvider, f *fdb.Flight) error {
+func PersistFlight(ctx context.Context, p ds.DatastoreProvider, f *fdb.Flight) error {
 	keyer,err := findOrGenerateFlightKey(ctx, p, f)
 	if err != nil { return fmt.Errorf("PersistFlight: %v", err) }
 	
@@ -119,7 +107,7 @@ func PersistFlight(ctx context.Context, p DatastoreProvider, f *fdb.Flight) erro
 // {{{ findOrGenerateFlightKey
 
 // Will be nil if we don't have the data we need to specify an ancestor ID
-func rootKeyOrNil(ctx context.Context, p DatastoreProvider, f *fdb.Flight) Keyer {
+func rootKeyOrNil(ctx context.Context, p ds.DatastoreProvider, f *fdb.Flight) ds.Keyer {
 	if f.IcaoId != "" {
 		return p.NewNameKey(ctx, kFlightKind, string(f.IcaoId), nil)
 	} else if f.Callsign != "" {
@@ -128,7 +116,7 @@ func rootKeyOrNil(ctx context.Context, p DatastoreProvider, f *fdb.Flight) Keyer
 	return nil
 }
 
-func findOrGenerateFlightKey(ctx context.Context, p DatastoreProvider, f *fdb.Flight) (Keyer, error) {
+func findOrGenerateFlightKey(ctx context.Context, p ds.DatastoreProvider, f *fdb.Flight) (ds.Keyer, error) {
 	if f.GetDatastoreKey() != "" {
 		return p.DecodeKey(f.GetDatastoreKey())
 	}

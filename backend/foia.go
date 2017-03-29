@@ -16,6 +16,7 @@ import(
 	"google.golang.org/appengine/log"	
 
 	"github.com/skypies/util/date"
+	"github.com/skypies/util/dsprovider"
 	"github.com/skypies/util/widget"
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/db"
@@ -107,7 +108,7 @@ func multiEnqueueHandler(w http.ResponseWriter, r *http.Request) {
 
 func rmHandler(w http.ResponseWriter, r *http.Request) {
 	ctx,_ := context.WithTimeout(appengine.NewContext(r), 9*time.Minute)
-	p := db.AppengineDSProvider{}
+	p := dsprovider.AppengineDSProvider{}
 	
 	n := 0
 	
@@ -255,7 +256,7 @@ func loadGCSFile(ctx context.Context, bucketname, filename string) (string, erro
 // {{{ foiaIdempotentAdd
 
 func foiaIdempotentAdd(ctx context.Context, f *fdb.Flight) (bool, string, error) {
-	p := db.AppengineDSProvider{}
+	p := dsprovider.AppengineDSProvider{}
 	q := db.NewFlightQuery().ByIdSpec(f.IdSpec()).ByTags([]string{"FOIA"})
 	prefix := f.IdentityString()
 	

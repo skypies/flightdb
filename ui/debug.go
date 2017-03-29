@@ -14,6 +14,7 @@ import(
 	"google.golang.org/appengine/user"
 
 	"github.com/skypies/adsb"
+	"github.com/skypies/util/dsprovider"
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/fgae"
 	"github.com/skypies/flightdb/db"
@@ -52,7 +53,7 @@ func debugHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 
 	nPts := 0
 
-	backend := db.AppengineDSProvider{}
+	backend := dsprovider.AppengineDSProvider{}
 	
 	for _,idspec := range idspecs {
 		q := db.NewFlightQuery().ByIdSpec(idspec)

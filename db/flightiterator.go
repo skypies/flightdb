@@ -3,39 +3,24 @@ package db
 import(
 	"fmt"
 	"golang.org/x/net/context"
+	"github.com/skypies/util/dsprovider"
 	fdb "github.com/skypies/flightdb"
 )
 
-/*
+// Should be replaced by dsprovider.Iterator
 
- it := db.NewFlightIterator(ctx, p, q)
- for it.Iterate(ctx) {
-   f := it.Flight()
-   fmt.Printf("%s\n", f)
- }
- if it.Err() != nil {
-   return it.Err()
- }
-
-*/
-
-// We don't bother with the datastore Iterator implementations; they
-// time out after 60s, concluding that the result set is likelly
-// stale. So we just grab all the keys, and then work through them
-// individually. The goal isn't for efficient batched fetches, it is
-// to avoid timeouts.
 type FlightIterator struct {
-	p        DatastoreProvider
+	p        dsprovider.DatastoreProvider
 
-	keyers []Keyer // The full result set
+	keyers []dsprovider.Keyer // The full result set
 	i        int
 	val     *fdb.Flight  // Consider a more general interface{}, maybe decodes to Flight on demand
 	err      error
 }
 
 // Snarf down all the keys from the get go.
-func NewFlightIterator(ctx context.Context, p DatastoreProvider, q *Query) *FlightIterator {
-	keyers,err := GetKeysByQuery(ctx, p, q)
+func NewFlightIterator(ctx context.Context, p dsprovider.DatastoreProvider, fq *FQuery) *FlightIterator {
+	keyers,err := GetKeysByQuery(ctx, p, fq)
 	it := FlightIterator{
 		p: p,
 		keyers: keyers,

@@ -5,6 +5,7 @@ import(
 	
 	"google.golang.org/appengine"
 
+	"github.com/skypies/util/dsprovider"
 	"github.com/skypies/util/widget"
 
 	fdb "github.com/skypies/flightdb"
@@ -18,7 +19,7 @@ func init() {
 // icaoid=A12345 - lookup recent flights on that airframe
 func listHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
-	p := db.AppengineDSProvider{}
+	p := dsprovider.AppengineDSProvider{}
 
 	tags := widget.FormValueCommaSepStrings(r, "tags")
 	flights := []*fdb.Flight{}

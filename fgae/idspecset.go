@@ -5,7 +5,7 @@ package fgae
 
 import(
 	"golang.org/x/net/context"
-	"github.com/skypies/flightdb/db"
+	"github.com/skypies/util/dsprovider"
 )
 
 // Wrap up in a datastore-friendly struct
@@ -15,7 +15,7 @@ type IdSpecSetStruct struct {
 
 // Returns a serialized key to look it up again
 func IdSpecSetSave(ctx context.Context, idspecstrings []string) (string, error) {
-	p := db.AppengineDSProvider{}
+	p := dsprovider.AppengineDSProvider{}
 	incompletekey := p.NewIncompleteKey(ctx, "IdSpecSet", nil)
 
 	data := IdSpecSetStruct{IdSpecStrings:idspecstrings}
@@ -28,7 +28,7 @@ func IdSpecSetSave(ctx context.Context, idspecstrings []string) (string, error) 
 }
 
 func IdSpecSetLoad(ctx context.Context, keystring string) ([]string, error) {
-	p := db.AppengineDSProvider{}
+	p := dsprovider.AppengineDSProvider{}
 	keyer,err := p.DecodeKey(keystring)
 	if err != nil { return nil, err }
 
