@@ -95,7 +95,24 @@ func testPersistAndLookups(t *testing.T, p dsprovider.DatastoreProvider) {
 		t.Errorf("p.Delete: %v\n", err)
 	}
 
-	run(len(flights)-1, db.NewQuery())
+	nExpected := len(flights)-1
+	run(nExpected, db.NewQuery())
+
+	n := 0
+	fi := db.NewIterator(db.NewQuery())
+		for fi.Iterate(ctx) {
+		f := fi.Flight()
+		fmt.Printf("%s\n", f)
+		n++
+	}
+	if fi.Err() != nil {
+		t.Errorf("test iterator err: %v\n", fi.Err())
+	}
+
+	if n != nExpected {
+		t.Errorf("test expected to see %d, but saw %d\n", nExpected, n)
+	}
+
 }
 
 // }}}
