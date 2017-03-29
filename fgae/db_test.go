@@ -64,13 +64,16 @@ func testPersistAndLookups(t *testing.T, p dsprovider.DatastoreProvider) {
 	if err != nil { t.Fatal(err) }
 	defer done()
 
+	db := NewDB(ctx)
+	db.Backend = p
+	
 	flights := loadFlights(t, fakeFlights)
 	for _,f := range flights {
-		if err := persistFlight(ctx,p,f); err != nil { t.Fatal(err) }
+		if err := db.PersistFlight(f); err != nil { t.Fatal(err) }
 	}
 	
 	run := func(expected int, q *FQuery) {
-		if results,err := getAllByQuery(ctx, p, q); err != nil {
+		if results,err := db.LookupAll(q); err != nil {
 			t.Fatal(err)
 		} else if len(results) != expected {
 			t.Errorf("expected %d results, saw %d; query: %s", expected, len(results), q)
@@ -78,21 +81,21 @@ func testPersistAndLookups(t *testing.T, p dsprovider.DatastoreProvider) {
 		}
 	}
 
-	run(len(flights), NewFlightQuery())
-	run(3,            NewFlightQuery().Limit(3))
-	run(1,            NewFlightQuery().ByCallsign(flights[0].Callsign))
+	run(len(flights), db.NewQuery())
+	run(3,            db.NewQuery().Limit(3))
+	run(1,            db.NewQuery().ByCallsign(flights[0].Callsign))
 
 	// Now delete something
-	first,err := getFirstByQuery(ctx, p, NewFlightQuery())
+	first,err := db.LookupFirst(db.NewQuery())
 	if err != nil || first == nil {
 		t.Errorf("db.GetFirstByQuery: %v / %v\n", err, first)
-	} else if keyer,err := p.DecodeKey(first.GetDatastoreKey()); err != nil {
+	} else if keyer,err := db.Backend.DecodeKey(first.GetDatastoreKey()); err != nil {
 		t.Errorf("p.DecodeKey: %v\n", err)
-	} else if err := p.Delete(ctx, keyer); err != nil {
+	} else if err := db.DeleteByKey(keyer); err != nil {
 		t.Errorf("p.Delete: %v\n", err)
 	}
 
-	run(len(flights)-1, NewFlightQuery())
+	run(len(flights)-1, db.NewQuery())
 }
 
 // }}}

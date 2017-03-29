@@ -7,29 +7,32 @@ import(
 	fdb "github.com/skypies/flightdb"
 )
 
-/*
-    import "github.com/skypies/util/dsprovider"  // datastore providers
-    import "github.com/skypies/flightdb/db"      // flight specific stuff on top of datastore
+// {{{ db.PersistFlight
 
-    backend := dsprovider.AppengineDSProvider{}  // or .CloudDSProvider{"projname"}, if outside ae
+func (db *FlightDB)PersistFlight(f *fdb.Flight) error {
+	keyer,err := findOrGenerateFlightKey(db.Ctx(), db.Backend, f)
+	if err != nil { return fmt.Errorf("PersistFlight: %v", err) }
 	
-    q := db.NewFlightQuery().ByIdSpec(idspec)
-    flights,err := db.GetAllByQuery(ctx, backend, q)
+	if blob,err := f.ToBlob(); err != nil {
+		return fmt.Errorf("PersistFlight: %v", err)
+	} else {
+		_, err = db.Backend.Put(db.Ctx(), keyer, blob)
+		if err != nil {
+			return fmt.Errorf("PersistFlight: %v", err)
+		}
+	}
 
-    // update the first flight ...
+	return nil
+}
 
-    _,err := db.PersistFlight(ctx, backend, flights[0])
- */
+// }}}
 
-// Functions in this file work on top of any implementation of the DatastoreProvider interface
+// {{{ db.LookupKey
 
-// As of now, all of these routines are called solely by the wrappers in fgae.go (and db_test)
-// {{{ getByKey
-
-func getByKey(ctx context.Context, p ds.DatastoreProvider, keyer ds.Keyer) (*fdb.Flight, error) {
+func (db *FlightDB)LookupKey(keyer ds.Keyer) (*fdb.Flight, error) {
 	blob := fdb.IndexedFlightBlob{}
 
-	if err := p.Get(ctx, keyer, &blob); err != nil {
+	if err := db.Backend.Get(db.Ctx(), keyer, &blob); err != nil {
 		return nil, fmt.Errorf("GetByKey: %v", err)
 	}
 
@@ -39,12 +42,13 @@ func getByKey(ctx context.Context, p ds.DatastoreProvider, keyer ds.Keyer) (*fdb
 }
 
 // }}}
-// {{{ getAllByQuery
+// {{{ db.LookupAll
 
-func getAllByQuery(ctx context.Context, p ds.DatastoreProvider, fq *FQuery) ([]*fdb.Flight, error) {
+func (db *FlightDB)LookupAll(fq *FQuery) ([]*fdb.Flight, error) {
+	// Results are not ordered ... for timerange idspecs, would need to sort on Timeslots
 	blobs := []fdb.IndexedFlightBlob{}
 
-	keyers, err := p.GetAll(ctx, (*ds.Query)(fq), &blobs)
+	keyers, err := db.Backend.GetAll(db.Ctx(), (*ds.Query)(fq), &blobs)
 	if err != nil {
 		return nil, fmt.Errorf("GetAllByQuery: %v", err)
 	}
@@ -62,11 +66,10 @@ func getAllByQuery(ctx context.Context, p ds.DatastoreProvider, fq *FQuery) ([]*
 }
 
 // }}}
-// {{{ getFirstByQuery
+// {{{ db.LookupFirst
 
-// Returns first result, or nil (use Limit(1) to be more efficient)
-func getFirstByQuery(ctx context.Context, p ds.DatastoreProvider, fq *FQuery) (*fdb.Flight, error) {
-	if flights,err := getAllByQuery(ctx, p, fq.Limit(1)); err != nil {
+func (db *FlightDB)LookupFirst(fq *FQuery) (*fdb.Flight, error) {
+	if flights,err := db.LookupAll(fq.Limit(1)); err != nil {
 		return nil,fmt.Errorf("GetFirstByQuery: %v", err)
 	} else if len(flights) == 0 {
 		return nil,nil
@@ -76,31 +79,34 @@ func getFirstByQuery(ctx context.Context, p ds.DatastoreProvider, fq *FQuery) (*
 }
 
 // }}}
-// {{{ getKeysByQuery
+// {{{ db.LookupMostRecent
 
-func getKeysByQuery(ctx context.Context, p ds.DatastoreProvider, fq *FQuery) ([]ds.Keyer, error) {
-	keyers, err := p.GetAll(ctx, (*ds.Query)(fq).KeysOnly(), nil)
-	if err != nil { err = fmt.Errorf("GetKeysByQuery: %v", err) }
-	return keyers,err
+func (db *FlightDB)LookupMostRecent(fq *FQuery) (*fdb.Flight, error) {
+	// Adding the ordering will break some queries, due to lack of indices
+	return db.LookupFirst(fq.Order("-LastUpdate"))
 }
 
 // }}}
-// {{{ persistFlight
+// {{{ db.LookupAllKeys
 
-func persistFlight(ctx context.Context, p ds.DatastoreProvider, f *fdb.Flight) error {
-	keyer,err := findOrGenerateFlightKey(ctx, p, f)
-	if err != nil { return fmt.Errorf("PersistFlight: %v", err) }
-	
-	if blob,err := f.ToBlob(); err != nil {
-		return fmt.Errorf("PersistFlight: %v", err)
-	} else {
-		_, err = p.Put(ctx, keyer, blob)
-		if err != nil {
-			return fmt.Errorf("PersistFlight: %v", err)
-		}
-	}
+func (db *FlightDB)LookupAllKeys(fq *FQuery) ([]ds.Keyer, error) {
+	q := (*ds.Query)(fq)
+	return db.Backend.GetAll(db.Ctx(), q.KeysOnly(), nil)
+}
 
-	return nil
+// }}}
+
+// {{{ db.DeleteByKey
+
+func (db *FlightDB)DeleteByKey(keyer ds.Keyer) error {
+	return db.Backend.Delete(db.Ctx(), keyer)
+}
+
+// }}}
+// {{{ db.DeleteAllKeys
+
+func (db *FlightDB)DeleteAllKeys(keyers []ds.Keyer) error {
+	return db.Backend.DeleteMulti(db.Ctx(), keyers)
 }
 
 // }}}
