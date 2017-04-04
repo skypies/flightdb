@@ -12,8 +12,8 @@ import(
 	_ "github.com/skypies/flightdb/analysis" // populate the reports registry
 	"github.com/skypies/flightdb/fgae"
 	mytemplates "github.com/skypies/flightdb/templates"         // parse up the templates
+	_ "github.com/skypies/pi/frontend"  // Pick up the roothandler
 	"github.com/skypies/util/widget"
-
 )
 
 var templates *template.Template

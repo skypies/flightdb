@@ -57,9 +57,9 @@ func newConsistentContext() (context.Context, func(), error) {
 
 // }}}
 
-// {{{ testPersistLookups
+// {{{ testEverything
 
-func testPersistAndLookups(t *testing.T, p dsprovider.DatastoreProvider) {
+func testEverything(t *testing.T, p dsprovider.DatastoreProvider) {
 	ctx, done, err := newConsistentContext()
 	if err != nil { t.Fatal(err) }
 	defer done()
@@ -98,11 +98,12 @@ func testPersistAndLookups(t *testing.T, p dsprovider.DatastoreProvider) {
 	nExpected := len(flights)-1
 	run(nExpected, db.NewQuery())
 
+	// Now test the iterator
 	n := 0
 	fi := db.NewIterator(db.NewQuery())
 		for fi.Iterate(ctx) {
 		f := fi.Flight()
-		fmt.Printf("%s\n", f)
+		fmt.Printf(" iterator result: %s\n", f)
 		n++
 	}
 	if fi.Err() != nil {
@@ -117,10 +118,10 @@ func testPersistAndLookups(t *testing.T, p dsprovider.DatastoreProvider) {
 
 // }}}
 
-func TestPersistAndLookups(t *testing.T) {
-	testPersistAndLookups(t, dsprovider.AppengineDSProvider{})
+func TestEverything(t *testing.T) {
+	testEverything(t, dsprovider.AppengineDSProvider{})
 	// Sadly, the aetest framework hangs on the first Put from the cloud client
-	// testPersistAndLookups(t, dsprovider.CloudDSProvider{appid})
+	// testEverything(t, dsprovider.CloudDSProvider{appid})
 }
 
 var (

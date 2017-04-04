@@ -2,10 +2,9 @@ application: serfr0-fdb
 
 dispatch:
 
-# All front doors (to stop stackdriver starting up default module)
+# All front doors go to map view (stackdriver hits them)
 - url: "*/"
-  module: frontend
-
+  module: ui
 - url: "*/fdb/*"
   module: ui
 - url: "*/api/*"
