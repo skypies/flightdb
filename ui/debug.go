@@ -12,10 +12,16 @@ import(
 
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/user"
+	"google.golang.org/appengine/urlfetch"
 
 	"github.com/skypies/adsb"
+	"github.com/skypies/geo"
+	"github.com/skypies/geo/sfo"
+	"github.com/skypies/util/widget"
+
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/fgae"
+	"github.com/skypies/flightdb/fr24"
 )
 
 func init() {
@@ -303,6 +309,47 @@ func debugFragsHandler(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(fmt.Sprintf("OK\n\n%s", str)))
+}
+
+// }}}
+
+// {{{ AirspaceDelayHandler
+
+// Pulls a skypi airspace, resyncs flight positions to some point in past (or future),
+// and displays them both with a line between them.
+//	&sync=-20s
+
+func AirspaceDelayHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	client := urlfetch.Client(ctx)
+	pos := geo.Latlong{37.060312,-121.990814}
+
+	syncedAge := widget.FormValueDuration(r, "sync")
+	if syncedAge == 0 { syncedAge = 2 * time.Minute }
+	
+	as,err := fr24.FetchAirspace(client, pos.Box(100,100))
+	if err != nil {
+		http.Error(w, fmt.Sprintf("FetchAirspace: %v", err), http.StatusInternalServerError)
+		return
+	}
+	ms := NewMapShapes()
+	for _,ad := range as.Aircraft {
+		tp := fdb.TrackpointFromADSB(ad.Msg)
+		age := time.Since(tp.TimestampUTC)
+		rewindDuration := age - syncedAge
+		newTp := tp.RepositionByTime(rewindDuration)
+
+		ms.AddIcon(MapIcon{TP:&tp,    Color:"#404040", Text:ad.Msg.Callsign,     ZIndex:1000})
+		ms.AddIcon(MapIcon{TP:&newTp, Color:"#c04040", Text:ad.Msg.Callsign+"'", ZIndex:2000})
+		ms.AddLine(MapLine{Start:tp.Latlong, End:newTp.Latlong, Color:"#000000"})
+	}
+	
+	var params = map[string]interface{}{
+		"Legend": "Debug Thing",
+		"Center": sfo.KFixes["YADUT"],
+		"Zoom": 9,
+	}
+	
+	MapHandlerWithShapesParams(ctx, w, r, ms, params);
 }
 
 // }}}
