@@ -66,7 +66,7 @@ func init() {
 	http.HandleFunc("/fdb/sideview",  ui.WithCtxOpt(ui.SideviewHandler))
 
 	// ui/visualize.go
-	http.HandleFunc("/fdb/visualize", ui.WithCtxOpt(ui.VisualizeHandler))
+	http.HandleFunc("/fdb/visualize", ui.WithCtxOptTmpl(AppTemplates, ui.VisualizeHandler))
 
 }
 

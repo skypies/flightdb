@@ -19,3 +19,16 @@ To deploy everything into a Google Cloud project:
     $ appcfg.py update_indexes  app/backend
     $ appcfg.py update_queues   app/backend
     $ appcfg.py update_dispatch app/backend
+
+If you want it to accumulate realtime flight track data, you'll also want to:
+* deploy `github.com/skypies/pi/skypi` onto some Raspberry Pi receivers
+* deploy `github.com/skypies/pi/consolidator` onto an AppEngine Flexible Environment
+
+The skypies will post bundles of received ADSB (and perhaps MLAT)
+messages up to Google PubSub, every second or so. The consolidator
+will read those bundles, group them by airframe, and add them into the
+database.
+
+If you have CSV dumps of historical flight track data (perhaps from
+the FAA), you can import it using the code in
+`github.com/skypies/flightdb/app/backend/foia.go`.

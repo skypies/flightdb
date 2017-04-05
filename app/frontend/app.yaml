@@ -1,5 +1,5 @@
 application: serfr0-fdb
-module: ui
+module: default
 version: one
 runtime: go
 api_version: go1

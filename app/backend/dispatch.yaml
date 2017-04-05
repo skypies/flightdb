@@ -4,20 +4,19 @@ dispatch:
 
 # All front doors go to map view (stackdriver hits them)
 - url: "*/"
-  module: ui
+  module: default
 - url: "*/fdb/*"
-  module: ui
+  module: default
 - url: "*/api/*"
-  module: ui
+  module: default
 - url: "*/static/*"
-  module: ui
+  module: default
 
 - url: "*/con/*"
   module: consolidator
 
 - url: "*/be/*"
   module: backend
-
 - url: "*/report"
   module: backend
 - url: "*/batch/*"
