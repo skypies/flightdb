@@ -6,16 +6,16 @@ Prerequisites:
 * define your Go workspace: `export GOPATH=~/go`
 
 Download and run things locally
-* `go get github.com/skypies/flightdb/ui` (pulls down all dependencies)
-* `goapp serve $GOPATH/github.com/skypies/flightdb/ui` (build & run locally)
+* `go get github.com/skypies/flightdb/app/frontend` (pulls down all dependencies)
+* `goapp serve $GOPATH/github.com/skypies/flightdb/app/frontend` (build & run locally)
 * Look at <http://localhost:8080/> (appengine admin panel is <http://localhost:8000/>)
 
 To deploy everything into a Google Cloud project:
 
-    $ goapp deploy              ui/
-    $ goapp deploy              backend/
+    $ goapp deploy              app/frontend
+    $ goapp deploy              app/backend
 
-    $ appcfg.py update_cron     backend/
-    $ appcfg.py update_indexes  backend/
-    $ appcfg.py update_queues   backend/
-    $ appcfg.py update_dispatch backend/
+    $ appcfg.py update_cron     app/backend
+    $ appcfg.py update_indexes  app/backend
+    $ appcfg.py update_queues   app/backend
+    $ appcfg.py update_dispatch app/backend

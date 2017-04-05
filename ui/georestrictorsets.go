@@ -20,23 +20,11 @@ import(
 
 var uriStem = "/fdb/restrictors"
 
-func init() {
-	http.HandleFunc("/fdb/restrictors/list", UIOptionsHandler(EnsureLoggedIn(rListHandler)))
+// {{{ RListHandler
 
-	http.HandleFunc("/fdb/restrictors/grs/new", UIOptionsHandler(EnsureLoggedIn(rGrsNewHandler)))
-	http.HandleFunc("/fdb/restrictors/grs/delete",UIOptionsHandler(EnsureLoggedIn(rGrsDeleteHandler)))
-	http.HandleFunc("/fdb/restrictors/grs/edit", UIOptionsHandler(EnsureLoggedIn(rGrsEditHandler)))
-	http.HandleFunc("/fdb/restrictors/grs/view", UIOptionsHandler(EnsureLoggedIn(rGrsViewHandler)))
-
-	http.HandleFunc("/fdb/restrictors/gr/new", UIOptionsHandler(EnsureLoggedIn(rGrNewHandler)))
-	http.HandleFunc("/fdb/restrictors/gr/edit", UIOptionsHandler(EnsureLoggedIn(rGrEditHandler)))
-	http.HandleFunc("/fdb/restrictors/gr/delete", UIOptionsHandler(EnsureLoggedIn(rGrDeleteHandler)))
-}
-
-// {{{ rListHandler
-
-func rListHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func RListHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
+	templates,_ := GetTemplates(ctx)
 	db := fgae.NewDB(ctx)
 
 	if rsets,err := db.LookupRestrictorSets(opt.UserEmail); err != nil {
@@ -55,11 +43,12 @@ func rListHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 
 // }}}
 
-// {{{ rGrsNewHandler
+// {{{ RGrsNewHandler
 
-// rGrsnewHandler    - () conjure empty grs, render [grs-edit]
-func rGrsNewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+// RGrsnewHandler    - () conjure empty grs, render [grs-edit]
+func RGrsNewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)	
+	templates,_ := GetTemplates(ctx)
 
 	params := map[string]interface{}{
 		"Title": "New Restrictor Set",
@@ -74,11 +63,12 @@ func rGrsNewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request)
 }
 
 // }}}
-// {{{ rGrsEditHandler
+// {{{ RGrsEditHandler
 
-// rGrsEditHandler   - (key [,form]) load it; if form, edit&save, chain to ./list; else render [grs-edit]
-func rGrsEditHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+// RGrsEditHandler   - (key [,form]) load it; if form, edit&save, chain to ./list; else render [grs-edit]
+func RGrsEditHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)	
+	templates,_ := GetTemplates(ctx)
 	db := fgae.NewDB(ctx)
 
 	grs := fdb.GeoRestrictorSet{User:opt.UserEmail}
@@ -119,10 +109,10 @@ func rGrsEditHandler(ctx context.Context, w http.ResponseWriter, r *http.Request
 }
 
 // }}}
-// {{{ rGrsDeleteHandler
+// {{{ RGrsDeleteHandler
 
-// rGrsDeleteHandler - (key) delete it, chain to ./list
-func rGrsDeleteHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+// RGrsDeleteHandler - (key) delete it, chain to ./list
+func RGrsDeleteHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	db := fgae.NewDB(ctx)
 
 	key := r.FormValue("grs_dskey")
@@ -137,17 +127,18 @@ func rGrsDeleteHandler(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	}
 
 	// All done; go to the list handler now.
-	rListHandler(ctx,w,r)	
+	RListHandler(ctx,w,r)	
 }
 
 // }}}
-// {{{ rGrsViewHandler
+// {{{ RGrsViewHandler
 
-// rGrsViewHandler- (key [,idspec]) load it, go to [grs-mapview]
-func rGrsViewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+// RGrsViewHandler- (key [,idspec]) load it, go to [grs-mapview]
+func RGrsViewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	templates,_ := GetTemplates(ctx)
 	grs,err := formValueDSKey(ctx, r)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("rGrViewHandler, err: %v", err), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("RGrViewHandler, err: %v", err), http.StatusBadRequest)
 		return
 	}
 	
@@ -181,7 +172,7 @@ func rGrsViewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request
 	
 	flights,err := formValueFlightsViaIdspecs(ctx, r)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("rGrViewHandler, idspecs err: %v", err), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("RGrViewHandler, idspecs err: %v", err), http.StatusBadRequest)
 		return
 	}
 	for _,f := range flights {
@@ -214,14 +205,15 @@ func rGrsViewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 // }}}
 
-// {{{ rGrNewHandler
+// {{{ RGrNewHandler
 
-func rGrNewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func RGrNewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)	
+	templates,_ := GetTemplates(ctx)
 
 	grs,err := formValueDSKey(ctx, r)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("rGrNewHandler, err: %v", err), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("RGrNewHandler, err: %v", err), http.StatusBadRequest)
 		return
 	}
 	
@@ -241,22 +233,23 @@ func rGrNewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) 
 }
 
 // }}}
-// {{{ rGrEditHandler
+// {{{ RGrEditHandler
 
-// rGrEditHandler    - (key,index [,form]) if form, edit&save, chain to ./grs/edit; else render [gr-edit]
-func rGrEditHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+// RGrEditHandler    - (key,index [,form]) if form, edit&save, chain to ./grs/edit; else render [gr-edit]
+func RGrEditHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)	
+	templates,_ := GetTemplates(ctx)
 	db := fgae.NewDB(ctx)
 
 	grs,err := formValueDSKey(ctx, r)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("rGrNewHandler, err: %v", err), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("RGrNewHandler, err: %v", err), http.StatusBadRequest)
 		return
 	}
 
 	grIndex := int(widget.FormValueInt64(r, "gr_index"))
 	if grIndex > len(grs.R) {
-		http.Error(w, fmt.Sprintf("rGrEditHandler, index too big (%d>%d)", grIndex,len(grs.R)),
+		http.Error(w, fmt.Sprintf("RGrEditHandler, index too big (%d>%d)", grIndex,len(grs.R)),
 			http.StatusBadRequest)
 		return
 	}
@@ -264,7 +257,7 @@ func rGrEditHandler(ctx context.Context, w http.ResponseWriter, r *http.Request)
 	// No form - fetch & display
 	if r.FormValue("gr_type") == "" {
 		if grIndex >= len(grs.R) {
-			http.Error(w, fmt.Sprintf("rGrEditHandler, index too big (%d>=%d)", grIndex,len(grs.R)),
+			http.Error(w, fmt.Sprintf("RGrEditHandler, index too big (%d>=%d)", grIndex,len(grs.R)),
 				http.StatusBadRequest)
 			return
 		}
@@ -287,7 +280,7 @@ func rGrEditHandler(ctx context.Context, w http.ResponseWriter, r *http.Request)
 
 	gr,err := fdb.FormValueGeoRestrictor(r)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("rGrEditHandler, parse err: %v", err), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("RGrEditHandler, parse err: %v", err), http.StatusBadRequest)
 		return
 	}
 
@@ -306,21 +299,21 @@ func rGrEditHandler(ctx context.Context, w http.ResponseWriter, r *http.Request)
 }
 
 // }}}
-// {{{ rGrDeleteHandler
+// {{{ RGrDeleteHandler
 
-// rGrDeleteHandler  - (key,index)
-func rGrDeleteHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+// RGrDeleteHandler  - (key,index)
+func RGrDeleteHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	db := fgae.NewDB(ctx)
 
 	grs,err := formValueDSKey(ctx, r)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("rGrNewHandler, err: %v", err), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("RGrNewHandler, err: %v", err), http.StatusBadRequest)
 		return
 	}
 
 	grIndex := int(widget.FormValueInt64(r, "gr_index"))
 	if grIndex > len(grs.R) {
-		http.Error(w, fmt.Sprintf("rGrDeleteHandler, index too big (%d>%d)", grIndex,len(grs.R)),
+		http.Error(w, fmt.Sprintf("RGrDeleteHandler, index too big (%d>%d)", grIndex,len(grs.R)),
 			http.StatusBadRequest)
 		return
 	}
@@ -337,9 +330,9 @@ func rGrDeleteHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 
 // }}}
 
-// {{{ rDebHandler
+// {{{ RDebHandler
 
-func rDebHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func RDebHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
 
 	r.ParseForm()

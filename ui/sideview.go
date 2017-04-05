@@ -19,11 +19,7 @@ import(
 	"github.com/skypies/flightdb/ref"
 )
 
-func init() {
-	http.HandleFunc("/fdb/sideview",  UIOptionsHandler(sideviewHandler))
-}
-
-// {{{ sideviewHandler
+// {{{ SideviewHandler
 
 // ?idspec=XX,YY,...    (or ?idspec=XX&idspec=YYY&...)
 //  &sample=15s          (sample the track every N seconds)
@@ -39,11 +35,10 @@ func init() {
 //  &showaccelerations=1
 //  &showangleofinclination=1
 
-//  &arriving=KSJC      (
+//  &arriving=KSJC
 //  &departing=KSFO
 
-
-func sideviewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func SideviewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
 	db := fgae.NewDB(ctx)
 	
@@ -91,6 +86,7 @@ func sideviewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request
 }
 
 // }}}
+
 // {{{ SideviewPDFInit
 
 func SideviewPDFInit(opt UIOptions, w http.ResponseWriter, r *http.Request, numFlights int) *fpdf.SideviewPdf {
@@ -231,9 +227,6 @@ func flightToAltitudeTrack(opt UIOptions, r *http.Request, metars *metar.Archive
 }
 
 // }}}
-
-// A few canned queries
-
 
 // {{{ -------------------------={ E N D }=----------------------------------
 

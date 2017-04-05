@@ -123,4 +123,3 @@ func formValueIdSpecStrings(r *http.Request) ([]string) {
 
 	return idspecs
 }
-

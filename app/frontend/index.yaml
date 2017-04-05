@@ -16,10 +16,3 @@ indexes:
   - name: Timeslots
   - name: LastUpdate
     direction: desc
-
-- kind: flight
-  properties:
-  - name: Ident
-  - name: Timeslots
-  - name: LastUpdate
-    direction: desc

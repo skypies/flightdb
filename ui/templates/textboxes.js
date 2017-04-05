@@ -1,1 +1,0 @@
-../../../pi/frontend/templates/textboxes.js

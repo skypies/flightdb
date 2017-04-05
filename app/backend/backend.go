@@ -5,16 +5,18 @@ import(
 	"net/http"
 
 	"github.com/skypies/flightdb/fgae"
+	"github.com/skypies/flightdb/ui"
 	mytemplates "github.com/skypies/flightdb/templates"
 )
 
-var templates *template.Template
+var AppTemplates *template.Template
 
 func init() {
-	// NEW
+	AppTemplates = mytemplates.LoadTemplates("templates")
+
 	http.HandleFunc(fgae.RangeUrl,    fgae.BatchFlightDateRangeHandler)
 	http.HandleFunc(fgae.DayUrl,      fgae.BatchFlightDayHandler)
 	http.HandleFunc(fgae.InstanceUrl, fgae.BatchFlightHandler)
 
-	templates = mytemplates.LoadTemplates("templates")
+	http.HandleFunc("/report", ui.WithCtxOptTmpl(AppTemplates, ui.ReportHandler))
 }

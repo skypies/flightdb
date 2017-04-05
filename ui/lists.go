@@ -3,7 +3,7 @@ package ui
 import(
 	"net/http"
 
-	"google.golang.org/appengine"
+	"golang.org/x/net/context"
 
 	"github.com/skypies/util/widget"
 
@@ -11,13 +11,9 @@ import(
 	"github.com/skypies/flightdb/fgae"
 )
 
-func init() {
-	http.HandleFunc("/fdb/list", listHandler)
-}
-
 // icaoid=A12345 - lookup recent flights on that airframe
-func listHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
+func ListHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	templates,_ := GetTemplates(ctx)
 	db := fgae.NewDB(ctx)
 
 	tags := widget.FormValueCommaSepStrings(r, "tags")

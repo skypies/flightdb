@@ -5,14 +5,12 @@ import(
 	"fmt"
 	"net/http"
 
+	"golang.org/x/net/context"
+
 	"github.com/skypies/geo"
 	"github.com/skypies/geo/sfo"
 	"github.com/skypies/util/widget"
 )
-
-func init() {
-	http.HandleFunc("/fdb/map", MapHandler)
-}
 
 // {{{ getGoogleMapsParams
 
@@ -69,7 +67,7 @@ func WaypointMapVar(in map[string]geo.Latlong) template.JS {
 // ?usermap=7d  - heatmap of users who were active within [duration]
 // ?usermap=all - heatmap of all user profiles
 
-func MapHandler(w http.ResponseWriter, r *http.Request) {	
+func MapHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {	
 	var params = map[string]interface{}{
 		"Legend": "purple={SERFR2,BRIXX1,WWAVS1}; cyan={BIGSUR3}",
 	}
@@ -92,20 +90,21 @@ func MapHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	MapHandlerWithShapesParams(w, r, ms, params)
+	MapHandlerWithShapesParams(ctx, w, r, ms, params)
 }
 
 // }}}
 // {{{ MapHandlerWithShapesParams
 
-func MapHandlerWithShapesParams(w http.ResponseWriter, r *http.Request, ms *MapShapes, params map[string]interface{}) {	
+func MapHandlerWithShapesParams(ctx context.Context, w http.ResponseWriter, r *http.Request, ms *MapShapes, params map[string]interface{}) {	
+	tmpl,_ := GetTemplates(ctx)
 	getGoogleMapsParams(r, params)
 
 	params["Zoom"] = 9
 	params["Shapes"] = ms
 	params["Waypoints"] = WaypointMapVar(sfo.KFixes)
 	
-	if err := templates.ExecuteTemplate(w, "map", params); err != nil {
+	if err := tmpl.ExecuteTemplate(w, "map", params); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

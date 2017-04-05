@@ -7,7 +7,6 @@ import(
 )
 
 func init() {
-	http.HandleFunc("/fdb/visualize", UIOptionsHandler(visualizeHandler))
 }
 
 // ?idspec=XX,YY,...  (or ?idspec=XX&idspec=YYY&...)
@@ -19,7 +18,7 @@ func init() {
 //  &dist=from       (for distance axis, use dist from airport; by default, uses dist along path)
 //  &colorby=delta   (delta groundspeed, instead of groundspeed)
 
-func visualizeHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func VisualizeHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	if r.FormValue("debug") != "" {
 		str := "OK\n"
 		for k, v := range r.Form {
@@ -30,11 +29,11 @@ func visualizeHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 	
 	switch r.FormValue("viewtype") {
-	case "vector":   tracksetHandler(ctx,w,r)
-	case "descent":  descentHandler(ctx,w,r)
-	case "sideview": sideviewHandler(ctx,w,r)
-	case "track":    trackHandler(ctx,w,r)
-	default:         http.Error(w, "Specify viewtype={vector|descent|track}", http.StatusBadRequest)
+	case "vector":   TracksetHandler(ctx,w,r)
+	//case "descent":  escentHandler(ctx,w,r)
+	case "sideview": SideviewHandler(ctx,w,r)
+	case "track":    TrackHandler(ctx,w,r)
+	default:         http.Error(w, "Specify viewtype={vector|sideview|track}", http.StatusBadRequest)
 	}		
 }
 

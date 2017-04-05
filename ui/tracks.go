@@ -21,11 +21,6 @@ import(
 	"github.com/skypies/flightdb/ref"
 )
 
-func init() {
-	http.HandleFunc("/fdb/tracks", UIOptionsHandler(trackHandler))
-	http.HandleFunc("/fdb/trackset", UIOptionsHandler(tracksetHandler))
-}
-
 // {{{ maybeAddFr24Track
 
 func MaybeAddFr24Track(c context.Context, f *fdb.Flight) string {
@@ -61,11 +56,11 @@ func MaybeAddFr24Track(c context.Context, f *fdb.Flight) string {
 
 // }}}
 
-// {{{ trackHandler
+// {{{ TrackHandler
 
 //  &all=1 [&colorby=candy]  - show all instances of the IdSpec [prob want coloring]
 
-func trackHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func TrackHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	// This whole Airframe cache thing should be automatic, and upstream from here.
 	airframes := ref.NewAirframeCache(ctx)
 	opt,_ := GetUIOptions(ctx)
@@ -108,11 +103,11 @@ func trackHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 }
 
 // }}}
-// {{{ tracksetHandler
+// {{{ TracksetHandler
 
-func tracksetHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func TracksetHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
-
+	
 	// Check we can parse them up-front, so we can return an ascii error
 	if _,err := opt.IdSpecs(); err != nil {
 		http.Error(w, fmt.Sprintf("idspec parsing: %v", err.Error()), http.StatusInternalServerError)
@@ -170,6 +165,7 @@ func IdSpecsToJSVar(idspecs []string) template.JS {
 
 func OutputTrackpointsOnAMap(ctx context.Context, w http.ResponseWriter, r *http.Request, flights []*fdb.Flight) {
 	opt,_ := GetUIOptions(ctx)
+	tmpl,_ := GetTemplates(ctx)
 
 	bannerText := ""
 	for i,_ := range flights {
@@ -304,7 +300,7 @@ func OutputTrackpointsOnAMap(ctx context.Context, w http.ResponseWriter, r *http
 
 	getGoogleMapsParams(r, params)
 
-	if err := templates.ExecuteTemplate(w, "map", params); err != nil {
+	if err := tmpl.ExecuteTemplate(w, "map", params); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -318,6 +314,7 @@ func OutputTrackpointsOnAMap(ctx context.Context, w http.ResponseWriter, r *http
 
 func OutputMapLinesOnAStreamingMap(ctx context.Context, w http.ResponseWriter, r *http.Request, vectorURLPath string) {
 	opt,_ := GetUIOptions(ctx)
+	tmpl,_ := GetTemplates(ctx)
 	ms := NewMapShapes()
 	legend := ""
 
@@ -348,7 +345,7 @@ func OutputMapLinesOnAStreamingMap(ctx context.Context, w http.ResponseWriter, r
 	}
 	getGoogleMapsParams(r, params)
 
-	if err := templates.ExecuteTemplate(w, "map", params); err != nil {
+	if err := tmpl.ExecuteTemplate(w, "map", params); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

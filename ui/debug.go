@@ -19,9 +19,8 @@ import(
 )
 
 func init() {
-	http.HandleFunc("/fdb/debug", UIOptionsHandler(debugHandler)) // should rename at some point ...
 	//http.HandleFunc("/fdb/debug/frags", UIOptionsHandler(debugFragsHandler))
-	http.HandleFunc("/fdb/debug/user", UIOptionsHandler(debugUserHandler))
+	//http.HandleFunc("/fdb/debug/user", UIOptionsHandler(debugUserHandler))
 }
 
 // {{{ debugUserHandler
@@ -35,9 +34,9 @@ func debugUserHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 }
 
 // }}}
-// {{{ debugHandler
+// {{{ DebugHandler
 
-func debugHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func DebugHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	db := fgae.NewDB(ctx)
 	opt,_ := GetUIOptions(ctx)
 	str := ""

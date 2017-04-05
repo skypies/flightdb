@@ -13,11 +13,6 @@ import(
 	"github.com/skypies/flightdb/ref"
 )
 
-func init() {
-	http.HandleFunc("/fdb/json", UIOptionsHandler(jsonHandler))
-	http.HandleFunc("/fdb/snarf", UIOptionsHandler(snarfHandler))
-}
-
 // {{{ LookupIdspec
 
 func LookupIdspec(db fgae.FlightDB, idspec fdb.IdSpec) ([]*fdb.Flight, error) {
@@ -44,11 +39,11 @@ func LookupIdspec(db fgae.FlightDB, idspec fdb.IdSpec) ([]*fdb.Flight, error) {
 
 // }}}
 
-// {{{ jsonHandler
+// {{{ JsonHandler
 
 // /fdb/json?idspec=...  - dumps an entire flight object out as JSON.
 
-func jsonHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func JsonHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
 	db := fgae.NewDB(ctx)
 
@@ -95,11 +90,11 @@ func jsonHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 }
 
 // }}}
-// {{{ snarfHandler
+// {{{ SnarfHandler
 
 // /fdb/snarf?idspec=...  - pull the idspecs from prod, insert into local DB. For debugging.
 
-func snarfHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func SnarfHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
 	client := urlfetch.Client(ctx)
 	db := fgae.NewDB(ctx)

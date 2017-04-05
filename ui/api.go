@@ -20,19 +20,12 @@ import(
 	"github.com/skypies/flightdb/fgae"
 )
 
-func init() {
-	http.HandleFunc("/fdb/vector", UIOptionsHandler(vectorHandler))  // Returns an idpsec as vector lines in JSON
-
-	http.HandleFunc("/api/flight/lookup", UIOptionsHandler(flightLookupHandler))
-	http.HandleFunc("/api/procedures", UIOptionsHandler(ProcedureHandler))
-}
-
-// {{{ vectorHandler
+// {{{ VectorHandler
 
 // ?idspec=F12123@144001232[,...]
 // &json=1
 
-func vectorHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func VectorHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
 	db := fgae.NewDB(ctx)
 
@@ -223,14 +216,14 @@ func FlightToMapLines(f *fdb.Flight, trackName string, colorscheme ColorScheme, 
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-// {{{ flightLookupHandler
+// {{{ FlightLookupHandler
 
 // http://fdb.serfr1.org/api/flight/lookup?idspec=A3C3E6@1464046200:1464046200
 
 // ?idspec=F12123@144001232:155001232   (note - time range - may return multiple matches)
 //   &trackdata=1                       (include trackdata; omitted by default)
 
-func flightLookupHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func FlightLookupHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	db := fgae.NewDB(ctx)
 	opt,_ := GetUIOptions(ctx)
 	str := "OK\n"
@@ -313,24 +306,6 @@ func ProcedureHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 }
 
 // }}}
-
-/* 
-
-For 2016/05/24, in DBv2:
- 4284  []
- 2961  [AL]
-  903  [NORCAL:]
-  923  [:NORCAL]
-
-  564 [SFO:]
-  198 [OAK:]
-  141 [SJC:]
-
-All done ! 4323 results, took 32.292807401s   []
-All done ! 913 results, took 5.516500834s     [NORCAL:]
-All done ! 927 results, took 7.74727197s      [:NORCAL]
-
- */
 
 // {{{ -------------------------={ E N D }=----------------------------------
 

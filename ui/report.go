@@ -1,4 +1,4 @@
-package backend
+package ui
 
 import(
 	"encoding/json"
@@ -14,13 +14,11 @@ import(
 	"github.com/skypies/util/date"
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/fgae"
-	"github.com/skypies/flightdb/ui"
 	"github.com/skypies/flightdb/report"
 	_ "github.com/skypies/flightdb/analysis" // populate the reports registry
 )
 
 func init() {
-	http.HandleFunc("/report", ui.UIOptionsHandler(reportHandler))
 }
 
 func ButtonPOST(anchor, action string, idspecs []string) string {
@@ -40,8 +38,9 @@ func maybeButtonPOST(idspecs []string, title string, url string) string {
 		idspecs)
 }
 
-func reportHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	opt,_ := ui.GetUIOptions(ctx)
+func ReportHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	opt,_ := GetUIOptions(ctx)
+	templates,_ := GetTemplates(ctx)
 	db := fgae.NewDB(ctx)
 
 	if r.FormValue("rep") == "" {

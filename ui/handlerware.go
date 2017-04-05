@@ -3,53 +3,83 @@ package ui
 import(
 	"fmt"
 	"html/template"
-	"time"
 	"net/http"
+	"time"
+	
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/user"
 
-	_ "github.com/skypies/flightdb/analysis" // populate the reports registry
-	"github.com/skypies/flightdb/fgae"
-	mytemplates "github.com/skypies/flightdb/templates"         // parse up the templates
-	_ "github.com/skypies/pi/frontend"  // Pick up the roothandler
 	"github.com/skypies/util/widget"
+	"github.com/skypies/flightdb/fgae"
 )
 
-var templates *template.Template
-
-func init() {
-	templates = mytemplates.LoadTemplates("templates")
-}
-
-// A 'middleware' handler to parse out common fields, and stuff them into a context
-
 /* Common code for pulling out a user session cookie, populating a Context, etc.
- * Users that aren't logged in will be redirected to the specified URL.
+
+import "github.com/skypies/flightdb/ui"
 
 func init() {
-  http.HandleFunc("/deb", UIOptionsHandler(debHandler))
+  http.HandleFunc("/foo", ui.WithCtxOpt(fooHandler))
+  http.HandleFunc("/bar", ui.WithCtxOptTmpl(Templates, barHandler))
+  //http.HandleFunc("/bar", ui.WithCtxOptTmplUser(Templates, barHandler)) // must be logged in
 }
 
-func debHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func fooHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,ok := GetUIOptions(ctx)
 	str := fmt.Sprintf("OK\nresultsetid=%s, ok=%v\n", opt.ResultsetID, ok) 
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(str))
 }
 
- */
+func barHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	opt,ok := GetUIOptions(ctx)
+  templates,ok := GetTemplates(ctx)
+  templates.ExecuteTemplate(w, "bar-template", params)
+}
 
-// To prevent other libs colliding in the context.Value keyspace, use this private key
-type contextKey int
-const uiOptionsKey contextKey = 0
+ */
 
 type baseHandler    func(http.ResponseWriter, *http.Request)
 type contextHandler func(context.Context, http.ResponseWriter, *http.Request)
 
-func UIOptionsHandler(ch contextHandler) baseHandler {
+// To prevent other libs colliding with us in the context.Value keyspace, use these private keys
+type contextKey int
+const(
+	uiOptionsKey contextKey = iota
+	templatesKey
+)
+
+// Some convenience combos
+func WithCtxOpt(ch contextHandler) baseHandler {
+	return WithCtx(WithOpt(ch))
+}
+func WithCtxTmpl(t *template.Template, ch contextHandler) baseHandler {
+	return WithCtx(WithTmpl(t,ch))
+}
+func WithCtxOptTmpl(t *template.Template, ch contextHandler) baseHandler {
+	return WithCtx(WithTmpl(t,WithOpt(ch)))
+}
+func WithCtxOptTmplUser(t *template.Template, ch contextHandler) baseHandler {
+	return WithCtx(WithTmpl(t,EnsureUser(WithOpt(ch))))
+}
+
+// Outermost wrapper; all other wrappers take (and return) contexthandlers
+func WithCtx(ch contextHandler) baseHandler {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx,_ := context.WithTimeout(appengine.NewContext(r), 550 * time.Second)
+		ch(ctx,w,r)
+	}
+}
+
+func WithTmpl(t *template.Template, ch contextHandler) contextHandler {
+	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		ctx = context.WithValue(ctx, templatesKey, t)		
+		ch(ctx, w, r)
+	}
+}
+
+func WithOpt(ch contextHandler) contextHandler {
+	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		
 		opt,err := FormValueUIOptions(ctx,r)  // May go to datastore
@@ -58,6 +88,9 @@ func UIOptionsHandler(ch contextHandler) baseHandler {
 			return
 		}
 
+		// Transparent magic, to permamently record large sets of idspecs passed as POST
+		// params and replace them with an ID to the stored set; this lets us provide
+		// permalinks.
 		if err := opt.MaybeLoadSaveResultset(ctx); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -116,23 +149,13 @@ func GetUIOptions(ctx context.Context) (UIOptions,bool) {
 	return opt, ok
 }
 
-
-/* 
-
-func init() {
-  http.HandleFunc("/deb", UIOptionsHandler(EnsureLoggedIn(debHandler)))
+// Underlying handlers should call this to get their session object
+func GetTemplates(ctx context.Context) (*template.Template, bool) {
+	tmpl, ok := ctx.Value(templatesKey).(*template.Template)
+	return tmpl, ok
 }
 
-// If this handler is called, user is logged in; else they are redirected to login
-func debHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	opt,ok := GetUIOptions(ctx)
-	str := fmt.Sprintf("OK\nresultsetid=%s, ok=%v\n", opt.ResultsetID, ok) 
-	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(str))
-}
-
-*/
-func EnsureLoggedIn(ch contextHandler) contextHandler {
+func EnsureUser(ch contextHandler) contextHandler {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		opt,ok := GetUIOptions(ctx)
 		if !ok {

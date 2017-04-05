@@ -7,6 +7,8 @@ import(
 	"net/http"
 	"time"
 
+	"golang.org/x/net/context"
+
 	"github.com/skypies/util/date"
 	"github.com/skypies/util/widget"
 	"github.com/skypies/geo"
@@ -14,10 +16,6 @@ import(
 
 	"github.com/skypies/flightdb/fgae"
 )
-
-func init() {
-	http.HandleFunc("/fdb/historical", historicalHandler)
-}
 
 // {{{ buildLegend
 
@@ -48,14 +46,16 @@ func buildLegend(t time.Time) string {
 
 // }}}
 
-// {{{ historicalHandler
+// {{{ HistoricalHandler
 
 // /fdb/historical?
 //  epoch=141041412424214     or    date=2016/02/28&time=16:40:20
 //  pos_lat=36.0&pos_long=-122.0
 //  resultformat=json  (or list or map ?)
 
-func historicalHandler(w http.ResponseWriter, r *http.Request) {
+func HistoricalHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	templates,_ := GetTemplates(ctx)
+
 	if r.FormValue("date") == "" && r.FormValue("epoch") == "" {
 		var params = map[string]interface{}{
 			"TwoHoursAgo": date.NowInPdt().Add(-10 * time.Minute),
