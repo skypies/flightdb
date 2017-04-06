@@ -1,1 +1,0 @@
-../../ui/templatelib/map-shapes.js
