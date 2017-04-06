@@ -1,1 +1,0 @@
-../../../../pi/app/frontend/templates/map-poller.js

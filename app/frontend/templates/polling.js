@@ -1,1 +1,0 @@
-../../../../pi/app/frontend/templates/polling.js

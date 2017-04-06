@@ -47,6 +47,16 @@ func DebugHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
 	str := ""
 
+	/*
+	conts,_ := ioutil.ReadDir(".")
+	for _,f := range conts {
+		str += fmt.Sprintf("Yoho: %s\n", f.Name())
+	}
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte(fmt.Sprintf("OK\n\n%s", str)))
+	return
+*/
+	
 	//str += fmt.Sprintf("** Idspecs:-\n%#v\n\n", opt.IdSpecs())
 
 	idspecs,err := opt.IdSpecs()

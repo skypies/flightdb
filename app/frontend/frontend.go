@@ -6,8 +6,8 @@ import(
 
 	_ "github.com/skypies/flightdb/analysis" // populate the reports registry
 	"github.com/skypies/flightdb/ui"
-	mytemplates "github.com/skypies/flightdb/templates"         // parse up the templates
 	"github.com/skypies/pi/airspace/realtime"
+	"github.com/skypies/util/widget"
 )
 
 var AppTemplates *template.Template  // Singleton that belongs to the webapp
@@ -22,8 +22,12 @@ func handleWithTemplates(tmpl *template.Template, th templateHandler) baseHandle
 }
 
 func init() {
-	AppTemplates = mytemplates.LoadTemplates("templates")
-	
+	// Templates are kinda messy.
+	// The functions to parse them live in the UI library.
+	// The "templates" dir lives under the appengine app's main dir; to reuse templates
+	// from other places, we symlink them underneath this.
+	AppTemplates = widget.ParseRecursive(template.New("").Funcs(ui.TemplateFuncMap()), "templates")
+
 	http.HandleFunc("/", handleWithTemplates(AppTemplates, realtime.AirspaceHandler))
 
 	// ui/api.go

@@ -6,13 +6,13 @@ import(
 
 	"github.com/skypies/flightdb/fgae"
 	"github.com/skypies/flightdb/ui"
-	mytemplates "github.com/skypies/flightdb/templates"
+	"github.com/skypies/util/widget"
 )
 
 var AppTemplates *template.Template
 
 func init() {
-	AppTemplates = mytemplates.LoadTemplates("templates")
+	AppTemplates = widget.ParseRecursive(template.New("").Funcs(ui.TemplateFuncMap()), "templates")
 
 	http.HandleFunc(fgae.RangeUrl,    fgae.BatchFlightDateRangeHandler)
 	http.HandleFunc(fgae.DayUrl,      fgae.BatchFlightDayHandler)

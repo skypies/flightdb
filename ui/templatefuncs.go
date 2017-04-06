@@ -1,9 +1,8 @@
-package templates
+package ui
 
 import(
 	"errors"
 	"html/template"
-	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -12,12 +11,8 @@ import(
 	"github.com/skypies/util/date"
 )
 
-// value="{{sort .AStringSlice | flatten}}"
-var (
-)
-
-func LoadTemplates(dir string) *template.Template {
-	t := template.New("").Funcs(template.FuncMap{
+func TemplateFuncMap() template.FuncMap {
+	return template.FuncMap{
 		"add": templateAdd,
 		"flatten": templateFlatten,
 		"sort": templateSort,                 // <p value="{{sort .AStringSlice | flatten}}" />
@@ -28,12 +23,7 @@ func LoadTemplates(dir string) *template.Template {
 		"km2feet": templateKM2Feet,
 		"spacify": templateSpacifyFlightNumber,
 		"formatPdt": templateFormatPdt,
-	})
-	
-	if _, err := os.Stat(dir); ! os.IsNotExist(err) {
-		t = template.Must(t.ParseGlob(dir+"/*"))
 	}
-	return t
 }
 
 
