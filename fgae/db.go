@@ -16,9 +16,13 @@ func (db *FlightDB)PersistFlight(f *fdb.Flight) error {
 	if blob,err := f.ToBlob(); err != nil {
 		return fmt.Errorf("PersistFlight: %v", err)
 	} else {
+		if len(blob.Blob) > 1000000 {
+			return fmt.Errorf("PersistFlight %q: blob too big (%d)", f.IdentityString(), len(blob.Blob))
+		}
+
 		_, err = db.Backend.Put(db.Ctx(), keyer, blob)
 		if err != nil {
-			return fmt.Errorf("PersistFlight: %v", err)
+			return fmt.Errorf("PersistFlight %q: %v", f.IdentityString(), err)
 		}
 	}
 
