@@ -151,9 +151,10 @@ func SideviewPDFInit(opt UIOptions, w http.ResponseWriter, r *http.Request, numF
 	svp.DrawFrames()
 
 	if classb {
+		svp.TrackProjector = &fpdf.ProjectAsCrowFlies{}
 		svp.MaybeDrawSFOClassB()
 	}
-	
+
 	if opt.Report != nil {
 		svp.Caption += fmt.Sprintf("%d flights, %s\n", numFlights, opt.Report.DescriptionText())
 	}
