@@ -7,6 +7,7 @@ import(
 	_ "github.com/skypies/flightdb/analysis" // populate the reports registry
 	"github.com/skypies/flightdb/ui"
 	"github.com/skypies/pi/airspace/realtime"
+	"github.com/skypies/util/gaeutil"
 	"github.com/skypies/util/widget"
 )
 
@@ -72,6 +73,7 @@ func init() {
 	// ui/visualize.go
 	http.HandleFunc("/fdb/visualize", ui.WithCtxOptTmpl(AppTemplates, ui.VisualizeHandler))
 
+	http.HandleFunc("/fdb/memcachesingleton", gaeutil.SaveSingletonToMemcacheHandler)
 }
 
 // TODO: rename TracksetHandler and VectorHandler (and perhaps /fdb/tracks[et])
