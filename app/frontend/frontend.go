@@ -73,7 +73,7 @@ func init() {
 	// ui/visualize.go
 	http.HandleFunc("/fdb/visualize", ui.WithCtxOptTmpl(AppTemplates, ui.VisualizeHandler))
 
-	http.HandleFunc("/fdb/memcachesingleton", gaeutil.SaveSingletonToMemcacheHandler)
+	http.HandleFunc("/fdb/memcachesingleton", ui.WithCtxOpt(gaeutil.SaveSingletonToMemcacheHandler))
 }
 
 // TODO: rename TracksetHandler and VectorHandler (and perhaps /fdb/tracks[et])

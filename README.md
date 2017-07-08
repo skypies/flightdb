@@ -12,8 +12,8 @@ Download and run things locally
 
 To deploy everything into a Google Cloud project:
 
-    $ goapp deploy              app/frontend
-    $ goapp deploy              app/backend
+    $ gcloud app deploy app/frontend --project=serfr0-fdb --version=one
+    $ gcloud app deploy app/backend --project=serfr0-fdb --version=one
 
     $ appcfg.py update_cron     app/backend
     $ appcfg.py update_indexes  app/backend
