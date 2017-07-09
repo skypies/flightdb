@@ -1,6 +1,4 @@
-application: serfr0-fdb
-module: backend
-version: one
+service: backend
 runtime: go
 api_version: go1
 instance_class: B1
