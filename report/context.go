@@ -31,6 +31,7 @@ var(
 		"jtsunnyvaleair1@gmail.com",
 		"mthurd2003@gmail.com",
 		"fabrice.beretta@gmail.com",
+		"kaneshirokimberly@gmail.com",
 	}
 )
 
