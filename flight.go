@@ -229,8 +229,14 @@ func (f *Flight)Analyse() (error, string) {
 
 	if f.HasTrack("MLAT") { f.SetTag("MLAT") }
 	
-	if f.Origin != ""           { f.SetTag(fmt.Sprintf("%s:", f.Origin)) }
-	if f.Destination != ""      { f.SetTag(fmt.Sprintf(":%s", f.Destination)) }
+	if f.Origin != ""           {
+		f.SetTag(fmt.Sprintf("%s:", f.Origin))
+		f.SetTag(fmt.Sprintf(":%s:", f.Origin))
+	}
+	if f.Destination != ""      {
+		f.SetTag(fmt.Sprintf(":%s", f.Destination))
+		f.SetTag(fmt.Sprintf(":%s:", f.Destination))
+	}
 
 	// This stuff should get all table driven at some point ...
 	f.SetAirportComboTagsFor(OceanicAirports,   "OCEANIC")
