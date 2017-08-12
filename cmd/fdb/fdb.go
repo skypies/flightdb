@@ -57,9 +57,12 @@ func queryFromArgs() *fgae.FQuery {
 func runQuery(fq *fgae.FQuery) {
 	fmt.Printf("Running query %s\n", fq)
 
+	p,err := dsprovider.NewCloudDSProvider(ctx,"serfr0-fdb")
+	if err != nil { log.Fatal(err) }
+
 	db := fgae.NewDB(ctx)
-	db.Backend = dsprovider.CloudDSProvider{"serfr0-fdb"}
-	
+	db.Backend = p
+
 	flights,err := db.LookupAll(fq)
 	if err != nil { log.Fatal(err) }
 
