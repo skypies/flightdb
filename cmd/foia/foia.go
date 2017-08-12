@@ -21,7 +21,7 @@ import(
 
 var(
 	ctx = context.Background()
-	p = dsprovider.CloudDSProvider{"serfr0-fdb"}
+	p       dsprovider.DatastoreProvider
 	fDryRun bool
 	fCmd    string
 )
@@ -29,6 +29,10 @@ func init() {
 	flag.BoolVar(&fDryRun, "dryrun", true, "in dryrun mode, don't change the database")
 	flag.StringVar(&fCmd, "cmd", "stats", "what to do: {stats}")
 	flag.Parse()
+
+	provider,err := dsprovider.NewCloudDSProvider(ctx,"serfr0-fdb")
+	if err != nil { log.Fatal(err) }
+	p = provider
 }
 
 // {{{ loadfile
@@ -77,7 +81,7 @@ func stats(files []string) {
 	icao := map[string]int{}
 	h := histogram.NewSet(1000)
 	tod := histogram.Histogram{NumBuckets:48,ValMax:48}
-	var bbox *geo.LatlongBox
+	bbox := &geo.LatlongBox{}
 	
 	callback := func(ctx context.Context, f *fdb.Flight) (bool, string, error) {
 		for _,tag := range []string{":SFO","SFO:",":SJC","SJC:",":OAK","OAK:"} {
