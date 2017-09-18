@@ -45,6 +45,7 @@ func init() {
 
 	// ui/debug.go
 	http.HandleFunc("/fdb/debug", ui.WithCtxOpt(ui.DebugHandler))  // fdb/text ??
+	http.HandleFunc("/fdb/sched", ui.WithCtxOpt(ui.DebugSchedHandler))  // fdb/text ??
 
 	// ui/georestrictorsets.go
 	stem := "/fdb/restrictors"

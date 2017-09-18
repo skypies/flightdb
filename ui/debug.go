@@ -22,6 +22,7 @@ import(
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/fgae"
 	"github.com/skypies/flightdb/fr24"
+	"github.com/skypies/flightdb/ref"
 )
 
 func init() {
@@ -129,6 +130,27 @@ func DebugHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte(fmt.Sprintf("OK\n\n%s", str)))
+}
+
+// }}}
+// {{{ DebugSchedHandler
+
+func DebugSchedHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	//db := fgae.NewDB(ctx)
+	//opt,_ := GetUIOptions(ctx)
+	str := ""
+
+	k := r.FormValue("k")
+	airframes := ref.NewAirframeCache(ctx)
+	schedules := ref.NewScheduleCache(ctx)
+
+	af := airframes.Get(k)
+	sched := schedules.Get(k)
+
+	str += fmt.Sprintf("Live refdata lookup for '%s':-\n----\n%#v\n----\n%#v\n----\n%s", k, sched, af, schedules)
+	
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(fmt.Sprintf("OK\n\n%s", str)))
 }
