@@ -45,8 +45,8 @@ func loadfile(file string, callback faadata.NewFlightCallback) {
 	} else if n,str,err := faadata.ReadFrom(ctx, file, gzRdr, callback); err != nil {
 		log.Fatal("faadata.ReadFrom '%s': %v\n", file, err)
 	} else {
-		_,_ = n,str
-		//fmt.Printf("Completed, %d said true, here is aggregate out:-\n%s", n, str)
+		n,_ = n,str
+		fmt.Printf("Loaded %s: %d flights\n", file, n)
 	}
 }
 
@@ -81,7 +81,8 @@ func stats(files []string) {
 	icao := map[string]int{}
 	h := histogram.NewSet(1000)
 	tod := histogram.Histogram{NumBuckets:48,ValMax:48}
-	bbox := &geo.LatlongBox{}
+	var bbox *geo.LatlongBox
+	//bbox := &geo.LatlongBox{}
 	
 	callback := func(ctx context.Context, f *fdb.Flight) (bool, string, error) {
 		for _,tag := range []string{":SFO","SFO:",":SJC","SJC:",":OAK","OAK:"} {
@@ -104,7 +105,7 @@ func stats(files []string) {
 			tod.Add(histogram.ScalarVal(bucket))
 		}
 
-		return false,"",nil
+		return true,"",nil
 	}
 
 	for i,file := range files {
@@ -112,10 +113,13 @@ func stats(files []string) {
 		loadfile(file, callback)
 	}
 
-	wd,ht := bbox.NW().DistKM(bbox.NE), bbox.NW().DistKM(bbox.SW)
-	
-	fmt.Printf("Area (%.1fKM x %.1fKM) : %s\n", wd, ht, *bbox)
-	fmt.Printf("  <http://fdb.serfr1.org/fdb/map?boxes=b1&"+bbox.ToCGIArgs("b1")+">\n")
+	if bbox != nil {
+		wd,ht := bbox.NW().DistKM(bbox.NE), bbox.NW().DistKM(bbox.SW)	
+		fmt.Printf("Area (%.1fKM x %.1fKM) : %s\n", wd, ht, *bbox)
+		fmt.Printf("  <http://fdb.serfr1.org/fdb/map?boxes=b1&"+bbox.ToCGIArgs("b1")+">\n")
+	} else {
+		fmt.Printf("No tracks found!\n")
+	}
 	fmt.Printf("Airports:-\n%s", pprint(norcal))
 	fmt.Printf("ICAO codes:-\n%s", pprint(icao))
 	fmt.Printf("Time of day counts: %s\n", tod)
