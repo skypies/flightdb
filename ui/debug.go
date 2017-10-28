@@ -26,10 +26,80 @@ import(
 )
 
 func init() {
-	//http.HandleFunc("/fdb/debug/frags", UIOptionsHandler(debugFragsHandler))
-	//http.HandleFunc("/fdb/debug/user", UIOptionsHandler(debugUserHandler))
+	http.HandleFunc("/fdb/debug2", WithCtxOpt(debugHandler))
+	//http.HandleFunc("/fdb/debug/frags", WithCtxOpt(debugFragsHandler))
+	//http.HandleFunc("/fdb/debug/user", WithCtxOpt(debugUserHandler))
 }
 
+// {{{ debugHandler
+
+func debugHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	db := fgae.NewDB(ctx)
+	opt,_ := GetUIOptions(ctx)
+	str := ""
+
+	idspecs,err := opt.IdSpecs()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	topstr := ""
+
+	for _,idspec := range idspecs {
+		q := db.NewQuery().ByIdSpec(idspec)
+		topstr += fmt.Sprintf("*** %s\n", idspec)
+
+		results,err := db.LookupAll(q)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		for i,result := range results {
+			topstr += fmt.Sprintf("  * %s\n", result)
+			str += fmt.Sprintf(" [%02d] %s\n", i, result)
+
+			//db.PersistFlight(result)
+		}
+		str += "\n\n\n\n"
+
+		for i,f := range results {
+			str += fmt.Sprintf("----------{result %02d }-----------\n\n", i)
+
+			if f == nil {
+				http.Error(w, fmt.Sprintf("idspec %s[%#v] not found", idspec, idspec), http.StatusInternalServerError)
+				return
+			}
+
+			str += fmt.Sprintf("    %s\n", f.IdSpec())
+			str += fmt.Sprintf("    %s\n", f.FullString())
+			str += fmt.Sprintf("    airframe: %s\n", f.Airframe.String())
+			str += fmt.Sprintf("    %s\n\n", f)
+			str += fmt.Sprintf("    index tags: %v\n", f.IndexTagList())
+			str += fmt.Sprintf("    /batch/flights/flight?flightkey=%s&job=retag\n", f.GetDatastoreKey())
+
+			t := f.AnyTrack()
+			str += fmt.Sprintf("\n---- Anytrack: %s\n", t)
+
+			for k,v := range f.Tracks {
+				str += fmt.Sprintf("  -- [%-7.7s] %s\n", k, v)
+				if r.FormValue("v") != "" {
+					for n,tp := range *v {
+						str += fmt.Sprintf("    - [%3d] %s\n", n, tp)
+					}
+				}
+			}
+			str += "\n"
+			str += fmt.Sprintf("--- DebugLog:-\n%s\n", f.DebugLog)
+		}
+	}
+
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte(fmt.Sprintf("OK\n\n%s\n%s", topstr, str)))
+}
+
+// }}}
 // {{{ debugUserHandler
 
 func debugUserHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
