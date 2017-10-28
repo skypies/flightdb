@@ -118,7 +118,7 @@ func (r Row)ToTrackpoint() fdb.Trackpoint {
 	t,_ := time.Parse("20060102 15:04:05 MST", tStr)
 	
 	tp := fdb.Trackpoint{
-		DataSource:    "EB-FOIA", // Make configurable ?
+		DataSource:    "DATASOURCE-UNDEFINED", // Should be overwritten by caller
 		TimestampUTC:  t,
 		Latlong:       geo.Latlong{Lat:lat, Long:long},
 		Altitude:      alt * 100.0,

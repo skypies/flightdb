@@ -250,13 +250,13 @@ func getGCSFilenames(ctx context.Context, bucketName, datestr string) ([][]strin
 // }}}
 // {{{ loadGCSFile
 
-func loadGCSFile(ctx context.Context, bucketname, filename string) (string, error) {
-	src := bucketname+","+filename
+func loadGCSFile(ctx context.Context, bucketName, filename string) (string, error) {
+	src := bucketName+","+filename
 	str := fmt.Sprintf("Flights loaded from %s\n", src)
 
 	tStart := time.Now()
 
-	ioReader,err := getGCSReader(ctx, bucketname, filename)
+	ioReader,err := getGCSReader(ctx, bucketName, filename)
 	if err != nil {
 		err = fmt.Errorf("loadGCSFile(%s): %v", src, err)
 		log.Errorf(ctx, "%v", err)
@@ -264,7 +264,7 @@ func loadGCSFile(ctx context.Context, bucketname, filename string) (string, erro
 	}
 	log.Infof(ctx, "opened %s, about to faadata.ReadFrom\n", src)
 
-	n,str,err := faadata.ReadFrom(ctx, src, ioReader, foiaIdempotentAdd)
+	n,str,err := faadata.ReadFrom(ctx, src, bucketName, ioReader, foiaIdempotentAdd)
 	if err != nil {
 		err = fmt.Errorf("loadGCSFile(%s): %v", src, err)
 		log.Errorf(ctx, "%v", err)
