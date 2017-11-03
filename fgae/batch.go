@@ -214,6 +214,7 @@ func jobRetagHandler(r *http.Request, f *fdb.Flight) (string, error) {
 
 	str += fmt.Sprintf("\n*** URL: /fdb/tracks?idspec=%s\n", f.IdSpecString())
 	
+	// Forces rewrite in all cases; change the guard to be more selective.
 	if true {
 		db := NewDB(c)
 		if err := db.PersistFlight(f); err != nil {

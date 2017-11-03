@@ -312,8 +312,8 @@ func RGrDeleteHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	grIndex := int(widget.FormValueInt64(r, "gr_index"))
-	if grIndex > len(grs.R) {
-		http.Error(w, fmt.Sprintf("RGrDeleteHandler, index too big (%d>%d)", grIndex,len(grs.R)),
+	if grIndex >= len(grs.R) {
+		http.Error(w, fmt.Sprintf("RGrDeleteHandler, index too big (%d>=%d)", grIndex,len(grs.R)),
 			http.StatusBadRequest)
 		return
 	}
