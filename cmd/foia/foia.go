@@ -20,15 +20,23 @@ import(
 )
 
 var(
-	ctx = context.Background()
-	p = dsprovider.CloudDSProvider{"serfr0-fdb"}
-	fDryRun bool
-	fCmd    string
+	ctx    = context.Background()
+	p       *dsprovider.CloudDSProvider
+	fDryRun  bool
+	fCmd     string
+	fVerbosity int
 )
 func init() {
 	flag.BoolVar(&fDryRun, "dryrun", true, "in dryrun mode, don't change the database")
 	flag.StringVar(&fCmd, "cmd", "stats", "what to do: {stats}")
+	flag.IntVar(&fVerbosity, "v", 0, "verbosity level")
 	flag.Parse()
+
+	if pr,err := dsprovider.NewCloudDSProvider(ctx, "serfr0-fdb"); err != nil {
+		log.Fatal("new cloud provider: %v\n", err)
+	} else {
+		p = pr
+	}
 }
 
 // {{{ loadfile
@@ -41,8 +49,12 @@ func loadfile(file string, callback faadata.NewFlightCallback) {
 	} else if n,str,err := faadata.ReadFrom(ctx, file, gzRdr, callback); err != nil {
 		log.Fatal("faadata.ReadFrom '%s': %v\n", file, err)
 	} else {
-		_,_ = n,str
-		//fmt.Printf("Completed, %d said true, here is aggregate out:-\n%s", n, str)
+		if fVerbosity > 0 {
+			fmt.Printf("%04d read from file %f\n", n, file)
+		}
+		if fVerbosity > 1 {
+			fmt.Printf("aggregate out:-\n%s", str)
+		}			
 	}
 }
 
