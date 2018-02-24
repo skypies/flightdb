@@ -28,6 +28,10 @@ func ListHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	it := db.NewIterator(query)
 	for it.Iterate(ctx) {
 		f := it.Flight()
+		if it.Err() != nil {
+			http.Error(w, it.Err().Error(), http.StatusInternalServerError)
+			return
+		}
 		f.PruneTrackContents() // Save on RAM
 		flights = append(flights, f)
 	}

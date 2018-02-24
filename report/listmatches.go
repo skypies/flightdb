@@ -47,7 +47,9 @@ func ListReporter(r *Report, f *fdb.Flight, intersections []fdb.TrackIntersectio
 	}
 
 	// Generate market distribution for matches
-	if f.Origin == "SFO" || f.Destination == "SFO" {
+	if f.Origin == "SFO" || f.Destination == "SFO" ||
+		f.Origin == "SJC" || f.Destination == "SJC" ||
+		f.Origin == "OAK" || f.Destination == "OAK" {
 		r.I[fmt.Sprintf("[F] %s:%s", f.Origin, f.Destination)]++
 	}
 	

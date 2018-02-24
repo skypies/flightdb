@@ -15,12 +15,14 @@ import(
 
 // {{{ makeFlight
 
-func makeFlight(rows []Row, tStart time.Time, genesisStr string) (*fdb.Flight, error) {
+func makeFlight(rows []Row, dataSource string, tStart time.Time, genesisStr string) (*fdb.Flight, error) {
 	if len(rows) == 0 { return nil, fmt.Errorf("No rows!") }
 
 	t := fdb.Track{}
 	for _,row := range rows {
-		t = append(t, row.ToTrackpoint())
+		tp := row.ToTrackpoint()
+		tp.DataSource = dataSource
+		t = append(t, tp)
 	}
 
 	sort.Sort(fdb.TrackByTimestampAscending(t))
@@ -46,7 +48,7 @@ func makeFlight(rows []Row, tStart time.Time, genesisStr string) (*fdb.Flight, e
 
 type NewFlightCallback func(context.Context, *fdb.Flight) (bool, string, error)
 
-func ReadFrom(ctx context.Context, name string, rdr io.Reader, cb NewFlightCallback) (int, string,error) {
+func ReadFrom(ctx context.Context, name, bucketName string, rdr io.Reader, cb NewFlightCallback) (int, string,error) {
 
 	str := fmt.Sprintf("---- Flights loaded from %s\n", name)
 	i := 1
@@ -71,7 +73,7 @@ func ReadFrom(ctx context.Context, name string, rdr io.Reader, cb NewFlightCallb
 		if len(rows)>0 && !row.FromSameFlightAs(rows[0]) {
 			logPrefix := fmt.Sprintf("%s:%d-%d", name, i-len(rows), i-1)
 			
-			if f,err := makeFlight(rows, tStart, "Genesis: "+logPrefix+"\n"); err != nil {
+			if f,err := makeFlight(rows, bucketName, tStart, "Genesis: "+logPrefix+"\n"); err != nil {
 				return nFlightsAdded,str,err
 			} else if added,subStr,err := cb(ctx,f); err != nil {
 				return nFlightsAdded,str, err
@@ -93,7 +95,7 @@ func ReadFrom(ctx context.Context, name string, rdr io.Reader, cb NewFlightCallb
 	if len(rows)>0 {
 		logPrefix := fmt.Sprintf("%s:%d-%d", name, i-len(rows), i-1)
 
-		if f,err := makeFlight(rows, tStart, logPrefix); err != nil {
+		if f,err := makeFlight(rows, bucketName, tStart, logPrefix); err != nil {
 			return nFlightsAdded,str,err
 		} else if added,subStr,err := cb(ctx,f); err != nil {
 			return nFlightsAdded,str,err
@@ -112,7 +114,6 @@ func ReadFrom(ctx context.Context, name string, rdr io.Reader, cb NewFlightCallb
 }
 
 // }}}
-
 
 // {{{ -------------------------={ E N D }=----------------------------------
 

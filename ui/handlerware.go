@@ -60,7 +60,7 @@ func WithCtxOptTmpl(t *template.Template, ch contextHandler) baseHandler {
 	return WithCtx(WithTmpl(t,WithOpt(ch)))
 }
 func WithCtxOptTmplUser(t *template.Template, ch contextHandler) baseHandler {
-	return WithCtx(WithTmpl(t,EnsureUser(WithOpt(ch))))
+	return WithCtx(WithTmpl(t,WithOpt(EnsureUser(ch))))
 }
 
 // Outermost wrapper; all other wrappers take (and return) contexthandlers
