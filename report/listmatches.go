@@ -80,6 +80,11 @@ func ListReporter(r *Report, f *fdb.Flight, intersections []fdb.TrackIntersectio
 
 	if len(intersections) > 0 {
 		addTrackpointIntersection(intersections[0].Start)
+		// Also report the end intersection, if it is different
+		if (intersections[0].J >  intersections[0].I) {
+			addTrackpointIntersection(intersections[0].End)
+		}
+		addTrackpointIntersection(intersections[0].Start)
 	} else if len(r.Waypoints) > 0 {
 		for _,wpName := range r.Waypoints {
 			if trackName,i := f.AtWaypoint(wpName); trackName != "" {

@@ -242,18 +242,24 @@ func (it IntersectableTrack)satisfiesQuadtree(gr geo.Restrictor) RestrictorInter
 	if outcome.Satisfies != gr.IsExclusion() {
 		// outcome is relative to the subtrack; make it relative to the original track
 		outcome.I += offset
-		outcome.J += offset
 		outcome.Start = it.Track[outcome.I]
-		outcome.End = it.Track[outcome.J]
 
 		// Decorate trackpoints
 		it.Track[outcome.I].AnalysisDisplay = AnalysisDisplayHighlight
-		it.Track[outcome.J].AnalysisDisplay = AnalysisDisplayHighlight
-		for i:=outcome.I; i<=outcome.J; i++ {
-			it.Track[i].AnalysisAnnotation += fmt.Sprintf("* Point satisfied georestriction %s\n", gr)
+
+		if gr.CanContain() {
+			outcome.J += offset
+			outcome.End = it.Track[outcome.J]
+			it.Track[outcome.J].AnalysisDisplay = AnalysisDisplayHighlight
+			for i:=outcome.I; i<=outcome.J; i++ {
+				it.Track[i].AnalysisAnnotation += fmt.Sprintf("* Point satisfied georestriction %s\n", gr)
+			}
+			it.Track[outcome.I].AnalysisAnnotation += fmt.Sprintf("* First point to satisfy\n")
+			it.Track[outcome.J].AnalysisAnnotation += fmt.Sprintf("* Last point to satisfy\n")
+
+		} else {
+			it.Track[outcome.I].AnalysisAnnotation += fmt.Sprintf("* Only point to satisfy\n")
 		}
-		it.Track[outcome.I].AnalysisAnnotation += fmt.Sprintf("* First point to satisfy\n")
-		it.Track[outcome.J].AnalysisAnnotation += fmt.Sprintf("* Last point to satisfy\n")
 	}
 
 	return outcome
