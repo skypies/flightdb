@@ -19,12 +19,12 @@ cron:
 
 - description: Retag yesterday's inbound SFO flights (pick up :SFO_S etc)
   url: /batch/flights/dates?job=retag&date=yesterday&tags=:SFO
-  schedule: every day 04:00
+  schedule: every day 01:00
   timezone: America/Los_Angeles
   target: backend
 
 - description: Retag yesterday's inbound SJC flights (pick up :SJC_N)
   url: /batch/flights/dates?job=retag&date=yesterday&tags=:SJC
-  schedule: every day 04:15
+  schedule: every day 01:15
   timezone: America/Los_Angeles
   target: backend
