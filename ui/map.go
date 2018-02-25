@@ -42,7 +42,7 @@ func getGoogleMapsParams(r *http.Request, params map[string]interface{}) {
 	params["Center"] = center
 	params["Zoom"] = zoom
 	params["MapType"] = mapType
-	params["MapsAPIKey"] = "AIzaSyDZd-t_YjSNGKmtmh6eR4Bt6eRR_w72b18"
+	params["MapsAPIKey"] = "AIzaSyBCNj05xH-7CAdVEXXSPpt2lGDmaynIOBU"
 	//params["MapsAPIKey"] = ""//kGoogleMapsAPIKey,
 }
 
