@@ -29,8 +29,8 @@ cron:
   timezone: America/Los_Angeles
   target: backend
 
-- description: Create a 'condensed flights' object for yesterday's NORCAL flights
-  url: /api/procedures?yesterday=1&tags=:NORCAL:
+- description: Create a condensed flights object for yesteday NORCAL
+  url: /api/procedures?tags=:NORCAL:&yesterday=1
   schedule: every day 01:45
   timezone: America/Los_Angeles
   target: ui
