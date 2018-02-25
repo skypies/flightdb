@@ -19,10 +19,11 @@ import(
 
 func (flightdb FlightDB)FetchCondensedFlights(s,e time.Time, tags []string) ([]fdb.CondensedFlight,error,string) {
 	key := fmt.Sprintf("condensed-%d:%d-%v", s.Unix(), e.Unix(), tags)
-	str := fmt.Sprintf("Aloha!\n* s: %s\n* e: %s\nt: %v\nk: %s\n\n", s, e, tags, key)
+	str := fmt.Sprintf("FetchCondensedFlights\n* s: %s\n* e: %s\nt: %v\nk: %s\n\n", s, e, tags, key)
 
-	if time.Since(e) < time.Hour*25 {
-		return []fdb.CondensedFlight{}, fmt.Errorf("Can't condense within 25h of now"), str
+	coolOff := time.Hour*2 // time.Hour*25 {  // I can't remember why it needed to be 25h ?
+	if time.Since(e) < coolOff {
+		return []fdb.CondensedFlight{}, fmt.Errorf("Can't condense; inside cooling period %v", coolOff), str
 	}
 	
 	// If we've already processed this day, load the object

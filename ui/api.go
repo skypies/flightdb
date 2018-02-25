@@ -277,12 +277,17 @@ func WriteEncodedData(w http.ResponseWriter, r *http.Request, data interface{}) 
 // }}}	
 // {{{ ProcedureHandler
 
+// If no times specified, defaults to day before yesterday.
+// If 'yesterday' specified, default to that instead.
 func ProcedureHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	db := fgae.NewDB(ctx)
 
 	tags := widget.FormValueCommaSpaceSepStrings(r,"tags")
 	s,e := widget.FormValueEpochTime(r,"s"), widget.FormValueEpochTime(r,"e")
-	if s.Unix() == 0 {
+
+	if r.FormValue("yesterday") != "" {
+		s,e = date.WindowForYesterday()
+	} else if s.Unix() == 0 {
 		s,e = date.WindowForYesterday()
 		s = s.Add(-24 * time.Hour)
 		e = e.Add(-24 * time.Hour)
