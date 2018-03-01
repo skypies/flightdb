@@ -33,4 +33,4 @@ cron:
   url: /api/procedures?tags=:NORCAL:&yesterday=1
   schedule: every day 01:45
   timezone: America/Los_Angeles
-  target: ui
+  target: default

@@ -1,6 +1,7 @@
 package report
 
 import(
+	"fmt"
 	"strings"
 
 	"golang.org/x/net/context"
@@ -17,22 +18,25 @@ type ReportingContext struct {
 }
 
 var(
-	// Lower case everything
-	ACLFOIA = []string{
-		"adam@worrall.cc",
-		"raymonde.guindon@gmail.com",
-		"rguindon@alumni.stanford.edu",
-		"meekgee@gmail.com",
-		"nancyjordan650@gmail.com",
-		"borg@smwlaw.com",
-		"matt@classalameda.com",
-		"jnelson@wiai.com",
-		"robert.holbrook@gmail.com",
-		"jtsunnyvaleair1@gmail.com",
-		"mthurd2003@gmail.com",
-		"fabrice.beretta@gmail.com",
-		"kaneshirokimberly@gmail.com",
-		"ssrhome@gmail.com",
+	// Lower case everything. Map email address to the FOIA sources they can access.
+	// An empty list means access to all FOIA sources.
+	// {"mtv-foia", "EB-FOIA"}
+	ACLFOIA = map[string][]string{
+		"adam@worrall.cc": []string{},
+		"raymonde.guindon@gmail.com": []string{},
+		"rguindon@alumni.stanford.edu": []string{},
+		"meekgee@gmail.com": []string{},
+		"nancyjordan650@gmail.com": []string{},
+		"borg@smwlaw.com": []string{},
+		"matt@classalameda.com": []string{},
+		"jnelson@wiai.com": []string{},
+		"robert.holbrook@gmail.com": []string{},
+		"jtsunnyvaleair1@gmail.com": []string{},
+		"mthurd2003@gmail.com": []string{},
+		"fabrice.beretta@gmail.com": []string{},
+		"kaneshirokimberly@gmail.com": []string{},
+		"ssrhome@gmail.com": []string{},
+		"randywaldeck@gmail.com": []string{"mtv-foia"},
 	}
 )
 
@@ -59,15 +63,27 @@ func (r *Report)setupReportingContext(ctx context.Context) error {
 }
 
 func (r *Report)AddACLs() {
-	email := r.ReportingContext.UserEmail
-	if userInList(email, ACLFOIA) {
+	email := strings.ToLower(r.ReportingContext.UserEmail)
+	if srcs,exists := ACLFOIA[email]; exists {
 		r.Options.CanSeeFOIA = true
+		r.Options.CanSeeFOIASources = srcs
 	}
 }
 
-func userInList(user string, acl []string) bool {
-	for _,e := range acl {
-		if strings.ToLower(user) == strings.ToLower(e) { return true }
+func (r *Report)CanSeeThisFOIASource(src string) (bool, string) {
+	if ! r.Options.CanSeeFOIA {
+		return false, "[B] Eliminated: user can't access any FOIA"
 	}
-	return false
+
+	if len(r.Options.CanSeeFOIASources) == 0 {
+		return true, "" // User can see all sources
+	}
+
+	for _,allowed := range r.Options.CanSeeFOIASources {
+		if src == allowed {
+			return true, "" // User can see this source
+		}
+	}
+
+	return false, fmt.Sprintf("[B] Eliminated: user can't see FOIA from %s", src)
 }

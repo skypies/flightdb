@@ -35,9 +35,10 @@ type Options struct {
 	TimeOfDay          date.TimeOfDayRange  // If initialized, only find flights that 'match' it
 	
 	GRS                fdb.GeoRestrictorSet
-	
+
 	// Data specification
 	CanSeeFOIA         bool    // This is locked down to a few users. Upgrade to full ACL model?
+	CanSeeFOIASources []string // if empty, can see all sources
 	TrackDataSource    string  // TODO: replace with a cleverer track-specification thing
 	
 	// Options applicable to various reports
