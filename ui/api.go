@@ -10,6 +10,7 @@ import(
 	
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
+	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/urlfetch"
 
 	"github.com/skypies/util/date"
@@ -280,11 +281,14 @@ func WriteEncodedData(w http.ResponseWriter, r *http.Request, data interface{}) 
 // If no times specified, defaults to day before yesterday.
 // If 'yesterday' specified, default to that instead.
 func ProcedureHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	log.Infof(ctx, fmt.Sprintf("** ProcedureHandler"))
+
 	db := fgae.NewDB(ctx)
 
 	tags := widget.FormValueCommaSpaceSepStrings(r,"tags")
 	s,e := widget.FormValueEpochTime(r,"s"), widget.FormValueEpochTime(r,"e")
 
+	
 	if r.FormValue("yesterday") != "" {
 		s,e = date.WindowForYesterday()
 	} else if s.Unix() == 0 {
@@ -293,12 +297,17 @@ func ProcedureHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		e = e.Add(-24 * time.Hour)
 	}
 
+	log.Infof(ctx, fmt.Sprintf(" * tags=%v, s=%s, e=%s", tags, s, e))
+
 	tStart := time.Now()
 	cfs,err,str := db.FetchCondensedFlights(s,e,tags)
 	if err != nil {
+		log.Infof(ctx, fmt.Sprintf(" * Err = %v", err.Error()))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	log.Infof(ctx, fmt.Sprintf(" * elapsed = %s", time.Since(tStart).String()))
 
 	if r.FormValue("text") != "" {
 		str += "(elapsed: "+time.Since(tStart).String()+")\n"	
