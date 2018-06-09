@@ -47,9 +47,12 @@ func listResult2Airframe(fs fdb.FlightSnapshot) fdb.Airframe {
 
 func updateAirframeCache(c context.Context, resp []fdb.FlightSnapshot, list bool) (string,error) {
 	airframes := ref.NewAirframeCache(c)
+	if airframes == nil {
+		return "[error]", fmt.Errorf("ref.NewAirframeCache bailed")
+	}
+
 	str := ""
 	n := 0
-
 	for _,fs := range resp {
 		if fs.Airframe.Registration == "" { continue }
 		newAf := listResult2Airframe(fs)
@@ -140,12 +143,14 @@ func fr24PollHandler(w http.ResponseWriter, r *http.Request) {
 
 	str,err := updateAirframeCache(db.Ctx(), flights, r.FormValue("list") != "")
 	if err != nil {
+		db.Errorf("fr24PollHandler>updateAirframeCache: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	db.Perff("fr24Poll_200", "updating schedulecache")
 	if err := updateScheduleCache(db.Ctx(), flights); err != nil {
+		db.Errorf("fr24PollHandler>updateScheduleCache: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

@@ -4,6 +4,7 @@ package ref
 
 import(
 	"bytes"
+	"compress/gzip"
 	"encoding/gob"
 	"fmt"
 	
@@ -31,14 +32,18 @@ func (ac AirframeCache)String() string {
 func NewAirframeCache(c context.Context) *AirframeCache {
 	data,err := gaeutil.LoadSingleton(c,"airframes")
 	if err != nil {
-		log.Errorf(c, "airframecache: could not load: %v")
+		log.Errorf(c, "airframecache: could not load: %v", err)
 		return nil
 	}
 
-	buf := bytes.NewBuffer(data)
 	ac := AirframeCache{Map:map[string]*fdb.Airframe{}}
-	if err := gob.NewDecoder(buf).Decode(&ac); err != nil {
+	buf := bytes.NewBuffer(data)
+	if gzipReader,err := gzip.NewReader(buf); err != nil {
+		log.Errorf(c, "airframecache: could not gzip.NewReader: %v", err)
+	} else if err := gob.NewDecoder(gzipReader).Decode(&ac); err != nil {
 		//log.Errorf(c, "airframecache: could not decode: %v", err)
+	} else if err := gzipReader.Close(); err != nil {
+		log.Errorf(c, "airframecache: could not gzipReader.Close: %v", err)
 	}
 
 	return &ac
@@ -46,7 +51,12 @@ func NewAirframeCache(c context.Context) *AirframeCache {
 
 func (ac *AirframeCache)Persist(c context.Context) error {
 	var buf bytes.Buffer
-	if err := gob.NewEncoder(&buf).Encode(ac); err != nil {
+
+	gzipWriter := gzip.NewWriter(&buf)
+	
+	if err := gob.NewEncoder(gzipWriter).Encode(ac); err != nil {
+		return err
+	} else if err := gzipWriter.Close(); err != nil {
 		return err
 	}
 
