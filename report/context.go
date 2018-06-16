@@ -37,6 +37,7 @@ var(
 		"kaneshirokimberly@gmail.com": []string{},
 		"ssrhome@gmail.com": []string{},
 		"randywaldeck@gmail.com": []string{"mtv-foia"},
+		"clcmilton@gmail.com": []string{"mtv-foia"},
 	}
 )
 
