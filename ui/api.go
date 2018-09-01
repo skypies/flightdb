@@ -28,7 +28,7 @@ import(
 
 func VectorHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
-	db := fgae.NewDB(ctx)
+	db := fgae.NewAppEngineDB(ctx)
 
 	idspecs,err := opt.IdSpecs()
 	if err != nil {
@@ -225,7 +225,7 @@ func FlightToMapLines(f *fdb.Flight, trackName string, colorscheme ColorScheme, 
 //   &trackdata=1                       (include trackdata; omitted by default)
 
 func FlightLookupHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	db := fgae.NewDB(ctx)
+	db := fgae.NewAppEngineDB(ctx)
 	opt,_ := GetUIOptions(ctx)
 	str := "OK\n"
 
@@ -283,7 +283,7 @@ func WriteEncodedData(w http.ResponseWriter, r *http.Request, data interface{}) 
 func ProcedureHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	log.Infof(ctx, fmt.Sprintf("** ProcedureHandler"))
 
-	db := fgae.NewDB(ctx)
+	db := fgae.NewAppEngineDB(ctx)
 
 	tags := widget.FormValueCommaSpaceSepStrings(r,"tags")
 	s,e := widget.FormValueEpochTime(r,"s"), widget.FormValueEpochTime(r,"e")

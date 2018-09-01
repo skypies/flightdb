@@ -34,7 +34,7 @@ func init() {
 // {{{ debugHandler
 
 func debugHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	db := fgae.NewDB(ctx)
+	db := fgae.NewAppEngineDB(ctx)
 	opt,_ := GetUIOptions(ctx)
 	str := ""
 
@@ -114,7 +114,7 @@ func debugUserHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 // {{{ DebugHandler
 
 func DebugHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	db := fgae.NewDB(ctx)
+	db := fgae.NewAppEngineDB(ctx)
 	opt,_ := GetUIOptions(ctx)
 	str := ""
 
@@ -208,7 +208,7 @@ func DebugHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 // {{{ DebugSchedHandler
 
 func DebugSchedHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	//db := fgae.NewDB(ctx)
+	//db := fgae.NewAppEngineDB(ctx)
 	//opt,_ := GetUIOptions(ctx)
 	str := ""
 
@@ -295,7 +295,7 @@ func track2frag(t fdb.Track, id,callsign string, start,length int) fdb.TrackFrag
 // It parses the debug log to figure out which trackpoints got added when, so it's brittle.
 func debugFragsHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
-	db := fgae.NewDB(ctx)
+	db := fgae.NewAppEngineDB(ctx)
 	str := ""
 
 	idspecs,err := opt.IdSpecs()

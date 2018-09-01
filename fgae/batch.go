@@ -34,7 +34,7 @@ var(
 // A super widget
 func formValueFlightByKey(r *http.Request) (*fdb.Flight, error) {
 	ctx,_ := context.WithTimeout(appengine.NewContext(r), 10*time.Minute)
-	db := NewDB(ctx)
+	db := NewAppEngineDB(ctx)
 
 	keyer,err := db.Backend.DecodeKey(r.FormValue("flightkey"))
 	if err != nil {
@@ -111,7 +111,7 @@ func BatchFlightDateRangeHandler(w http.ResponseWriter, r *http.Request) {
 // Dequeue a single day, and enqueue a job for each flight on that day
 func BatchFlightDayHandler(w http.ResponseWriter, r *http.Request) {
 	ctx,_ := context.WithTimeout(appengine.NewContext(r), 10*time.Minute)
-	db := NewDB(ctx)
+	db := NewAppEngineDB(ctx)
 
 	job := r.FormValue("job")
 	if job == "" {
@@ -216,7 +216,7 @@ func jobRetagHandler(r *http.Request, f *fdb.Flight) (string, error) {
 	
 	// Forces rewrite in all cases; change the guard to be more selective.
 	if true {
-		db := NewDB(c)
+		db := NewAppEngineDB(c)
 		if err := db.PersistFlight(f); err != nil {
 			str += fmt.Sprintf("* Failed, with: %v\n", err)	
 			db.Errorf("%s", str)
@@ -240,7 +240,7 @@ func jobRetagHandler(r *http.Request, f *fdb.Flight) (string, error) {
 // should be in, or a new one.
 
 func jobMaybeBreakupFlight(r *http.Request, f *fdb.Flight) (string, error) {
-	db := NewDB(appengine.NewContext(r))
+	db := NewAppEngineDB(appengine.NewContext(r))
 
 	mlat,adsb := f.Tracks["MLAT"],f.Tracks["ADSB"]
 	if adsb == nil {

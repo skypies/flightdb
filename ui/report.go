@@ -41,7 +41,7 @@ func maybeButtonPOST(idspecs []string, title string, url string) string {
 func ReportHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
 	templates,_ := GetTemplates(ctx)
-	db := fgae.NewDB(ctx)
+	db := fgae.NewAppEngineDB(ctx)
 
 	if r.FormValue("rep") == "" {
 		// Show blank form

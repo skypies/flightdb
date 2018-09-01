@@ -14,7 +14,7 @@ import(
 // icaoid=A12345 - lookup recent flights on that airframe
 func ListHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	templates,_ := GetTemplates(ctx)
-	db := fgae.NewDB(ctx)
+	db := fgae.NewAppEngineDB(ctx)
 
 	tags := widget.FormValueCommaSepStrings(r, "tags")
 	flights := []*fdb.Flight{}

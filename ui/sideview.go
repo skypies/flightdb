@@ -40,7 +40,7 @@ import(
 
 func SideviewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
-	db := fgae.NewDB(ctx)
+	db := fgae.NewAppEngineDB(ctx)
 	
 	idspecs,err := opt.IdSpecs()
 	if err != nil {

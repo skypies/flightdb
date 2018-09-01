@@ -25,7 +25,7 @@ var uriStem = "/fdb/restrictors"
 func RListHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)
 	templates,_ := GetTemplates(ctx)
-	db := fgae.NewDB(ctx)
+	db := fgae.NewAppEngineDB(ctx)
 
 	if rsets,err := db.LookupRestrictorSets(opt.UserEmail); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -69,7 +69,7 @@ func RGrsNewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request)
 func RGrsEditHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)	
 	templates,_ := GetTemplates(ctx)
-	db := fgae.NewDB(ctx)
+	db := fgae.NewAppEngineDB(ctx)
 
 	grs := fdb.GeoRestrictorSet{User:opt.UserEmail}
 	maybeLoadGRSDSKey(ctx, r, &grs)	// If we have a key, load it up to populate the grs
@@ -113,7 +113,7 @@ func RGrsEditHandler(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 // RGrsDeleteHandler - (key) delete it, chain to ./list
 func RGrsDeleteHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	db := fgae.NewDB(ctx)
+	db := fgae.NewAppEngineDB(ctx)
 
 	key := r.FormValue("grs_dskey")
 	if key == "" {
@@ -239,7 +239,7 @@ func RGrNewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) 
 func RGrEditHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	opt,_ := GetUIOptions(ctx)	
 	templates,_ := GetTemplates(ctx)
-	db := fgae.NewDB(ctx)
+	db := fgae.NewAppEngineDB(ctx)
 
 	grs,err := formValueDSKey(ctx, r)
 	if err != nil {
@@ -303,7 +303,7 @@ func RGrEditHandler(ctx context.Context, w http.ResponseWriter, r *http.Request)
 
 // RGrDeleteHandler  - (key,index)
 func RGrDeleteHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	db := fgae.NewDB(ctx)
+	db := fgae.NewAppEngineDB(ctx)
 
 	grs,err := formValueDSKey(ctx, r)
 	if err != nil {
@@ -348,7 +348,7 @@ func RDebHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 
 // Can't find a nice way to centralize this, as it needs fdb & fgae :/
 func maybeLoadGRSDSKey(ctx context.Context, r *http.Request, grs *fdb.GeoRestrictorSet) (error) {
-	db := fgae.NewDB(ctx)
+	db := fgae.NewAppEngineDB(ctx)
 
 	// TODO: move to grs_dskey or something
 	if dskey := r.FormValue("grs_dskey"); dskey == "" {
@@ -377,7 +377,7 @@ func formValueDSKey(ctx context.Context, r *http.Request) (fdb.GeoRestrictorSet,
 
 func formValueFlightsViaIdspecs(ctx context.Context, r *http.Request) ([]*fdb.Flight, error) {
 	opt,_ := GetUIOptions(ctx)	
-	db := fgae.NewDB(ctx)
+	db := fgae.NewAppEngineDB(ctx)
 
 	// This whole Airframe cache thing should be automatic, and upstream from here.
 	airframes := ref.NewAirframeCache(ctx)

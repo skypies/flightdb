@@ -23,18 +23,21 @@ type FlightDB struct {
 	Backend    dsprovider.DatastoreProvider
 }
 
-func NewDB(ctx context.Context) FlightDB {
+func NewDB(ctx context.Context, p dsprovider.DatastoreProvider) FlightDB {
 	return FlightDB{
 		ctx:ctx,
 		StartTime:time.Now(),
-		Backend: dsprovider.AppengineDSProvider{},
+		Backend: p,
 	}
+}
+func NewAppEngineDB(ctx context.Context) FlightDB {
+	return NewDB(ctx, dsprovider.AppengineDSProvider{})
 }
 func NewDBFromReq(r *http.Request) FlightDB {
 	ctx,_ := context.WithTimeout(appengine.NewContext(r), 10 * time.Minute)
-	return NewDB(ctx)
+	return NewAppEngineDB(ctx)
 }
-
+	
 func (db *FlightDB)NewQuery() *FQuery {
 	return NewFlightQuery()
 }

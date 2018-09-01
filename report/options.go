@@ -158,7 +158,7 @@ func FormValueGeoRestrictorSetLoadOrAdHoc(ctx context.Context, r *http.Request) 
 }
 
 func maybeLoadGRSDSKey(ctx context.Context, r *http.Request, grs *fdb.GeoRestrictorSet) (error) {
-	db := fgae.NewDB(ctx)
+	db := fgae.NewAppEngineDB(ctx)
 
 	// TODO: move to grs_dskey or something
 	if dskey := r.FormValue("grs_dskey"); dskey == "" {
