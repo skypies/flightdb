@@ -98,11 +98,12 @@ func MapHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 
 func MapHandlerWithShapesParams(ctx context.Context, w http.ResponseWriter, r *http.Request, ms *MapShapes, params map[string]interface{}) {	
 	tmpl,_ := GetTemplates(ctx)
-	getGoogleMapsParams(r, params)
 
 	params["Zoom"] = 9
 	params["Shapes"] = ms
 	params["Waypoints"] = WaypointMapVar(sfo.KFixes)
+
+	getGoogleMapsParams(r, params)
 	
 	if err := tmpl.ExecuteTemplate(w, "map", params); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
