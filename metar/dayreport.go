@@ -16,7 +16,7 @@ import(
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/urlfetch"
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/skypies/util/date"
 	"github.com/skypies/util/gaeutil"

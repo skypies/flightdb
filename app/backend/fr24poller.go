@@ -9,7 +9,7 @@ import(
 	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/memcache"
 	"google.golang.org/appengine/urlfetch"
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/skypies/geo/sfo"
 	fdb "github.com/skypies/flightdb"

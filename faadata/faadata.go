@@ -8,7 +8,7 @@ import(
 	"sort"
 	"time"
 
-	"golang.org/x/net/context"
+	"context"
 
 	fdb "github.com/skypies/flightdb"
 )

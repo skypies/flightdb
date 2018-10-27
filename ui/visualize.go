@@ -3,7 +3,7 @@ package ui
 import(
 	"fmt"
 	"net/http"
-	"golang.org/x/net/context"
+	"context"
 )
 
 func init() {

@@ -5,7 +5,7 @@ import(
 	"net/http"
 	"sort"
 
-	"golang.org/x/net/context"
+	"context"
 )
 
 // A simple registry of all known reports.

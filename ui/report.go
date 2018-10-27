@@ -8,7 +8,7 @@ import(
 	"strings"
 	"time"
 	
-	"golang.org/x/net/context"
+	"context"
 	
 	"github.com/skypies/geo/sfo"
 	"github.com/skypies/util/date"

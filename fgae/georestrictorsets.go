@@ -3,7 +3,7 @@ package fgae
 import(
 	"fmt"
 	"strings"
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/skypies/util/dsprovider"
 	fdb "github.com/skypies/flightdb"

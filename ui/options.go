@@ -6,7 +6,7 @@ import(
 	"net/http"
 	"regexp"
 	"time"
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/skypies/util/widget"
 	fdb "github.com/skypies/flightdb"
