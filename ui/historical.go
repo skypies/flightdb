@@ -7,8 +7,6 @@ import(
 	"net/http"
 	"time"
 
-	"context"
-
 	"github.com/skypies/util/date"
 	"github.com/skypies/util/widget"
 	"github.com/skypies/geo"
@@ -53,8 +51,9 @@ func buildLegend(t time.Time) string {
 //  pos_lat=36.0&pos_long=-122.0
 //  resultformat=json  (or list or map ?)
 
-func HistoricalHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	templates,_ := GetTemplates(ctx)
+func HistoricalHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
+	templates := widget.GetTemplates(ctx)
 
 	if r.FormValue("date") == "" && r.FormValue("epoch") == "" {
 		var params = map[string]interface{}{
@@ -65,8 +64,6 @@ func HistoricalHandler(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		}
 		return
 	}
-
-	db := fgae.NewDBFromReq(r)
 
 	var t time.Time
 	if r.FormValue("epoch") != "" {

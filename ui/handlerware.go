@@ -4,85 +4,61 @@ import(
 	"fmt"
 	"html/template"
 	"net/http"
-	"time"
 	
-	"context"
-	"google.golang.org/appengine"
+	"golang.org/x/net/context"
 	"google.golang.org/appengine/user"
 
+	"github.com/skypies/util/gcp/ds"
 	"github.com/skypies/util/widget"
 	"github.com/skypies/flightdb/fgae"
 )
 
-/* Common code for pulling out a user session cookie, populating a Context, etc.
-
-import "github.com/skypies/flightdb/ui"
-
-func init() {
-  http.HandleFunc("/foo", ui.WithCtxOpt(fooHandler))
-  http.HandleFunc("/bar", ui.WithCtxOptTmpl(Templates, barHandler))
-  //http.HandleFunc("/bar", ui.WithCtxOptTmplUser(Templates, barHandler)) // must be logged in
+// Some convenience combos
+func WithCtxOpt(f widget.CtxMaker, ch widget.ContextHandler) widget.BaseHandler {
+	// TODO: Delete this routine, once the memcache stuff is figured out better
+	return widget.WithCtx(f, WithOpt( ch))
 }
-
-func fooHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	opt,ok := GetUIOptions(ctx)
-	str := fmt.Sprintf("OK\nresultsetid=%s, ok=%v\n", opt.ResultsetID, ok) 
-	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(str))
+func WithFdbCtx(f widget.CtxMaker, fh FdbHandler) widget.BaseHandler {
+	return widget.WithCtx(f, WithFdb(fh))
 }
-
-func barHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	opt,ok := GetUIOptions(ctx)
-  templates,ok := GetTemplates(ctx)
-  templates.ExecuteTemplate(w, "bar-template", params)
+func WithFdbCtxOpt(f widget.CtxMaker, fh FdbHandler) widget.BaseHandler {
+	return widget.WithCtx(f, WithOpt( WithFdb(fh)))
 }
-
- */
-
-type baseHandler    func(http.ResponseWriter, *http.Request)
-type contextHandler func(context.Context, http.ResponseWriter, *http.Request)
+func WithFdbCtxTmpl(f widget.CtxMaker, t *template.Template, fh FdbHandler) widget.BaseHandler {
+	return widget.WithCtx(f, widget.WithTemplates(t, WithFdb(fh)))
+}
+func WithFdbCtxOptTmpl(f widget.CtxMaker, t *template.Template, fh FdbHandler) widget.BaseHandler {
+	return widget.WithCtx(f, widget.WithTemplates(t, WithOpt( WithFdb(fh))))
+}
+func WithFdbCtxOptTmplUser(f widget.CtxMaker, t *template.Template, fh FdbHandler) widget.BaseHandler {
+	return widget.WithCtx(f, widget.WithTemplates(t, WithOpt( EnsureUser( WithFdb(fh)))))
+}
 
 // To prevent other libs colliding with us in the context.Value keyspace, use these private keys
 type contextKey int
 const(
 	uiOptionsKey contextKey = iota
-	templatesKey
 )
 
-// Some convenience combos
-func WithCtxOpt(ch contextHandler) baseHandler {
-	return WithCtx(WithOpt(ch))
-}
-func WithCtxTmpl(t *template.Template, ch contextHandler) baseHandler {
-	return WithCtx(WithTmpl(t,ch))
-}
-func WithCtxOptTmpl(t *template.Template, ch contextHandler) baseHandler {
-	return WithCtx(WithTmpl(t,WithOpt(ch)))
-}
-func WithCtxOptTmplUser(t *template.Template, ch contextHandler) baseHandler {
-	return WithCtx(WithTmpl(t,WithOpt(EnsureUser(ch))))
-}
+// Rather than stash/retrieve an FDB object from the context, we'll just pass it
+// directly to a new handler type, that we'll use throughout ui/.
+type FdbHandler func(fgae.FlightDB, http.ResponseWriter, *http.Request)
 
-// Outermost wrapper; all other wrappers take (and return) contexthandlers
-func WithCtx(ch contextHandler) baseHandler {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx,_ := context.WithTimeout(appengine.NewContext(r), 550 * time.Second)
-		ch(ctx,w,r)
+func WithFdb(fh FdbHandler) widget.ContextHandler {
+	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		p := ds.GetProviderOrPanic(ctx) // PANICs if not found
+		fdb := fgae.New(ctx, p)
+		fh(fdb, w, r)
 	}
 }
 
-func WithTmpl(t *template.Template, ch contextHandler) contextHandler {
+func WithOpt(ch widget.ContextHandler) widget.ContextHandler {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-		ctx = context.WithValue(ctx, templatesKey, t)		
-		ch(ctx, w, r)
-	}
-}
-
-func WithOpt(ch contextHandler) contextHandler {
-	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		p := ds.GetProviderOrPanic(ctx) // PANICs if not found
+		db := fgae.New(ctx, p)
 		r.ParseForm()
 		
-		opt,err := FormValueUIOptions(ctx,r)  // May go to datastore
+		opt,err := FormValueUIOptions(db,r) // May go to datastore
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -91,7 +67,7 @@ func WithOpt(ch contextHandler) contextHandler {
 		// Transparent magic, to permamently record large sets of idspecs passed as POST
 		// params and replace them with an ID to the stored set; this lets us provide
 		// permalinks.
-		if err := opt.MaybeLoadSaveResultset(ctx); err != nil {
+		if err := opt.MaybeLoadSaveResultset(db); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -122,18 +98,18 @@ func WithOpt(ch contextHandler) contextHandler {
 }
 
 // Maybe load, or maybe save, all the idspecs as a resultset in datastore.
-func (opt *UIOptions)MaybeLoadSaveResultset(ctx context.Context) error {
+func (opt *UIOptions)MaybeLoadSaveResultset(db fgae.FlightDB) error {
 
 	// We have a stub resultsetid, and some idstrings - store them.
 	if opt.ResultsetID == "saveme" && len(opt.IdSpecStrings) > 0 {
-		if keyid,err := fgae.IdSpecSetSave(ctx, opt.IdSpecStrings); err != nil {
+		if keyid,err := idSpecSetSave(db, opt.IdSpecStrings); err != nil {
 			return err
 		} else {
 			opt.ResultsetID = keyid
 		}
 
 	} else if opt.ResultsetID != "" && len(opt.IdSpecStrings) == 0 {
-		if idspecstrings,err := fgae.IdSpecSetLoad(ctx, opt.ResultsetID); err != nil {
+		if idspecstrings,err := idSpecSetLoad(db, opt.ResultsetID); err != nil {
 			return err
 		} else {
 			opt.IdSpecStrings = idspecstrings
@@ -149,13 +125,7 @@ func GetUIOptions(ctx context.Context) (UIOptions,bool) {
 	return opt, ok
 }
 
-// Underlying handlers should call this to get their session object
-func GetTemplates(ctx context.Context) (*template.Template, bool) {
-	tmpl, ok := ctx.Value(templatesKey).(*template.Template)
-	return tmpl, ok
-}
-
-func EnsureUser(ch contextHandler) contextHandler {
+func EnsureUser(ch widget.ContextHandler) widget.ContextHandler {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		opt,ok := GetUIOptions(ctx)
 		if !ok {

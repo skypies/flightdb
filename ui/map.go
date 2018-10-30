@@ -5,7 +5,7 @@ import(
 	"fmt"
 	"net/http"
 
-	"context"
+	"golang.org/x/net/context"
 
 	"github.com/skypies/geo"
 	"github.com/skypies/geo/sfo"
@@ -60,6 +60,8 @@ func WaypointMapVar(in map[string]geo.Latlong) template.JS {
 
 // }}}
 
+// These handlers are ContextHandler, not FdbHandlers, as they get pulled into complaints/
+
 // {{{ MapHandler
 
 // ?boxes=b1[,b2]&...{latlongbox.ToCGIArgs("b1")}, etc - render some arbitrary boxes
@@ -97,7 +99,7 @@ func MapHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 // {{{ MapHandlerWithShapesParams
 
 func MapHandlerWithShapesParams(ctx context.Context, w http.ResponseWriter, r *http.Request, ms *MapShapes, params map[string]interface{}) {	
-	tmpl,_ := GetTemplates(ctx)
+	tmpl := widget.GetTemplates(ctx)
 
 	params["Zoom"] = 9
 	params["Shapes"] = ms

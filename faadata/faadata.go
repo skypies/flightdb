@@ -8,9 +8,8 @@ import(
 	"sort"
 	"time"
 
-	"context"
-
 	fdb "github.com/skypies/flightdb"
+	"github.com/skypies/flightdb/fgae"
 )
 
 // {{{ makeFlight
@@ -46,9 +45,9 @@ func makeFlight(rows []Row, dataSource string, tStart time.Time, genesisStr stri
 
 // {{{ ReadFrom
 
-type NewFlightCallback func(context.Context, *fdb.Flight) (bool, string, error)
+type NewFlightCallback func(fgae.FlightDB, *fdb.Flight) (bool, string, error)
 
-func ReadFrom(ctx context.Context, name, bucketName string, rdr io.Reader, cb NewFlightCallback) (int, string,error) {
+func ReadFrom(db fgae.FlightDB, name, bucketName string, rdr io.Reader, cb NewFlightCallback) (int, string,error) {
 
 	str := fmt.Sprintf("---- Flights loaded from %s\n", name)
 	i := 1
@@ -75,7 +74,7 @@ func ReadFrom(ctx context.Context, name, bucketName string, rdr io.Reader, cb Ne
 			
 			if f,err := makeFlight(rows, bucketName, tStart, "Genesis: "+logPrefix+"\n"); err != nil {
 				return nFlightsAdded,str,err
-			} else if added,subStr,err := cb(ctx,f); err != nil {
+			} else if added,subStr,err := cb(db,f); err != nil {
 				return nFlightsAdded,str, err
 			} else {
 				nPossibleFlights++
@@ -97,7 +96,7 @@ func ReadFrom(ctx context.Context, name, bucketName string, rdr io.Reader, cb Ne
 
 		if f,err := makeFlight(rows, bucketName, tStart, logPrefix); err != nil {
 			return nFlightsAdded,str,err
-		} else if added,subStr,err := cb(ctx,f); err != nil {
+		} else if added,subStr,err := cb(db,f); err != nil {
 			return nFlightsAdded,str,err
 		} else {
 			if added { nFlightsAdded++ }

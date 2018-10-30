@@ -8,18 +8,14 @@ import(
 	"strings"
 	"time"
 	
-	"context"
-	
 	"github.com/skypies/geo/sfo"
 	"github.com/skypies/util/date"
+	"github.com/skypies/util/widget"
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/fgae"
 	"github.com/skypies/flightdb/report"
 	_ "github.com/skypies/flightdb/analysis" // populate the reports registry
 )
-
-func init() {
-}
 
 func ButtonPOST(anchor, action string, idspecs []string) string {
 	action += "&colorby=altitude"
@@ -38,10 +34,10 @@ func maybeButtonPOST(idspecs []string, title string, url string) string {
 		idspecs)
 }
 
-func ReportHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func ReportHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)
-	templates,_ := GetTemplates(ctx)
-	db := fgae.NewAppEngineDB(ctx)
+	templates := widget.GetTemplates(ctx)
 
 	if r.FormValue("rep") == "" {
 		// Show blank form
@@ -74,10 +70,8 @@ func ReportHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) 
 		}
 		return
 	}
-	
-	//airframes := ref.NewAirframeCache(c)
 
-	rep,err := report.SetupReport(ctx, r)
+	rep,err := report.SetupReport(db, r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

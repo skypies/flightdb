@@ -1,5 +1,4 @@
 // Package ref contains some reference lookups, implemented as singletons
-// Consider moving this out of flightdb2/, so that other projects can use it more easily
 package ref
 
 import(
@@ -7,12 +6,14 @@ import(
 	"compress/gzip"
 	"encoding/gob"
 	"fmt"
-	
-	"context"
+
+	"golang.org/x/net/context"
+
 	"google.golang.org/appengine/log"
 
+	"github.com/skypies/util/ae"
+
 	fdb "github.com/skypies/flightdb"
-	"github.com/skypies/util/gaeutil"
 )
 
 // We build a big map, from Icao24 ADS-B Mode-S identifiers, to static data about the physical
@@ -29,27 +30,27 @@ func (ac AirframeCache)String() string {
 	return str
 }
 
-func NewAirframeCache(c context.Context) *AirframeCache {
-	data,err := gaeutil.LoadSingleton(c,"airframes")
+func NewAirframeCache(ctx context.Context) *AirframeCache {
+	data,err := ae.LoadSingleton(ctx, "airframes")
 	if err != nil {
-		log.Errorf(c, "airframecache: could not load: %v", err)
+		log.Errorf(ctx, "airframecache: could not load: %v", err)
 		return nil
 	}
 
 	ac := AirframeCache{Map:map[string]*fdb.Airframe{}}
 	buf := bytes.NewBuffer(data)
 	if gzipReader,err := gzip.NewReader(buf); err != nil {
-		log.Errorf(c, "airframecache: could not gzip.NewReader: %v", err)
+		log.Errorf(ctx, "airframecache: could not gzip.NewReader: %v", err)
 	} else if err := gob.NewDecoder(gzipReader).Decode(&ac); err != nil {
-		//log.Errorf(c, "airframecache: could not decode: %v", err)
+		//db.Errorf("airframecache: could not decode: %v", err)
 	} else if err := gzipReader.Close(); err != nil {
-		log.Errorf(c, "airframecache: could not gzipReader.Close: %v", err)
+		log.Errorf(ctx, "airframecache: could not gzipReader.Close: %v", err)
 	}
 
 	return &ac
 }
 
-func (ac *AirframeCache)Persist(c context.Context) error {
+func (ac *AirframeCache)Persist(ctx context.Context) error {
 	var buf bytes.Buffer
 
 	gzipWriter := gzip.NewWriter(&buf)
@@ -60,7 +61,7 @@ func (ac *AirframeCache)Persist(c context.Context) error {
 		return err
 	}
 
-	return gaeutil.SaveSingleton(c,"airframes", buf.Bytes())
+	return ae.SaveSingleton(ctx, "airframes", buf.Bytes())
 }
 
 func (ac *AirframeCache)Get(id string) *fdb.Airframe {

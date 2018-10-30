@@ -10,9 +10,8 @@ import(
 	"strings"
 	"time"
 
-	"context"
+	"golang.org/x/net/context"
 	"google.golang.org/appengine/user"
-	"google.golang.org/appengine/urlfetch"
 
 	"github.com/skypies/adsb"
 	"github.com/skypies/geo"
@@ -25,16 +24,10 @@ import(
 	"github.com/skypies/flightdb/ref"
 )
 
-func init() {
-	http.HandleFunc("/fdb/debug2", WithCtxOpt(debugHandler))
-	//http.HandleFunc("/fdb/debug/frags", WithCtxOpt(debugFragsHandler))
-	//http.HandleFunc("/fdb/debug/user", WithCtxOpt(debugUserHandler))
-}
+// {{{ DebugHandler
 
-// {{{ debugHandler
-
-func debugHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	db := fgae.NewAppEngineDB(ctx)
+func DebugHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)
 	str := ""
 
@@ -100,6 +93,7 @@ func debugHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 }
 
 // }}}
+
 // {{{ debugUserHandler
 
 func debugUserHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -111,10 +105,10 @@ func debugUserHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 }
 
 // }}}
-// {{{ DebugHandler
+// {{{ DebugHandler9
 
-func DebugHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	db := fgae.NewAppEngineDB(ctx)
+func DebugHandler9(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)
 	str := ""
 
@@ -207,8 +201,8 @@ func DebugHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 // }}}
 // {{{ DebugSchedHandler
 
-func DebugSchedHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	//db := fgae.NewAppEngineDB(ctx)
+func DebugSchedHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
 	//opt,_ := GetUIOptions(ctx)
 	str := ""
 
@@ -293,9 +287,9 @@ func track2frag(t fdb.Track, id,callsign string, start,length int) fdb.TrackFrag
 // This handler reconstructs the series of TrackFragments that generated the set of
 // flights matching the idpsec (use a range idspec to get multiple instances of the same IcaoID).
 // It parses the debug log to figure out which trackpoints got added when, so it's brittle.
-func debugFragsHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func debugFragsHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)
-	db := fgae.NewAppEngineDB(ctx)
 	str := ""
 
 	idspecs,err := opt.IdSpecs()
@@ -421,8 +415,8 @@ func debugFragsHandler(ctx context.Context, w http.ResponseWriter, r *http.Reque
 // and displays them both with a line between them.
 //	&sync=-20s
 
-func AirspaceDelayHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	client := urlfetch.Client(ctx)
+func AirspaceDelayHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	client := db.HTTPClient()
 	pos := geo.Latlong{37.060312,-121.990814}
 
 	syncedAge := widget.FormValueDuration(r, "sync")
@@ -451,7 +445,7 @@ func AirspaceDelayHandler(ctx context.Context, w http.ResponseWriter, r *http.Re
 		"Zoom": 9,
 	}
 	
-	MapHandlerWithShapesParams(ctx, w, r, ms, params);
+	MapHandlerWithShapesParams(db.Ctx(), w, r, ms, params);
 }
 
 // }}}

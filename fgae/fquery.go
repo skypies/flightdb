@@ -7,7 +7,7 @@ import(
 	"github.com/skypies/adsb"
 	"github.com/skypies/util/date"
 
-	ds "github.com/skypies/util/dsprovider"
+	ds "github.com/skypies/util/gcp/ds"
 	fdb "github.com/skypies/flightdb"
 )
 

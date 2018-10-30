@@ -31,9 +31,9 @@ func currentAccumulationTrack(f *fdb.Flight) *fdb.Track {
 }
 
 // }}}
-// {{{ db.AddTrackFragment
+// {{{ AddTrackFragment
 
-func (db FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
+func (db *FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 	db.Debugf("* adding frag %d\n", len(frag.Track))
 	f,err := db.LookupMostRecent(db.NewQuery().ByIcaoId(frag.IcaoId))
 	if err != nil { return err }

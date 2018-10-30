@@ -7,11 +7,6 @@ import(
 	"net/http"
 	"sort"
 	"time"
-	
-	"context"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/log"
-	"google.golang.org/appengine/urlfetch"
 
 	"github.com/skypies/util/date"
 	"github.com/skypies/util/widget"
@@ -26,9 +21,9 @@ import(
 // ?idspec=F12123@144001232[,...]
 // &json=1
 
-func VectorHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func VectorHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)
-	db := fgae.NewAppEngineDB(ctx)
 
 	idspecs,err := opt.IdSpecs()
 	if err != nil {
@@ -54,14 +49,15 @@ func VectorHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	OutputFlightAsVectorJSON(ctx, w, r, f)
+	OutputFlightAsVectorJSON(db, w, r, f)
 }
 
 // }}}
 // {{{ OutputFlightAsVectorJSON
 
-func OutputFlightAsVectorJSON(ctx context.Context, w http.ResponseWriter, r *http.Request, f *fdb.Flight) {
+func OutputFlightAsVectorJSON(db fgae.FlightDB, w http.ResponseWriter, r *http.Request, f *fdb.Flight) {
 	// This is such a botch job
+	ctx := db.Ctx()
 	trackspecs := widget.FormValueCommaSepStrings(r, "trackspec")
 	if len(trackspecs) == 0 {
 		trackspecs = []string{"FOIA", "ADSB", "MLAT", "FA", "fr24"}
@@ -71,7 +67,7 @@ func OutputFlightAsVectorJSON(ctx context.Context, w http.ResponseWriter, r *htt
 	colorscheme := FormValueColorScheme(r)
 	complaintTimes := []time.Time{}
 	if colorscheme.Strategy == ByComplaints || colorscheme.Strategy == ByTotalComplaints {
-		client := urlfetch.Client(appengine.NewContext(r))
+		client := db.HTTPClient()
 		if times,err := getComplaintTimesFor(client, f); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -224,8 +220,8 @@ func FlightToMapLines(f *fdb.Flight, trackName string, colorscheme ColorScheme, 
 // ?idspec=F12123@144001232:155001232   (note - time range - may return multiple matches)
 //   &trackdata=1                       (include trackdata; omitted by default)
 
-func FlightLookupHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	db := fgae.NewAppEngineDB(ctx)
+func FlightLookupHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)
 	str := "OK\n"
 
@@ -280,14 +276,11 @@ func WriteEncodedData(w http.ResponseWriter, r *http.Request, data interface{}) 
 
 // If no times specified, defaults to day before yesterday.
 // If 'yesterday' specified, default to that instead.
-func ProcedureHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	log.Infof(ctx, fmt.Sprintf("** ProcedureHandler"))
-
-	db := fgae.NewAppEngineDB(ctx)
+func ProcedureHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	db.Infof(fmt.Sprintf("** ProcedureHandler"))
 
 	tags := widget.FormValueCommaSpaceSepStrings(r,"tags")
 	s,e := widget.FormValueEpochTime(r,"s"), widget.FormValueEpochTime(r,"e")
-
 	
 	if r.FormValue("yesterday") != "" {
 		s,e = date.WindowForYesterday()
@@ -297,17 +290,17 @@ func ProcedureHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		e = e.Add(-24 * time.Hour)
 	}
 
-	log.Infof(ctx, fmt.Sprintf(" * tags=%v, s=%s, e=%s", tags, s, e))
+	db.Infof(fmt.Sprintf(" * tags=%v, s=%s, e=%s", tags, s, e))
 
 	tStart := time.Now()
 	cfs,err,str := db.FetchCondensedFlights(s,e,tags)
 	if err != nil {
-		log.Infof(ctx, fmt.Sprintf(" * Err = %v", err.Error()))
+		db.Infof(fmt.Sprintf(" * Err = %v", err.Error()))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	log.Infof(ctx, fmt.Sprintf(" * elapsed = %s", time.Since(tStart).String()))
+	db.Infof(fmt.Sprintf(" * elapsed = %s", time.Since(tStart).String()))
 
 	if r.FormValue("text") != "" {
 		str += "(elapsed: "+time.Since(tStart).String()+")\n"	

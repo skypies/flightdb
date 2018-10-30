@@ -4,9 +4,10 @@ import(
 	"fmt"
 	"strings"
 
-	"context"
+	"golang.org/x/net/context"
 	"google.golang.org/appengine/user"
 
+	"github.com/skypies/flightdb/fgae"
 	"github.com/skypies/flightdb/metar"
 )
 
@@ -41,7 +42,8 @@ var(
 	}
 )
 
-func (r *Report)setupReportingContext(ctx context.Context) error {
+func (r *Report)setupReportingContext(db fgae.FlightDB) error {
+	ctx := db.Ctx()
 	r.ReportingContext.Context = ctx
 	
 	metar,err := metar.LookupArchive(ctx, "KSFO",

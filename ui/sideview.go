@@ -6,7 +6,6 @@ import(
 	"strings"
 	"time"
 	
-	"context"
 
 	"github.com/skypies/geo"
 	"github.com/skypies/geo/sfo"
@@ -38,10 +37,10 @@ import(
 //  &arriving=KSJC
 //  &departing=KSFO
 
-func SideviewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func SideviewHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)
-	db := fgae.NewAppEngineDB(ctx)
-	
+
 	idspecs,err := opt.IdSpecs()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

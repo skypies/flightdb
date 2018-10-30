@@ -6,11 +6,10 @@ import(
 	"fmt"
 	"time"
 
-	"context"
-	"google.golang.org/appengine/log"
+	"golang.org/x/net/context"
 
-	"github.com/skypies/util/gaeutil"
-	"github.com/skypies/util/dsprovider"
+	"github.com/skypies/util/ae"
+	"github.com/skypies/util/gcp/ds"
 
 	fdb "github.com/skypies/flightdb"
 )
@@ -27,16 +26,16 @@ func (flightdb FlightDB)FetchCondensedFlights(s,e time.Time, tags []string) ([]f
 	}
 	
 	// If we've already processed this day, load the object
-	if data,err := gaeutil.LoadSingletonFromDatastore(flightdb.Ctx(), key); err == nil {
+	if data,err := ae.LoadSingletonFromDatastore(flightdb.Ctx(), key); err == nil {
 		buf := bytes.NewBuffer(data)
 		cfs := []fdb.CondensedFlight{}
 		if err := gob.NewDecoder(buf).Decode(&cfs); err != nil {
-			log.Errorf(flightdb.Ctx(), "condense: could not decode: %v", err)
+			flightdb.Errorf("condense: could not decode: %v", err)
 		}
 		str += fmt.Sprintf("found %d OK\n", len(cfs))
 		return cfs,nil,str
 
-	} else if err != gaeutil.ErrNoSuchEntityDS {
+	} else if err != ae.ErrNoSuchEntityDS {
 		return []fdb.CondensedFlight{}, fmt.Errorf("condense load: %v",err), str
 	}
 
@@ -51,7 +50,7 @@ func (flightdb FlightDB)FetchCondensedFlights(s,e time.Time, tags []string) ([]f
 	var buf bytes.Buffer
 	if err := gob.NewEncoder(&buf).Encode(cfs); err != nil {
 		return []fdb.CondensedFlight{}, fmt.Errorf("condense encode: %v",err), str
-	} else if err := gaeutil.SaveSingletonToDatastore(flightdb.Ctx(), key, buf.Bytes()); err != nil {
+	} else if err := ae.SaveSingletonToDatastore(flightdb.Ctx(), key, buf.Bytes()); err != nil {
 		return []fdb.CondensedFlight{}, fmt.Errorf("condense save: %v",err), str
 	}
 	str += fmt.Sprintf("singleton persisted, %d bytes, with %d\n", buf.Len(), len(cfs))
@@ -63,7 +62,7 @@ func (flightdb FlightDB)FetchCondensedFlights(s,e time.Time, tags []string) ([]f
 
 // {{{ fetchCondensedFlightsIndividually
 
-func fetchCondensedFlightsIndividually(ctx context.Context, p dsprovider.DatastoreProvider, s,e time.Time, tags []string) ([]fdb.CondensedFlight,error,string) {
+func fetchCondensedFlightsIndividually(ctx context.Context, p ds.DatastoreProvider, s,e time.Time, tags []string) ([]fdb.CondensedFlight,error,string) {
 	str := "# individual lookup\n"
 
 	ret := []fdb.CondensedFlight{}

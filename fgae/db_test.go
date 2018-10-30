@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"context"
+	"golang.org/x/net/context"
 
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/aetest" // Also used for testing Cloud API

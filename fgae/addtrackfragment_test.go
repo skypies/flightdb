@@ -12,7 +12,6 @@ import (
 	"google.golang.org/appengine/aetest"
 
 	fdb "github.com/skypies/flightdb"
-	"github.com/skypies/flightdb/fgae"
 )
 
 /* Misordered Frags
@@ -74,8 +73,8 @@ func TestMisorderedFrags(t *testing.T) {
 	if err != nil { t.Fatal(err) }
 	defer done()
 
-	db := fgae.NewDB(ctx)
-	
+	db := NewDB(ctx)
+
 	idspec,_ := fdb.NewIdSpec("A5BB1B@1483403847:1483407465")  // Has to match the frags
 	
 	if results,err := db.LookupAll(db.NewQuery().ByIdSpec(idspec)); err != nil {

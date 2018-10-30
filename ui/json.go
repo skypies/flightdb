@@ -5,9 +5,6 @@ import(
 	"fmt"
 	"net/http"
 
-	"context"
-	"google.golang.org/appengine/urlfetch"
-
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/fgae"
 	"github.com/skypies/flightdb/ref"
@@ -43,9 +40,9 @@ func LookupIdspec(db fgae.FlightDB, idspec fdb.IdSpec) ([]*fdb.Flight, error) {
 
 // /fdb/json?idspec=...  - dumps an entire flight object out as JSON.
 
-func JsonHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func JsonHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)
-	db := fgae.NewAppEngineDB(ctx)
 
 	// This whole Airframe cache thing should be automatic, and upstream from here.
 	airframes := ref.NewAirframeCache(ctx)
@@ -94,10 +91,10 @@ func JsonHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 
 // /fdb/snarf?idspec=...  - pull the idspecs from prod, insert into local DB. For debugging.
 
-func SnarfHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func SnarfHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)
-	client := urlfetch.Client(ctx)
-	db := fgae.NewAppEngineDB(ctx)
+	client := db.HTTPClient()
 
 	str := "Snarfer!\n--\n\n"
 

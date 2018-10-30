@@ -3,8 +3,6 @@ package ui
 import(
 	"net/http"
 
-	"context"
-
 	"github.com/skypies/util/widget"
 
 	fdb "github.com/skypies/flightdb"
@@ -12,14 +10,13 @@ import(
 )
 
 // icaoid=A12345 - lookup recent flights on that airframe
-func ListHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	templates,_ := GetTemplates(ctx)
-	db := fgae.NewAppEngineDB(ctx)
+func ListHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
+	templates := widget.GetTemplates(ctx)
 
 	tags := widget.FormValueCommaSepStrings(r, "tags")
 	flights := []*fdb.Flight{}
-	
-	//airframes := ref.NewAirframeCache(c)
+
 	query := fgae.QueryForRecent(tags, 200)
 	if r.FormValue("icaoid") != "" {
 		query = fgae.QueryForRecentIcaoId(r.FormValue("icaoid"), 200)

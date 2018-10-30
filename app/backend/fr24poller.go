@@ -5,11 +5,7 @@ import(
 	"net/http"
 	"time"
 	
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/memcache"
-	"google.golang.org/appengine/urlfetch"
-	"context"
 
 	"github.com/skypies/geo/sfo"
 	fdb "github.com/skypies/flightdb"
@@ -18,12 +14,6 @@ import(
 	"github.com/skypies/flightdb/ref"
 )
 // dev_appserver.py --clear_datastore=yes ./ui.yaml
-
-func init() {
-	http.HandleFunc("/be/fr24", fr24PollHandler)
-	http.HandleFunc("/be/fr24q", fr24QueryHandler)
-	http.HandleFunc("/be/schedcache/view", schedcacheViewHandler)
-}
 
 // {{{ listResult2Airframe
 
@@ -45,8 +35,9 @@ func listResult2Airframe(fs fdb.FlightSnapshot) fdb.Airframe {
 // }}}
 // {{{ updateAirframeCache
 
-func updateAirframeCache(c context.Context, resp []fdb.FlightSnapshot, list bool) (string,error) {
-	airframes := ref.NewAirframeCache(c)
+func updateAirframeCache(db fgae.FlightDB, resp []fdb.FlightSnapshot, list bool) (string,error) {
+	ctx := db.Ctx()
+	airframes := ref.NewAirframeCache(ctx)
 	if airframes == nil {
 		return "[error]", fmt.Errorf("ref.NewAirframeCache bailed")
 	}
@@ -66,7 +57,7 @@ func updateAirframeCache(c context.Context, resp []fdb.FlightSnapshot, list bool
 	}
 
 	if n>0 {
-		if err := airframes.Persist(c); err != nil {
+		if err := airframes.Persist(ctx); err != nil {
 			return "[error]", err
 		}
 	}
@@ -81,7 +72,8 @@ func updateAirframeCache(c context.Context, resp []fdb.FlightSnapshot, list bool
 // }}}
 // {{{ updateScheduleCache
 
-func updateScheduleCache(c context.Context, resp []fdb.FlightSnapshot) error {
+func updateScheduleCache(db fgae.FlightDB, resp []fdb.FlightSnapshot) error {
+	ctx := db.Ctx()
 
 	if len(resp) == 0 { return nil } // Don't overwrite in cases of error
 	
@@ -91,8 +83,8 @@ func updateScheduleCache(c context.Context, resp []fdb.FlightSnapshot) error {
 	}
 	sc.LastUpdated = time.Now()
 	
-	if err := sc.Persist(c); err != nil {
-		log.Errorf(c, "updateScheduleCache/Persist: %v", err)
+	if err := sc.Persist(ctx); err != nil {
+		db.Errorf("updateScheduleCache/Persist: %v", err)
 		return err
 	}
 
@@ -106,8 +98,9 @@ func updateScheduleCache(c context.Context, resp []fdb.FlightSnapshot) error {
 var kFIFOSetMaxAgeMins = 120
 
 // This is stored in memcache, so it can vanish
-func loadFIFOSet(c context.Context, set *fdb.FIFOSet) (error) {
-	if _,err := memcache.Gob.Get(c, fdb.KMemcacheFIFOSetKey, set); err == memcache.ErrCacheMiss {
+func loadFIFOSet(db fgae.FlightDB, set *fdb.FIFOSet) (error) {
+	ctx := db.Ctx()
+	if _,err := memcache.Gob.Get(ctx, fdb.KMemcacheFIFOSetKey, set); err == memcache.ErrCacheMiss {
     // cache miss, but we don't care
 		return nil
 	} else if err != nil {
@@ -117,10 +110,11 @@ func loadFIFOSet(c context.Context, set *fdb.FIFOSet) (error) {
 	return nil
 }
 
-func saveFIFOSet(c context.Context, s fdb.FIFOSet) error {
+func saveFIFOSet(db fgae.FlightDB, s fdb.FIFOSet) error {
+	ctx := db.Ctx()
 	s.AgeOut(time.Minute * time.Duration(kFIFOSetMaxAgeMins))
 	item := memcache.Item{Key:fdb.KMemcacheFIFOSetKey, Object:s}
-	return memcache.Gob.Set(c, &item)
+	return memcache.Gob.Set(ctx, &item)
 }
 
 // }}}
@@ -129,8 +123,7 @@ func saveFIFOSet(c context.Context, s fdb.FIFOSet) error {
 
 // Need a grid of which fr24 data fields are provided by which call.
 
-func fr24PollHandler(w http.ResponseWriter, r *http.Request) {
-	db := fgae.NewDBFromReq(r)
+func fr24PollHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 	fr,_ := fr24.NewFr24(db.HTTPClient())
 
 	db.Perff("fr24Poll_100", "making call")
@@ -141,7 +134,7 @@ func fr24PollHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	db.Perff("fr24Poll_150", "call returned (%d flights), updating airframes", len(flights))
 
-	str,err := updateAirframeCache(db.Ctx(), flights, r.FormValue("list") != "")
+	str,err := updateAirframeCache(db, flights, r.FormValue("list") != "")
 	if err != nil {
 		db.Errorf("fr24PollHandler>updateAirframeCache: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -149,7 +142,7 @@ func fr24PollHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	db.Perff("fr24Poll_200", "updating schedulecache")
-	if err := updateScheduleCache(db.Ctx(), flights); err != nil {
+	if err := updateScheduleCache(db, flights); err != nil {
 		db.Errorf("fr24PollHandler>updateScheduleCache: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -158,7 +151,7 @@ func fr24PollHandler(w http.ResponseWriter, r *http.Request) {
 	// Load up the list of things we've acted on 'recently'
 	db.Perff("fr24Poll_250", "loading alreadyProcessed fifoset")
 	alreadyProcessed := fdb.FIFOSet{}
-	if err := loadFIFOSet(db.Ctx(),&alreadyProcessed); err != nil {
+	if err := loadFIFOSet(db, &alreadyProcessed); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -210,7 +203,7 @@ func fr24PollHandler(w http.ResponseWriter, r *http.Request) {
 	db.Perff("fr24Poll_450", "Iteration done. %d merges, %d updates", nMerges, nUpdates)
 	
 	alreadyProcessed.AgeOut(2 * time.Hour)
-	if err := saveFIFOSet(db.Ctx(),alreadyProcessed); err != nil {
+	if err := saveFIFOSet(db, alreadyProcessed); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 	db.Perff("fr24Poll_500", "fifoset saved, all done")
@@ -228,9 +221,8 @@ func fr24PollHandler(w http.ResponseWriter, r *http.Request) {
 // }}}
 // {{{ fr24QueryHandler
 
-func fr24QueryHandler(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
-	fr,_ := fr24.NewFr24(urlfetch.Client(c))
+func fr24QueryHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	fr,_ := fr24.NewFr24(db.HTTPClient())
 
 	id,err := fr.LookupQuery(r.FormValue("q"))
 	if err != nil {
@@ -245,11 +237,11 @@ func fr24QueryHandler(w http.ResponseWriter, r *http.Request) {
 // }}}
 // {{{ schedcacheViewHandler
 
-func schedcacheViewHandler(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
+func schedcacheViewHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
 
-	sc := ref.NewScheduleCache(c)
-	
+	sc := ref.NewScheduleCache(ctx)
+
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(fmt.Sprintf("OK\n%s\n", sc)))
 }

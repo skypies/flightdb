@@ -3,22 +3,22 @@ package fgae
 import(
 	"fmt"
 	"strings"
-	"context"
+	"golang.org/x/net/context"
 
-	"github.com/skypies/util/dsprovider"
+	"github.com/skypies/util/gcp/ds"
 	fdb "github.com/skypies/flightdb"
 )
 
 const	kRestrictorSetKind = "RSet"
 
-func userToRootKey(ctx context.Context, p dsprovider.DatastoreProvider, user string) dsprovider.Keyer {
+func userToRootKey(ctx context.Context, p ds.DatastoreProvider, user string) ds.Keyer {
 	return p.NewNameKey(ctx, kRestrictorSetKind, strings.ToLower(user), nil)
 }
 
 // {{{ db.LookupRestrictorSets
 
 func (flightdb *FlightDB)LookupRestrictorSets(userEmail string) ([]fdb.GeoRestrictorSet, error) {
-	q := dsprovider.NewQuery(kRestrictorSetKind).
+	q := ds.NewQuery(kRestrictorSetKind).
 		Ancestor(userToRootKey(flightdb.Ctx(), flightdb.Backend, userEmail))
 
 	blobs := []fdb.IndexedRestrictorSetBlob{}

@@ -1,5 +1,5 @@
 // Use a shared workqueue ('batch') to do some processing against the entire database.
-package fgae
+package backend
 
 // http://fdb.serfr1.org/batch/flights/dates?job=retag&date=range&range_from=2014/01/01&range_to=2015/12/31&tags=FOIA
 
@@ -10,9 +10,6 @@ import (
 	"net/http"
 	"time"
 
-	"context"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/taskqueue"
 
 	"github.com/skypies/util/date"
@@ -20,22 +17,19 @@ import (
 
 	adsblib "github.com/skypies/adsb"
 	fdb "github.com/skypies/flightdb"
+	"github.com/skypies/flightdb/fgae"
 )
 
 var(
 	QueueName   = "batch"
-	RangeUrl    = "/batch/flights/dates"
-	DayUrl      = "/batch/flights/day"
-	InstanceUrl = "/batch/flights/flight"
+	batchDayUrl      = "/batch/flights/day"
+	batchInstanceUrl = "/batch/flights/flight"
 )
 
 // {{{ formValueFlightByKey
 
 // A super widget
-func formValueFlightByKey(r *http.Request) (*fdb.Flight, error) {
-	ctx,_ := context.WithTimeout(appengine.NewContext(r), 10*time.Minute)
-	db := NewAppEngineDB(ctx)
-
+func formValueFlightByKey(db fgae.FlightDB, r *http.Request) (*fdb.Flight, error) {
 	keyer,err := db.Backend.DecodeKey(r.FormValue("flightkey"))
 	if err != nil {
 		return nil, err
@@ -46,7 +40,7 @@ func formValueFlightByKey(r *http.Request) (*fdb.Flight, error) {
 
 // }}}
 
-// {{{ BatchFlightDateRangeHandler
+// {{{ batchFlightDateRangeHandler
 
 // /batch/flights/dates?
 //   &job=retag
@@ -55,8 +49,8 @@ func formValueFlightByKey(r *http.Request) (*fdb.Flight, error) {
 //   &dryrun=1
 
 // Enqueues one 'day' task per day in the range
-func BatchFlightDateRangeHandler(w http.ResponseWriter, r *http.Request) {
-	c,_ := context.WithTimeout(appengine.NewContext(r), 10*time.Minute)
+func batchFlightDateRangeHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
 
 	n := 0
 	str := ""
@@ -75,18 +69,18 @@ func BatchFlightDateRangeHandler(w http.ResponseWriter, r *http.Request) {
 
 		dayStr := day.Format("2006/01/02")
 		
-		str += fmt.Sprintf(" * adding %s tags=%v, %s via %s\n", job, tags, dayStr, DayUrl)
+		str += fmt.Sprintf(" * adding %s tags=%v, %s via %s\n", job, tags, dayStr, batchDayUrl)
 		
 		if r.FormValue("dryrun") == "" {
 			// TODO: pass through *all* the CGI args
-			t := taskqueue.NewPOSTTask(DayUrl, map[string][]string{
+			t := taskqueue.NewPOSTTask(batchDayUrl, map[string][]string{
 				"day": {dayStr},
 				"job": {job},
 				"tags": {tags},
 			})
 
-			if _,err := taskqueue.Add(c, t, QueueName); err != nil {
-				log.Errorf(c, "upgradeHandler: enqueue to %s: %v", QueueName, err)
+			if _,err := taskqueue.Add(ctx, t, QueueName); err != nil {
+				db.Errorf("upgradeHandler: enqueue to %s: %v", QueueName, err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -94,14 +88,14 @@ func BatchFlightDateRangeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	log.Infof(c, "enqueued %d batch days for '%s'", n, job)
+	db.Infof("enqueued %d batch days for '%s'", n, job)
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(fmt.Sprintf("OK batch, enqueued %d day tasks for %s\n%s", n, job, str)))
 }
 
 // }}}
-// {{{ BatchFlightDayHandler
+// {{{ batchFlightDayHandler
 
 // /batch/flights/day?
 //   &day=2016/01/21
@@ -109,9 +103,8 @@ func BatchFlightDateRangeHandler(w http.ResponseWriter, r *http.Request) {
 //   &tags=FOO,BAR
 
 // Dequeue a single day, and enqueue a job for each flight on that day
-func BatchFlightDayHandler(w http.ResponseWriter, r *http.Request) {
-	ctx,_ := context.WithTimeout(appengine.NewContext(r), 10*time.Minute)
-	db := NewAppEngineDB(ctx)
+func batchFlightDayHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
 
 	job := r.FormValue("job")
 	if job == "" {
@@ -124,7 +117,7 @@ func BatchFlightDayHandler(w http.ResponseWriter, r *http.Request) {
 	start,end := date.WindowForTime(day)
 	end = end.Add(-1 * time.Second)
 	
-	q := QueryForTimeRange(tags,start,end)
+	q := fgae.QueryForTimeRange(tags,start,end)
 	keyers,err := db.LookupAllKeys(q)
 	if err != nil {
 		errStr := fmt.Sprintf("elapsed=%s; err=%v", time.Since(tStart), err)
@@ -137,10 +130,10 @@ func BatchFlightDayHandler(w http.ResponseWriter, r *http.Request) {
 
 	n := 0
 	for i,keyer := range keyers {
-		if i<10 { str += " "+InstanceUrl+"?job="+job+"flightkey="+keyer.Encode() + "\n" }
+		if i<10 { str += " "+batchInstanceUrl+"?job="+job+"flightkey="+keyer.Encode() + "\n" }
 		n++
 
-		t := taskqueue.NewPOSTTask(InstanceUrl, map[string][]string{
+		t := taskqueue.NewPOSTTask(batchInstanceUrl, map[string][]string{
 			"flightkey": {keyer.Encode()},
 			"job": {job},
 		})
@@ -151,22 +144,21 @@ func BatchFlightDayHandler(w http.ResponseWriter, r *http.Request) {
 		n++
 	}
 
-	log.Infof(ctx, "enqueued %d batch items for '%s'", n, job)
+	db.Infof("enqueued %d batch items for '%s'", n, job)
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(fmt.Sprintf("OK, batch, enqueued %d tasks for %s\n%s", n, job, str)))
 }
 
 // }}}
-// {{{ BatchFlightHandler
+// {{{ batchFlightHandler
 
 // To run a job directly: /batch/flights/flight?job=retag&flightkey=...&
-func BatchFlightHandler(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
+func batchFlightHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 
-	f,err := formValueFlightByKey(r)
+	f,err := formValueFlightByKey(db, r)
 	if err != nil {
-		log.Errorf(c, "/batch/fdb/track/getflight: %v", err)
+		db.Errorf("/batch/fdb/track/getflight: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -175,18 +167,18 @@ func BatchFlightHandler(w http.ResponseWriter, r *http.Request) {
 	job := r.FormValue("job")
 	str := ""
 	switch job {
-	case "retag":         str,err = jobRetagHandler(r,f)
-	case "breakup":       str,err = jobMaybeBreakupFlight(r,f)
+	case "retag":         str,err = jobRetagHandler(db,f)
+	case "breakup":       str,err = jobMaybeBreakupFlight(db,f)
 	}
 
 	if err != nil {
-		log.Errorf(c, "%s", str)
-		log.Errorf(c, "/backend/fdb/batch/flight: %v", err)
+		db.Errorf("%s", str)
+		db.Errorf("/backend/fdb/batch/flight: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	log.Debugf(c, "job=%s, on %s: %s", job, f, str)
+	db.Debugf("job=%s, on %s: %s", job, f, str)
 		
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(fmt.Sprintf("OK\n* job: %s\n* %s\n%s\n", job, f, str)))
@@ -197,9 +189,7 @@ func BatchFlightHandler(w http.ResponseWriter, r *http.Request) {
 // {{{ jobRetagHandler
 
 // Note; this never removes any tags. It only adds new ones.
-func jobRetagHandler(r *http.Request, f *fdb.Flight) (string, error) {
-	c := appengine.NewContext(r)
-
+func jobRetagHandler(db fgae.FlightDB, f *fdb.Flight) (string, error) {
 	str := fmt.Sprintf("OK\nbatch, for [%s]\n", f)
 	
 	str += fmt.Sprintf("\n* Pre WP: %v\n", f.WaypointList())
@@ -216,7 +206,6 @@ func jobRetagHandler(r *http.Request, f *fdb.Flight) (string, error) {
 	
 	// Forces rewrite in all cases; change the guard to be more selective.
 	if true {
-		db := NewAppEngineDB(c)
 		if err := db.PersistFlight(f); err != nil {
 			str += fmt.Sprintf("* Failed, with: %v\n", err)	
 			db.Errorf("%s", str)
@@ -239,9 +228,7 @@ func jobRetagHandler(r *http.Request, f *fdb.Flight) (string, error) {
 // separates these flights out, either into the 'real' flight it
 // should be in, or a new one.
 
-func jobMaybeBreakupFlight(r *http.Request, f *fdb.Flight) (string, error) {
-	db := NewAppEngineDB(appengine.NewContext(r))
-
+func jobMaybeBreakupFlight(db fgae.FlightDB, f *fdb.Flight) (string, error) {
 	mlat,adsb := f.Tracks["MLAT"],f.Tracks["ADSB"]
 	if adsb == nil {
 		return "No ADSB\n", nil

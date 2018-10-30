@@ -16,10 +16,11 @@ import(
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/urlfetch"
-	"context"
 
+	"golang.org/x/net/context"
+
+	"github.com/skypies/util/ae"
 	"github.com/skypies/util/date"
-	"github.com/skypies/util/gaeutil"
 	"github.com/skypies/util/widget"
 )
 
@@ -137,12 +138,11 @@ func toMetarSingletonKey(loc string, t time.Time) string {
 
 // Pull an entire UTC day's worth of reports.
 func LookupDayReport(ctx context.Context, loc string, t time.Time) (*DayReport, error) {
-
 	dr := NewDayReport()
 	t = t.UTC()
 	key := toMetarSingletonKey(loc, t)
 	
-	err := gaeutil.LoadAnySingleton(ctx, key, dr)
+	err := ae.LoadAnySingleton(ctx, key, dr)
 	if err != nil {
 		return nil,err
 
@@ -186,12 +186,12 @@ func LookupOrFetch(ctx context.Context, loc string, t time.Time) (*Report, error
 	key := toMetarSingletonKey(loc, t)
 	str := fmt.Sprintf("[LookupOrFetch] key=%s\n", key)
 	
-	err := gaeutil.LoadAnySingleton(ctx, key, dr)
+	err := ae.LoadAnySingleton(ctx, key, dr)
 	str += fmt.Sprintf("*** LoadAnySingleton\n* err : %v\n* dr  : %s\n", err, dr)
 
 	// Try to fetch previous day; ignore errors
 	prevKey := toMetarSingletonKey(loc, t.AddDate(0,0,-1))
-	gaeutil.LoadAnySingleton(ctx, prevKey, prevDr)
+	ae.LoadAnySingleton(ctx, prevKey, prevDr)
 	if prevDr.IsInitialized() {
 		str += fmt.Sprintf("* prev: %s\n", prevDr)
 	}
@@ -248,12 +248,12 @@ func LookupOrFetch(ctx context.Context, loc string, t time.Time) (*Report, error
 	str += fmt.Sprintf("* final mr: %s\n* shouldPersist: %v\n", mr, shouldPersistChanges)
 
 	if shouldPersistChanges {
-		if err := gaeutil.SaveAnySingleton(ctx, key, dr); err != nil {
+		if err := ae.SaveAnySingleton(ctx, key, dr); err != nil {
 			return nil,err,str
 		}
 	}
 	if shouldPersistChangesToPrevDay {
-		if err := gaeutil.SaveAnySingleton(ctx, prevKey, prevDr); err != nil {
+		if err := ae.SaveAnySingleton(ctx, prevKey, prevDr); err != nil {
 			return nil,err,str
 		}
 	}
@@ -326,7 +326,7 @@ func lookupHandler(w http.ResponseWriter, r *http.Request) {
 
 	str += fmt.Sprintf("LookupOrFetch Result: %s\nLookupOrFetch Err: %v\n\n%s", mr, err, deb)
 
-	mr2,err2 := LookupReport(ctx,loc,t)
+	mr2,err2 := LookupReport(ctx, loc,t)
 	str += fmt.Sprintf("\n********\n\nLookupReport Result: %s\nLookup Err: %v\n\n", mr2, err2)
 
 	log.Infof(ctx, str)

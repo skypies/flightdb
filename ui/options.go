@@ -6,10 +6,10 @@ import(
 	"net/http"
 	"regexp"
 	"time"
-	"context"
 
 	"github.com/skypies/util/widget"
 	fdb "github.com/skypies/flightdb"
+	"github.com/skypies/flightdb/fgae"
 	"github.com/skypies/flightdb/fpdf"
 	"github.com/skypies/flightdb/report"
 )
@@ -39,7 +39,9 @@ func (opt UIOptions)PermalinkWithViewtype(view string) string {
 
 // Parse a full set of UI Options
 //  &idspec=...,...    OR    &resultset=asdasdasdasdasd
-func FormValueUIOptions(ctx context.Context, r *http.Request) (UIOptions, error) {
+func FormValueUIOptions(db fgae.FlightDB, r *http.Request) (UIOptions, error) {
+	//ctx := db.Ctx()
+
 	opt := UIOptions{
 		IdSpecStrings: formValueIdSpecStrings(r),
 		ResultsetID: r.FormValue("resultset"),
@@ -50,7 +52,7 @@ func FormValueUIOptions(ctx context.Context, r *http.Request) (UIOptions, error)
 	// Try and guess some start/end times for the dataset in question; add paranoid buffers
 	if r.FormValue("rep") != "" {
 		// This may trigger DS reads, to pull up RestrictorSets
-		if rep,err := report.SetupReport(ctx, r); err != nil {
+		if rep,err := report.SetupReport(db, r); err != nil {
 			return opt, fmt.Errorf("report parse error: %v", err)
 		} else {
 			opt.Report = &rep

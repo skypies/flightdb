@@ -2,8 +2,8 @@ package fgae
 
 import(
 	"fmt"
-	"context"
-	ds "github.com/skypies/util/dsprovider"
+	"golang.org/x/net/context"
+	"github.com/skypies/util/gcp/ds"
 	fdb "github.com/skypies/flightdb"
 )
 

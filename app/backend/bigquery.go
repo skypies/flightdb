@@ -8,22 +8,14 @@ import (
 
 	"cloud.google.com/go/bigquery" // different API; see ffs below.
 
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/taskqueue"
 
 	"github.com/skypies/util/date"
-	"github.com/skypies/util/gcs"
+	"github.com/skypies/util/gcp/gcs"
 	"github.com/skypies/util/widget"
 
 	"github.com/skypies/flightdb/fgae"
 )
-
-func init() {
-	// Run out of dispatch.yaml entries, so put this in 'batch'
-	http.HandleFunc("/batch/publish-all-flights", publishAllFlightsHandler)
-	http.HandleFunc("/batch/publish-flights", publishFlightsHandler)
-}
 
 var(
 	// The bigquery dataset (dest) is an entirely different google cloud project.
@@ -52,8 +44,8 @@ var(
 //  ?skipload=1  (skip loading them into bigquery; it's better to bulk load all of them at once)
 
 // Writes them all into a batch queue
-func publishAllFlightsHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
+func publishAllFlightsHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
 	str := ""
 
 	s,e,_ := widget.FormValueDateRange(r)
@@ -71,7 +63,7 @@ func publishAllFlightsHandler(w http.ResponseWriter, r *http.Request) {
 		t := taskqueue.NewPOSTTask(thisUrl, map[string][]string{})
 
 		if _,err := taskqueue.Add(ctx, t, "bigbatch"); err != nil {
-			log.Errorf(ctx, "publishAllFligtsHandler: enqueue: %v", err)
+			db.Errorf("publishAllFlightsHandler: enqueue: %v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -92,10 +84,8 @@ func publishAllFlightsHandler(w http.ResponseWriter, r *http.Request) {
 // As well as writing the data into a file in Cloud Storage, it will submit a load
 // request into BigQuery to load that file.
 
-func publishFlightsHandler(w http.ResponseWriter, r *http.Request) {
+func publishFlightsHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 	tStart := time.Now()
-
-	ctx := appengine.NewContext(r)
 
 	datestring := r.FormValue("datestring")
 	if datestring == "yesterday" {
@@ -103,16 +93,16 @@ func publishFlightsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filename := "flights-"+datestring+".json"
-	log.Infof(ctx, "Starting /batch/publish-flights: %s", filename)
+	db.Infof("Starting /batch/publish-flights: %s", filename)
 	
-	n,err := writeBigQueryFlightsGCSFile(r, datestring, folderGCS, filename)
+	n,err := writeBigQueryFlightsGCSFile(db, r, datestring, folderGCS, filename)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if r.FormValue("skipload") == "" {
-		if err := submitLoadJob(r, folderGCS, filename); err != nil {
+		if err := submitLoadJob(db, r, folderGCS, filename); err != nil {
 			http.Error(w, "submitLoadJob failed: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -128,8 +118,8 @@ func publishFlightsHandler(w http.ResponseWriter, r *http.Request) {
 // {{{ writeBigQueryFlightsGCSFile
 
 // Returns number of records written (which is zero if the file already exists)
-func writeBigQueryFlightsGCSFile(r *http.Request, datestring, foldername,filename string) (int,error) {
-	ctx := appengine.NewContext(r)
+func writeBigQueryFlightsGCSFile(db fgae.FlightDB, r *http.Request, datestring, foldername,filename string) (int,error) {
+	ctx := db.Ctx()
 	
 	if exists,err := gcs.Exists(ctx, foldername, filename); err != nil {
 		return 0,err
@@ -148,7 +138,6 @@ func writeBigQueryFlightsGCSFile(r *http.Request, datestring, foldername,filenam
 
 	n := 0
 
-	db := fgae.NewDB(ctx)
 	q := fgae.QueryForTimeRange(tags, s, e)
 	it := db.NewIterator(q)
 	for it.Iterate(ctx) {
@@ -179,7 +168,7 @@ func writeBigQueryFlightsGCSFile(r *http.Request, datestring, foldername,filenam
 		return 0, err
 	}
 
-	log.Infof(ctx, "GCS bigquery file '%s' successfully written", filename)
+	db.Infof("GCS bigquery file '%s' successfully written", filename)
 
 	return n,nil
 }
@@ -188,8 +177,8 @@ func writeBigQueryFlightsGCSFile(r *http.Request, datestring, foldername,filenam
 // {{{ submitLoadJob
 
 // https://cloud.google.com/bigquery/docs/loading-data-cloud-storage#bigquery-import-gcs-file-go
-func submitLoadJob(r *http.Request, gcsfolder, gcsfile string) error {
-	ctx := appengine.NewContext(r)
+func submitLoadJob(db fgae.FlightDB, r *http.Request, gcsfolder, gcsfile string) error {
+	ctx := db.Ctx()
 
 	client,err := bigquery.NewClient(ctx, bigqueryProject)
 	if err != nil {
@@ -237,10 +226,10 @@ func submitLoadJob(r *http.Request, gcsfolder, gcsfile string) error {
 		for i,innerErr := range status.Errors {
 			detailedErrStr += fmt.Sprintf(" [%2d] %v\n", i, innerErr)
 		}
-		log.Errorf(ctx, "BiqQuery LoadJob error: %v\n--\n%s", err, detailedErrStr)
+		db.Errorf("BiqQuery LoadJob error: %v\n--\n%s", err, detailedErrStr)
 		return fmt.Errorf("Job error: %v\n--\n%s", err, detailedErrStr)
 	} else {
-		log.Infof(ctx, "BiqQuery LoadJob status: done=%v, state=%s, %s",
+		db.Infof("BiqQuery LoadJob status: done=%v, state=%s, %s",
 			status.Done(), status.State, status)
 	}
 	

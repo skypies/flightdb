@@ -5,7 +5,7 @@ import(
 	"net/http"
 	"sort"
 
-	"context"
+	"github.com/skypies/flightdb/fgae"
 )
 
 // A simple registry of all known reports.
@@ -49,8 +49,8 @@ func ListReports() []ReportEntry {
 	return out
 }
 
-func SetupReport(ctx context.Context, r *http.Request) (Report, error) {
-	opt,err := FormValueReportOptions(ctx, r)
+func SetupReport(db fgae.FlightDB, r *http.Request) (Report, error) {
+	opt,err := FormValueReportOptions(db, r)
 	if err != nil { return Report{}, err }
 
 	rep,err := InstantiateReport(opt.Name)
@@ -58,7 +58,7 @@ func SetupReport(ctx context.Context, r *http.Request) (Report, error) {
 
 	rep.Options = opt
 	
-	if err := rep.setupReportingContext(ctx); err != nil {
+	if err := rep.setupReportingContext(db); err != nil {
 		return Report{}, err
 	}
 

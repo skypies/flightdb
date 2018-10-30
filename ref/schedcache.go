@@ -1,5 +1,4 @@
 // Package ref contains some reference lookups, implemented as singletons
-// Consider moving this out of flightdb2/, so that other projects can use it more easily
 package ref
 
 import(
@@ -7,12 +6,14 @@ import(
 	"encoding/gob"
 	"fmt"
 	"time"
-	
-	"context"
+
+	"golang.org/x/net/context"
+
 	"google.golang.org/appengine/log"
 
+	"github.com/skypies/util/ae"
+
 	fdb "github.com/skypies/flightdb"
-	"github.com/skypies/util/gaeutil"
 )
 
 // Keep a snapshot of the IcaoId -> Schedule mapping info in memcache.
@@ -36,32 +37,31 @@ func BlankScheduleCache() *ScheduleCache {
 	}
 }
 
-func NewScheduleCache(c context.Context) *ScheduleCache {
-	data,err := gaeutil.LoadSingleton(c,"schedcache")
+func NewScheduleCache(ctx context.Context) *ScheduleCache {
+	data,err := ae.LoadSingleton(ctx, "schedcache")
 	if err != nil {
-		log.Errorf(c, "schedcache: could not load: %v")
+		log.Errorf(ctx, "schedcache: could not load: %v")
 		return nil
 	}
 
 	buf := bytes.NewBuffer(data)
 	ac := BlankScheduleCache()
 	if err := gob.NewDecoder(buf).Decode(&ac); err != nil {
-		log.Errorf(c, "airframecache: could not decode: %v", err)
+		log.Errorf(ctx, "airframecache: could not decode: %v", err)
 	}
 
 	return ac
 }
 
-func (ac *ScheduleCache)Persist(c context.Context) error {
+func (ac *ScheduleCache)Persist(ctx context.Context) error {
 	var buf bytes.Buffer
 	if err := gob.NewEncoder(&buf).Encode(ac); err != nil {
 		return err
 	}
 
-	return gaeutil.SaveSingleton(c,"schedcache", buf.Bytes())
+	return ae.SaveSingleton(ctx, "schedcache", buf.Bytes())
 }
 
 func (ac *ScheduleCache)Get(id string) *fdb.FlightSnapshot {
 	return ac.Map[id]
 }
-

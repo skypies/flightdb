@@ -1,14 +1,17 @@
 package main
 
+// You'll need something useful in $ENV{GOOGLE_APPLICATION_CREDENTIALS}
+
 import(
-	"context"
 	"flag"
 	"fmt"
 	"log"
 
+	"golang.org/x/net/context"
+
 	"github.com/skypies/adsb"
 	"github.com/skypies/util/date"
-	"github.com/skypies/util/dsprovider"
+	"github.com/skypies/util/gcp/ds"
 
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/fgae"
@@ -57,11 +60,10 @@ func queryFromArgs() *fgae.FQuery {
 func runQuery(fq *fgae.FQuery) {
 	fmt.Printf("Running query %s\n", fq)
 
-	p,err := dsprovider.NewCloudDSProvider(ctx,"serfr0-fdb")
+	p,err := ds.NewCloudDSProvider(ctx,"serfr0-fdb")
 	if err != nil { log.Fatal(err) }
 
-	db := fgae.NewDB(ctx)
-	db.Backend = p
+	db := fgae.New(ctx,p)
 
 	flights,err := db.LookupAll(fq)
 	if err != nil { log.Fatal(err) }

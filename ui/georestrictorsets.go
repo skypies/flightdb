@@ -6,10 +6,6 @@ import(
 	"sort"
 	"strings"
 
-	"context"
-
-	"google.golang.org/appengine/log"
-
 	"github.com/skypies/geo"
 	"github.com/skypies/geo/sfo"
 	"github.com/skypies/util/widget"
@@ -22,10 +18,10 @@ var uriStem = "/fdb/restrictors"
 
 // {{{ RListHandler
 
-func RListHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func RListHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)
-	templates,_ := GetTemplates(ctx)
-	db := fgae.NewAppEngineDB(ctx)
+	templates := widget.GetTemplates(ctx)
 
 	if rsets,err := db.LookupRestrictorSets(opt.UserEmail); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -46,9 +42,10 @@ func RListHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 // {{{ RGrsNewHandler
 
 // RGrsnewHandler    - () conjure empty grs, render [grs-edit]
-func RGrsNewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func RGrsNewHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)	
-	templates,_ := GetTemplates(ctx)
+	templates := widget.GetTemplates(ctx)
 
 	params := map[string]interface{}{
 		"Title": "New Restrictor Set",
@@ -66,13 +63,13 @@ func RGrsNewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request)
 // {{{ RGrsEditHandler
 
 // RGrsEditHandler   - (key [,form]) load it; if form, edit&save, chain to ./list; else render [grs-edit]
-func RGrsEditHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func RGrsEditHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)	
-	templates,_ := GetTemplates(ctx)
-	db := fgae.NewAppEngineDB(ctx)
+	templates := widget.GetTemplates(ctx)
 
 	grs := fdb.GeoRestrictorSet{User:opt.UserEmail}
-	maybeLoadGRSDSKey(ctx, r, &grs)	// If we have a key, load it up to populate the grs
+	maybeLoadGRSDSKey(db, r, &grs)	// If we have a key, load it up to populate the grs
 
 	// If no form data, display the grs in an edit form
 	if r.FormValue("name") == "" {
@@ -112,9 +109,7 @@ func RGrsEditHandler(ctx context.Context, w http.ResponseWriter, r *http.Request
 // {{{ RGrsDeleteHandler
 
 // RGrsDeleteHandler - (key) delete it, chain to ./list
-func RGrsDeleteHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	db := fgae.NewAppEngineDB(ctx)
-
+func RGrsDeleteHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 	key := r.FormValue("grs_dskey")
 	if key == "" {
 		http.Error(w, "/grs/delete - no grs_dskey", http.StatusBadRequest)
@@ -127,16 +122,17 @@ func RGrsDeleteHandler(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	}
 
 	// All done; go to the list handler now.
-	RListHandler(ctx,w,r)	
+	RListHandler(db,w,r)	
 }
 
 // }}}
 // {{{ RGrsViewHandler
 
 // RGrsViewHandler- (key [,idspec]) load it, go to [grs-mapview]
-func RGrsViewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	templates,_ := GetTemplates(ctx)
-	grs,err := formValueDSKey(ctx, r)
+func RGrsViewHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
+	templates := widget.GetTemplates(ctx)
+	grs,err := formValueDSKey(db, r)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("RGrViewHandler, err: %v", err), http.StatusBadRequest)
 		return
@@ -170,14 +166,14 @@ func RGrsViewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request
 		}
 	}
 	
-	flights,err := formValueFlightsViaIdspecs(ctx, r)
+	flights,err := formValueFlightsViaIdspecs(db, r)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("RGrViewHandler, idspecs err: %v", err), http.StatusBadRequest)
 		return
 	}
 	for _,f := range flights {
 		outcome := f.GetIntersectableTrack().SatisfiesRestrictorSet(grs)
-		log.Infof(ctx, fmt.Sprintf("** outcome:-\n%s\n\n%s\n", outcome, outcome.Debug()))
+		db.Infof(fmt.Sprintf("** outcome:-\n%s\n\n%s\n", outcome, outcome.Debug()))
 		ms.Points = append(ms.Points, flightToRestrictedMapPoints(f, grs)...)
 		legend += fmt.Sprintf("<br/>Final outcome: <b>satsfies=%v</b><br/>", outcome.Satisfies(grs.Logic))
 		for i,o := range outcome.Outcomes {
@@ -207,11 +203,12 @@ func RGrsViewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 // {{{ RGrNewHandler
 
-func RGrNewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	opt,_ := GetUIOptions(ctx)	
-	templates,_ := GetTemplates(ctx)
+func RGrNewHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
+	opt,_ := GetUIOptions(ctx)
+	templates := widget.GetTemplates(ctx)
 
-	grs,err := formValueDSKey(ctx, r)
+	grs,err := formValueDSKey(db, r)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("RGrNewHandler, err: %v", err), http.StatusBadRequest)
 		return
@@ -236,12 +233,12 @@ func RGrNewHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) 
 // {{{ RGrEditHandler
 
 // RGrEditHandler    - (key,index [,form]) if form, edit&save, chain to ./grs/edit; else render [gr-edit]
-func RGrEditHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func RGrEditHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)	
-	templates,_ := GetTemplates(ctx)
-	db := fgae.NewAppEngineDB(ctx)
+	templates := widget.GetTemplates(ctx)
 
-	grs,err := formValueDSKey(ctx, r)
+	grs,err := formValueDSKey(db, r)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("RGrNewHandler, err: %v", err), http.StatusBadRequest)
 		return
@@ -302,10 +299,8 @@ func RGrEditHandler(ctx context.Context, w http.ResponseWriter, r *http.Request)
 // {{{ RGrDeleteHandler
 
 // RGrDeleteHandler  - (key,index)
-func RGrDeleteHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	db := fgae.NewAppEngineDB(ctx)
-
-	grs,err := formValueDSKey(ctx, r)
+func RGrDeleteHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	grs,err := formValueDSKey(db, r)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("RGrNewHandler, err: %v", err), http.StatusBadRequest)
 		return
@@ -332,7 +327,8 @@ func RGrDeleteHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 
 // {{{ RDebHandler
 
-func RDebHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func RDebHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)
 
 	r.ParseForm()
@@ -347,9 +343,7 @@ func RDebHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 // {{{ maybeLoadGRSDSKey
 
 // Can't find a nice way to centralize this, as it needs fdb & fgae :/
-func maybeLoadGRSDSKey(ctx context.Context, r *http.Request, grs *fdb.GeoRestrictorSet) (error) {
-	db := fgae.NewAppEngineDB(ctx)
-
+func maybeLoadGRSDSKey(db fgae.FlightDB, r *http.Request, grs *fdb.GeoRestrictorSet) (error) {
 	// TODO: move to grs_dskey or something
 	if dskey := r.FormValue("grs_dskey"); dskey == "" {
 		return nil
@@ -364,20 +358,21 @@ func maybeLoadGRSDSKey(ctx context.Context, r *http.Request, grs *fdb.GeoRestric
 // }}}
 // {{{ formValueDSKey
 
-func formValueDSKey(ctx context.Context, r *http.Request) (fdb.GeoRestrictorSet, error) {
+func formValueDSKey(db fgae.FlightDB, r *http.Request) (fdb.GeoRestrictorSet, error) {
+	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)	
 	grs := fdb.GeoRestrictorSet{User:opt.UserEmail}
 
-	err := maybeLoadGRSDSKey(ctx, r, &grs)
+	err := maybeLoadGRSDSKey(db, r, &grs)
 	return grs,err
 }
 
 // }}}
 // {{{ formValueFlightsViaIdspecs
 
-func formValueFlightsViaIdspecs(ctx context.Context, r *http.Request) ([]*fdb.Flight, error) {
-	opt,_ := GetUIOptions(ctx)	
-	db := fgae.NewAppEngineDB(ctx)
+func formValueFlightsViaIdspecs(db fgae.FlightDB, r *http.Request) ([]*fdb.Flight, error) {
+	ctx := db.Ctx()
+	opt,_ := GetUIOptions(ctx)
 
 	// This whole Airframe cache thing should be automatic, and upstream from here.
 	airframes := ref.NewAirframeCache(ctx)

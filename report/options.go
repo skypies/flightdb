@@ -11,8 +11,6 @@ import(
 	"net/url"
 	"strings"
 	"time"
-	
-	"context"
 
 	"github.com/skypies/geo"
 	"github.com/skypies/geo/sfo"
@@ -57,7 +55,7 @@ type Options struct {
 
 // {{{ FormValueReportOptions
 
-func FormValueReportOptions(ctx context.Context, r *http.Request) (Options, error) {
+func FormValueReportOptions(db fgae.FlightDB, r *http.Request) (Options, error) {
 	if r.FormValue("rep") == "" {
 		return Options{}, fmt.Errorf("url arg 'rep' missing (no report specified")
 	}
@@ -83,8 +81,8 @@ func FormValueReportOptions(ctx context.Context, r *http.Request) (Options, erro
 
 		ResultsFormat: r.FormValue("resultformat"),
 	}
-	
-	if grs,err := FormValueGeoRestrictorSetLoadOrAdHoc(ctx, r); err != nil {
+
+	if grs,err := FormValueGeoRestrictorSetLoadOrAdHoc(db, r); err != nil {
 		return opt,err
 	} else if ! grs.IsNil(){
 		opt.GRS = grs
@@ -138,10 +136,10 @@ func FormValueReportOptions(ctx context.Context, r *http.Request) (Options, erro
 
 // If there is a dskey, load up the corresponding RestrictorSet. Else, look for a single
 // ad-hoc restrictor in the CGI args, and generate a GRS to wrap it.
-func FormValueGeoRestrictorSetLoadOrAdHoc(ctx context.Context, r *http.Request) (fdb.GeoRestrictorSet, error) {
+func FormValueGeoRestrictorSetLoadOrAdHoc(db fgae.FlightDB, r *http.Request) (fdb.GeoRestrictorSet, error) {
 	grs := fdb.GeoRestrictorSet{}
 	
-	if err := maybeLoadGRSDSKey(ctx, r, &grs); err != nil {
+	if err := maybeLoadGRSDSKey(db, r, &grs); err != nil {
 		return grs,err
 	}
 
@@ -157,9 +155,7 @@ func FormValueGeoRestrictorSetLoadOrAdHoc(ctx context.Context, r *http.Request) 
 	return grs,nil
 }
 
-func maybeLoadGRSDSKey(ctx context.Context, r *http.Request, grs *fdb.GeoRestrictorSet) (error) {
-	db := fgae.NewAppEngineDB(ctx)
-
+func maybeLoadGRSDSKey(db fgae.FlightDB, r *http.Request, grs *fdb.GeoRestrictorSet) (error) {
 	// TODO: move to grs_dskey or something
 	if dskey := r.FormValue("grs_dskey"); dskey == "" {
 		return nil

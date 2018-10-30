@@ -3,7 +3,8 @@ package ui
 import(
 	"fmt"
 	"net/http"
-	"context"
+
+	"github.com/skypies/flightdb/fgae"
 )
 
 func init() {
@@ -18,7 +19,7 @@ func init() {
 //  &dist=from       (for distance axis, use dist from airport; by default, uses dist along path)
 //  &colorby=delta   (delta groundspeed, instead of groundspeed)
 
-func VisualizeHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func VisualizeHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 	if r.FormValue("debug") != "" {
 		str := "OK\n"
 		for k, v := range r.Form {
@@ -29,10 +30,9 @@ func VisualizeHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 	
 	switch r.FormValue("viewtype") {
-	case "vector":   TracksetHandler(ctx,w,r)
-	//case "descent":  escentHandler(ctx,w,r)
-	case "sideview": SideviewHandler(ctx,w,r)
-	case "track":    TrackHandler(ctx,w,r)
+	case "vector":   TracksetHandler(db,w,r)
+	case "sideview": SideviewHandler(db,w,r)
+	case "track":    TrackHandler(db,w,r)
 	default:         http.Error(w, "Specify viewtype={vector|sideview|track}", http.StatusBadRequest)
 	}		
 }

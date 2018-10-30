@@ -8,20 +8,20 @@ import(
 	"os"
 	"sort"
 	
-	"context"
+	"golang.org/x/net/context"
 
 	"github.com/skypies/geo"
 	"github.com/skypies/util/date"
-	"github.com/skypies/util/dsprovider"
+	"github.com/skypies/util/gcp/ds"
 	"github.com/skypies/util/histogram"
 	
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/faadata"
+	"github.com/skypies/flightdb/fgae"
 )
 
 var(
-	ctx    = context.Background()
-	p       *dsprovider.CloudDSProvider
+	db       fgae.FlightDB
 	fDryRun  bool
 	fCmd     string
 	fVerbosity int
@@ -32,21 +32,24 @@ func init() {
 	flag.IntVar(&fVerbosity, "v", 0, "verbosity level")
 	flag.Parse()
 
-	if pr,err := dsprovider.NewCloudDSProvider(ctx, "serfr0-fdb"); err != nil {
-		log.Fatal("new cloud provider: %v\n", err)
+	ctx := context.Background()
+	if p,err := ds.NewCloudDSProvider(ctx, "serfr0-fdb"); err != nil {
+		log.Fatalf("new cloud provider: %v\n", err)
 	} else {
-		p = pr
+		db = fgae.New(ctx, p)
 	}
 }
 
 // {{{ loadfile
 
 func loadfile(file string, callback faadata.NewFlightCallback) {
+	bucket := "FIXME"
+
 	if rdr, err := os.Open(file); err != nil {
 		log.Fatal("open '%s': %v\n", file, err)
 	} else if gzRdr,err := gzip.NewReader(rdr); err != nil {
 		log.Fatal("gzopen '%s': %v\n", file, err)
-	} else if n,str,err := faadata.ReadFrom(ctx, file, gzRdr, callback); err != nil {
+	} else if n,str,err := faadata.ReadFrom(db, file, bucket, gzRdr, callback); err != nil {
 		log.Fatal("faadata.ReadFrom '%s': %v\n", file, err)
 	} else {
 		if fVerbosity > 0 {
@@ -91,7 +94,7 @@ func stats(files []string) {
 	tod := histogram.Histogram{NumBuckets:48,ValMax:48}
 	var bbox *geo.LatlongBox
 	
-	callback := func(ctx context.Context, f *fdb.Flight) (bool, string, error) {
+	callback := func(db fgae.FlightDB, f *fdb.Flight) (bool, string, error) {
 		for _,tag := range []string{":SFO","SFO:",":SJC","SJC:",":OAK","OAK:"} {
 			if f.HasTag(tag) { norcal[tag]++ }
 		}

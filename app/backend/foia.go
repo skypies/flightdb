@@ -9,11 +9,8 @@ import(
 	"time"
 
 	"cloud.google.com/go/storage"
-	"context"
 	"google.golang.org/api/iterator"
-	"google.golang.org/appengine"
 	"google.golang.org/appengine/taskqueue"
-	"google.golang.org/appengine/log"	
 
 	"github.com/skypies/util/date"
 	"github.com/skypies/util/widget"
@@ -22,20 +19,12 @@ import(
 	"github.com/skypies/flightdb/fgae"
 )
 
-func init() {
-	http.HandleFunc("/foia/load", foiaHandler)
-	http.HandleFunc("/foia/enqueue", multiEnqueueHandler)
-	//http.HandleFunc("/foia/rm", rmHandler)
-}
-
 // {{{ foiaHandler
 
 // http://backend-dot-serfr0-fdb.appspot.com/foia/load?bucket=eastbay-foia&date=20160703
 
 // Load up FOIA historical data from GCS, and add new flights into the DB
-func foiaHandler(w http.ResponseWriter, r *http.Request) {
-	ctx,_ := context.WithTimeout(appengine.NewContext(r), 10*time.Minute)
-
+func foiaHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 	datestr := r.FormValue("date")
 	if datestr == "" {
 		http.Error(w, "need 'date=20141231' arg", http.StatusBadRequest)
@@ -45,7 +34,7 @@ func foiaHandler(w http.ResponseWriter, r *http.Request) {
 	bucketName := getBucket(w,r)
 	if bucketName == "" { return }
 
-	namepairs,err := getGCSFilenames(ctx,bucketName,datestr)
+	namepairs,err := getGCSFilenames(db,bucketName,datestr)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -54,7 +43,7 @@ func foiaHandler(w http.ResponseWriter, r *http.Request) {
 	str := ""
 	for _,pair := range namepairs {
 		str += fmt.Sprintf("----------- %s|%s -----------\n", pair[0], pair[1])
-		output,err := loadGCSFile(ctx, pair[0], pair[1])
+		output,err := loadGCSFile(db, pair[0], pair[1])
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -64,7 +53,7 @@ func foiaHandler(w http.ResponseWriter, r *http.Request) {
 	
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(fmt.Sprintf("OK\n%s", str)))
-	log.Infof(ctx, "FOIA loader for date=%s\n%s", datestr, str)
+	db.Infof("FOIA loader for date=%s\n%s", datestr, str)
 }
 
 // }}}
@@ -75,8 +64,8 @@ func foiaHandler(w http.ResponseWriter, r *http.Request) {
 // http://backend-dot-serfr0-fdb.appspot.com/foia/enqueue?bucket=eastbay-foia&date=range&range_from=2016/06/25&range_to=2016/10/31
 
 // Writes them all into a batch queue
-func multiEnqueueHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
+func multiEnqueueHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
 	str := ""
 
 	bucketName := getBucket(w,r)
@@ -96,7 +85,7 @@ func multiEnqueueHandler(w http.ResponseWriter, r *http.Request) {
 		t.Delay = 2*time.Minute + time.Duration(i)*15*time.Second
 
 		if _,err := taskqueue.Add(ctx, t, "bigbatch"); err != nil {
-			log.Errorf(ctx, "multiEnqueueHandler: enqueue: %v", err)
+			db.Errorf("multiEnqueueHandler: enqueue: %v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -111,10 +100,7 @@ func multiEnqueueHandler(w http.ResponseWriter, r *http.Request) {
 // }}}
 // {{{ rmHandler
 
-func rmHandler(w http.ResponseWriter, r *http.Request) {
-	ctx,_ := context.WithTimeout(appengine.NewContext(r), 9*time.Minute)
-	db := fgae.NewDB(ctx)
-	
+func rmHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {	
 	n := 0
 	
 	max := widget.FormValueInt64(r,"n")
@@ -180,7 +166,8 @@ func getBucket(w http.ResponseWriter, r *http.Request) string {
 // }}}
 // {{{ getGCSReader
 
-func getGCSReader(ctx context.Context, bucketName, fileName string) (io.Reader, error) {
+func getGCSReader(db fgae.FlightDB, bucketName, fileName string) (io.Reader, error) {
+	ctx := db.Ctx()
 	client, err := storage.NewClient(ctx)
 	if err != nil { return nil, err }
 
@@ -204,7 +191,8 @@ func getGCSReader(ctx context.Context, bucketName, fileName string) (io.Reader, 
 // RG  naming: rg-foia      2014                                  /Offload_track_IFR_20140104.txt.gz
 // EB  naming: eastbay-foia eb-foia/2015                          /Offload_track_IFR_20150104.txt.gz
 // MTV naming: mtv-foia     2010                                  /Offload_track_IFR_20100101.txt.gz
-func getGCSFilenames(ctx context.Context, bucketName, datestr string) ([][]string, error) {
+func getGCSFilenames(db fgae.FlightDB, bucketName, datestr string) ([][]string, error) {
+	ctx := db.Ctx()
 	frags := regexp.MustCompile("^(\\d{4})").FindStringSubmatch(datestr)
 	if len(frags) == 0 {
 		return nil, fmt.Errorf("date '%s' did not match YYYYMMDD", datestr)
@@ -221,7 +209,7 @@ func getGCSFilenames(ctx context.Context, bucketName, datestr string) ([][]strin
 	}
 	}
 
-	log.Infof(ctx, "FOIAUPLOAD starting %s (%s)", datestr, getFilePrefix())
+	db.Infof("FOIAUPLOAD starting %s (%s)", datestr, getFilePrefix())
 
 	client, err := storage.NewClient(ctx)
 	if err != nil { return nil,err }
@@ -240,7 +228,7 @@ func getGCSFilenames(ctx context.Context, bucketName, datestr string) ([][]strin
     if err != nil {
 			return nil, fmt.Errorf("GCS-Readdir [gs://%s]%s': %v", bucketName, q.Prefix, err)
     }
-		log.Infof(ctx, "%8db %s {%s}\n", oa.Size, oa.Updated.Format("2006.01.02"), oa.Name)
+		db.Infof("%8db %s {%s}\n", oa.Size, oa.Updated.Format("2006.01.02"), oa.Name)
 		namepairs = append(namepairs, []string{bucketName, oa.Name})
 	}
 
@@ -250,31 +238,31 @@ func getGCSFilenames(ctx context.Context, bucketName, datestr string) ([][]strin
 // }}}
 // {{{ loadGCSFile
 
-func loadGCSFile(ctx context.Context, bucketName, filename string) (string, error) {
+func loadGCSFile(db fgae.FlightDB, bucketName, filename string) (string, error) {
 	src := bucketName+","+filename
 	str := fmt.Sprintf("Flights loaded from %s\n", src)
 
 	tStart := time.Now()
 
-	ioReader,err := getGCSReader(ctx, bucketName, filename)
+	ioReader,err := getGCSReader(db, bucketName, filename)
 	if err != nil {
 		err = fmt.Errorf("loadGCSFile(%s): %v", src, err)
-		log.Errorf(ctx, "%v", err)
+		db.Errorf("%v", err)
 		return "", err
 	}
-	log.Infof(ctx, "opened %s, about to faadata.ReadFrom\n", src)
+	db.Infof("opened %s, about to faadata.ReadFrom\n", src)
 
-	n,str,err := faadata.ReadFrom(ctx, src, bucketName, ioReader, foiaIdempotentAdd)
+	n,str,err := faadata.ReadFrom(db, src, bucketName, ioReader, foiaIdempotentAdd)
 	if err != nil {
 		err = fmt.Errorf("loadGCSFile(%s): %v", src, err)
-		log.Errorf(ctx, "%v", err)
+		db.Errorf("%v", err)
 		return "", err
 	}
 	
 	str += fmt.Sprintf("-- %s all done, %d added, took %s\n", src, n, time.Since(tStart))
 
-	log.Infof(ctx, "FOIAUPLOAD finished %s (%d flights added, took %s)\n", src, n, time.Since(tStart))
-	log.Infof(ctx, str)
+	db.Infof("FOIAUPLOAD finished %s (%d flights added, took %s)\n", src, n, time.Since(tStart))
+	db.Infof(str)
 	
 	return str,nil
 }
@@ -283,8 +271,7 @@ func loadGCSFile(ctx context.Context, bucketName, filename string) (string, erro
 
 // {{{ foiaIdempotentAdd
 
-func foiaIdempotentAdd(ctx context.Context, f *fdb.Flight) (bool, string, error) {
-	db := fgae.NewDB(ctx)
+func foiaIdempotentAdd(db fgae.FlightDB, f *fdb.Flight) (bool, string, error) {
 	q := db.NewQuery().ByIdSpec(f.IdSpec()).ByTags([]string{"FOIA"})
 	prefix := f.IdentityString()
 	

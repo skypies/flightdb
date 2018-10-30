@@ -8,8 +8,7 @@ import(
 	"strings"
 	"time"
 	
-	"context"
-	"google.golang.org/appengine/urlfetch"
+	"golang.org/x/net/context"
 
 	"github.com/skypies/geo"
 	"github.com/skypies/geo/sfo"
@@ -23,8 +22,8 @@ import(
 
 // {{{ maybeAddFr24Track
 
-func MaybeAddFr24Track(c context.Context, f *fdb.Flight) string {
-	fr,_ := fr24.NewFr24(urlfetch.Client(c))
+func maybeAddFr24Track(db fgae.FlightDB, f *fdb.Flight) string {
+	fr,_ := fr24.NewFr24(db.HTTPClient())
 	fr.Prefix = "fr.worrall.cc/"
 	fr24Id,debug,err := fr.GetFr24Id(f)
 	str := fmt.Sprintf("** fr24 ID lookup: %s, %v\n* debug:-\n%s***\n", fr24Id, err, debug)
@@ -60,8 +59,9 @@ func MaybeAddFr24Track(c context.Context, f *fdb.Flight) string {
 
 //  &all=1 [&colorby=candy]  - show all instances of the IdSpec [prob want coloring]
 
-func TrackHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func TrackHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 	// This whole Airframe cache thing should be automatic, and upstream from here.
+	ctx := db.Ctx()
 	airframes := ref.NewAirframeCache(ctx)
 	opt,_ := GetUIOptions(ctx)
 
@@ -71,7 +71,6 @@ func TrackHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db := fgae.NewAppEngineDB(ctx)
 	flights := []*fdb.Flight{}
 	for _,idspec := range idspecs {
 		if r.FormValue("all") != "" {
@@ -99,13 +98,14 @@ func TrackHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		}			
 	}
 	
-	OutputTrackpointsOnAMap(ctx, w, r, flights)
+	OutputTrackpointsOnAMap(db, w, r, flights)
 }
 
 // }}}
 // {{{ TracksetHandler
 
-func TracksetHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func TracksetHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
+	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)
 	
 	// Check we can parse them up-front, so we can return an ascii error
@@ -163,9 +163,10 @@ func IdSpecsToJSVar(idspecs []string) template.JS {
 //  clip1=EPICK&clip2=EDDYY  (clip to points between those waypoints)
 //  arbitraryboxes=b1[,b2]   (latlongbox.ToCGIArgs("b1") for 1+ arbitrary boxes, painted bright red
 
-func OutputTrackpointsOnAMap(ctx context.Context, w http.ResponseWriter, r *http.Request, flights []*fdb.Flight) {
+func OutputTrackpointsOnAMap(db fgae.FlightDB, w http.ResponseWriter, r *http.Request, flights []*fdb.Flight) {
+	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)
-	tmpl,_ := GetTemplates(ctx)
+	tmpl := widget.GetTemplates(ctx)
 
 	bannerText := ""
 	for i,_ := range flights {
@@ -206,7 +207,7 @@ func OutputTrackpointsOnAMap(ctx context.Context, w http.ResponseWriter, r *http
 	if r.FormValue("fr24") != "" {
 		coloring = ByData
 		//bannerText += MaybeAddFr24Track(c, flights[0])
-		MaybeAddFr24Track(ctx, flights[0])
+		maybeAddFr24Track(db, flights[0])
 	}
 		
 	if r.FormValue("arbitraryboxes") != "" {
@@ -314,7 +315,7 @@ func OutputTrackpointsOnAMap(ctx context.Context, w http.ResponseWriter, r *http
 
 func OutputMapLinesOnAStreamingMap(ctx context.Context, w http.ResponseWriter, r *http.Request, vectorURLPath string) {
 	opt,_ := GetUIOptions(ctx)
-	tmpl,_ := GetTemplates(ctx)
+	tmpl := widget.GetTemplates(ctx)
 	ms := NewMapShapes()
 	legend := ""
 
