@@ -1,5 +1,3 @@
-application: serfr0-fdb
-
 dispatch:
 
 # All front doors go to map view (stackdriver hits them)
@@ -11,9 +9,6 @@ dispatch:
   module: default
 - url: "*/static/*"
   module: default
-
-- url: "*/con/*"
-  module: consolidator
 
 - url: "*/be/*"
   module: backend
