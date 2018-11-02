@@ -12,17 +12,17 @@ Download and run things locally
 
 To deploy everything into a Google Cloud project:
 
-    $ gcloud app deploy app/frontend --project=serfr0-fdb --version=one
-    $ gcloud app deploy app/backend --project=serfr0-fdb --version=one
+    $ gcloud app deploy --project=serfr0-fdb app/frontend --version=one
+    $ gcloud app deploy --project=serfr0-fdb app/backend  --version=one
 
-    $ appcfg.py update_cron     app/backend
-    $ appcfg.py update_indexes  app/backend
-    $ appcfg.py update_queues   app/backend
-    $ appcfg.py update_dispatch app/backend
+    $ gcloud app deploy --project=serfr0-fdb app/backend/dispatch.yaml
+    $ gcloud app deploy --project=serfr0-fdb app/backend/queues.yaml
+    $ gcloud app deploy --project=serfr0-fdb app/backend/cron.yaml
+    $ gcloud app deploy --project=serfr0-fdb app/backend/index.yaml
 
 If you want it to accumulate realtime flight track data, you'll also want to:
 * deploy `github.com/skypies/pi/skypi` onto some Raspberry Pi receivers
-* deploy `github.com/skypies/pi/consolidator` onto an AppEngine Flexible Environment
+* deploy `github.com/skypies/pi/consolidator` into a VM inside your project
 
 The skypies will post bundles of received ADSB (and perhaps MLAT)
 messages up to Google PubSub, every second or so. The consolidator
