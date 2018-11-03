@@ -30,7 +30,7 @@ func (db FlightDB)FetchCondensedFlights(s,e time.Time, tags []string) ([]fdb.Con
 	sp.ErrIfNotFound = true // We care about this
 
 	// If we find something, return it; else carry on
-	if err := sp.ReadSingleton(db.Ctx(), key, cfs); err == nil {
+	if err := sp.ReadSingleton(db.Ctx(), key, &cfs); err == nil {
 		str += fmt.Sprintf("found %d OK\n", len(cfs))
 		return cfs,nil,str
 
@@ -46,7 +46,7 @@ func (db FlightDB)FetchCondensedFlights(s,e time.Time, tags []string) ([]fdb.Con
 	}
 	str += fmt.Sprintf("raw lookup found %d matches\n", len(cfs))
 
-	if err := sp.WriteSingleton(db.Ctx(), key, cfs); err != nil {
+	if err := sp.WriteSingleton(db.Ctx(), key, &cfs); err != nil {
 		return []fdb.CondensedFlight{}, fmt.Errorf("condense save: %v",err), str
 	}
 
