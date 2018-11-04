@@ -46,4 +46,8 @@ func init() {
 	http.HandleFunc("/be/fr24", ui.WithFdbCtx(ctxMaker, fr24PollHandler))
 	http.HandleFunc("/be/fr24q", ui.WithFdbCtx(ctxMaker, fr24QueryHandler))
 	http.HandleFunc("/be/schedcache/view", ui.WithFdbCtx(ctxMaker, schedcacheViewHandler))
+
+	// backend/metar.go
+	http.HandleFunc("/metar/lookup", ui.WithFdbCtx(ctxMaker, metarLookupHandler))
+	http.HandleFunc("/metar/lookupall", ui.WithFdbCtx(ctxMaker, metarLookupAllHandler))
 }

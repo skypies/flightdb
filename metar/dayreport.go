@@ -13,24 +13,15 @@ package metar
 
 import(
 	"fmt"
-	"net/http"
 	"time"
-
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/log"
-	"google.golang.org/appengine/urlfetch"
 
 	"golang.org/x/net/context"
 
-	appengineds "github.com/skypies/util/ae/ds"
 	"github.com/skypies/util/gcp/ds"
 
-	//sprovider "github.com/skypies/util/gcp/singleton"
-	//"github.com/skypies/util/singleton"
+	sprovider "github.com/skypies/util/gcp/singleton"
 
-	"github.com/skypies/util/ae"
 	"github.com/skypies/util/date"
-	"github.com/skypies/util/widget"
 )
 
 const DateFormat = "2006-01-02"
@@ -42,11 +33,6 @@ var(
 	ErrTimeNotInDayReport = fmt.Errorf("The time was not within the DayReport's UTC day")
 	ErrNotFound = fmt.Errorf("No Metar record found")
 )
-
-func init() {
-	http.HandleFunc("/metar/lookup", lookupHandler)
-	http.HandleFunc("/metar/lookupall", lookupAllHandler)
-}
 
 type DayReport struct {
 	IcaoAirport     string    // E.g. "KSFO"
@@ -147,11 +133,12 @@ func toMetarSingletonKey(loc string, t time.Time) string {
 
 // Pull an entire UTC day's worth of reports.
 func LookupDayReport(ctx context.Context, p ds.DatastoreProvider, loc string, t time.Time) (*DayReport, error) {
+	sp := sprovider.NewProvider(p)
 	dr := NewDayReport()
 	t = t.UTC()
 	key := toMetarSingletonKey(loc, t)
-	
-	err := ae.LoadAnySingleton(ctx, key, dr)
+
+	err := sp.ReadSingleton(ctx, key, dr)
 	if err != nil {
 		return nil,err
 
@@ -188,6 +175,7 @@ func directLookup(ctx context.Context, p ds.DatastoreProvider, loc string, t tim
 // {{{ LookupOrFetch
 
 func LookupOrFetch(ctx context.Context, p ds.DatastoreProvider, loc string, t time.Time) (*Report, error, string) {
+	sp := sprovider.NewProvider(p)
 	dr := NewDayReport()
 	prevDr := NewDayReport()  // when we're called for 00:00, we need to update 23:56 for prev day
 
@@ -195,16 +183,16 @@ func LookupOrFetch(ctx context.Context, p ds.DatastoreProvider, loc string, t ti
 	key := toMetarSingletonKey(loc, t)
 	str := fmt.Sprintf("[LookupOrFetch] key=%s\n", key)
 	
-	err := ae.LoadAnySingleton(ctx, key, dr)
+	err := sp.ReadSingleton(ctx, key, dr)
 	str += fmt.Sprintf("*** LoadAnySingleton\n* err : %v\n* dr  : %s\n", err, dr)
 
 	// Try to fetch previous day; ignore errors
 	prevKey := toMetarSingletonKey(loc, t.AddDate(0,0,-1))
-	ae.LoadAnySingleton(ctx, prevKey, prevDr)
+	sp.ReadSingleton(ctx, prevKey, prevDr)
 	if prevDr.IsInitialized() {
 		str += fmt.Sprintf("* prev: %s\n", prevDr)
 	}
-	
+
 	shouldPersistChanges := false
 	shouldPersistChangesToPrevDay := false
 	if err != nil {
@@ -234,7 +222,7 @@ func LookupOrFetch(ctx context.Context, p ds.DatastoreProvider, loc string, t ti
 	} else if mr == nil {
 		str += fmt.Sprintf("* dr.Lookup came up empty; going to NOAA\n")
 
-		reps,err := fetchReportsFromNOAA(urlfetch.Client(ctx), loc,
+		reps,err := fetchReportsFromNOAA(p.HTTPClient(ctx), loc,
 			t.Add(-1*time.Hour), t.Add(time.Hour))
 		str += fmt.Sprintf("[fetchReportsFromNOAA]\n -- err=%v\n -- ar: %v\n", err, reps)
 
@@ -257,12 +245,12 @@ func LookupOrFetch(ctx context.Context, p ds.DatastoreProvider, loc string, t ti
 	str += fmt.Sprintf("* final mr: %s\n* shouldPersist: %v\n", mr, shouldPersistChanges)
 
 	if shouldPersistChanges {
-		if err := ae.SaveAnySingleton(ctx, key, dr); err != nil {
+		if err := sp.WriteSingleton(ctx, key, dr); err != nil {
 			return nil,err,str
 		}
 	}
 	if shouldPersistChangesToPrevDay {
-		if err := ae.SaveAnySingleton(ctx, prevKey, prevDr); err != nil {
+		if err := sp.WriteSingleton(ctx, prevKey, prevDr); err != nil {
 			return nil,err,str
 		}
 	}
@@ -309,6 +297,7 @@ func LookupArchive(ctx context.Context, p ds.DatastoreProvider, loc string, s,e 
 
 // }}}
 
+/*
 // {{{ lookupHandler
 
 // /metar/lookup [?t=123123123123] [&loc=KSFO]
@@ -388,6 +377,7 @@ func lookupAllHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // }}}
+*/
 
 // {{{ -------------------------={ E N D }=----------------------------------
 
