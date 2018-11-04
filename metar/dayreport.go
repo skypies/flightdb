@@ -7,6 +7,9 @@ package metar
 
 // LookupOrFetch (via cron+ui:lookupHandler) will fetch new data from NOAA and store it, if needed.
 // Lookup will simply try to look it up, and fail if not found.
+// The main consumer of this stuff is prefetching by report context, which is used when
+//  rendering resultsets, and also in various ui/ routines that pull the metar out of the context.
+// Given reporting load, I think the memcaching can be skipped.
 
 import(
 	"fmt"
@@ -18,6 +21,12 @@ import(
 	"google.golang.org/appengine/urlfetch"
 
 	"golang.org/x/net/context"
+
+	appengineds "github.com/skypies/util/ae/ds"
+	"github.com/skypies/util/gcp/ds"
+
+	//sprovider "github.com/skypies/util/gcp/singleton"
+	//"github.com/skypies/util/singleton"
 
 	"github.com/skypies/util/ae"
 	"github.com/skypies/util/date"
@@ -137,7 +146,7 @@ func toMetarSingletonKey(loc string, t time.Time) string {
 // {{{ LookupDayReport
 
 // Pull an entire UTC day's worth of reports.
-func LookupDayReport(ctx context.Context, loc string, t time.Time) (*DayReport, error) {
+func LookupDayReport(ctx context.Context, p ds.DatastoreProvider, loc string, t time.Time) (*DayReport, error) {
 	dr := NewDayReport()
 	t = t.UTC()
 	key := toMetarSingletonKey(loc, t)
@@ -159,9 +168,9 @@ func LookupDayReport(ctx context.Context, loc string, t time.Time) (*DayReport, 
 
 // This just looks up the relevant slot. No smarts about 56m past the hour. Use with care.
 
-func directLookup(ctx context.Context, loc string, t time.Time) (*Report, error) {
+func directLookup(ctx context.Context, p ds.DatastoreProvider, loc string, t time.Time) (*Report, error) {
 
-	if dr,err := LookupDayReport(ctx, loc, t); err != nil {
+	if dr,err := LookupDayReport(ctx, p, loc, t); err != nil {
 		return nil, err
 
 	} else if mr,err := dr.Lookup(t); err != nil {
@@ -178,7 +187,7 @@ func directLookup(ctx context.Context, loc string, t time.Time) (*Report, error)
 // }}}
 // {{{ LookupOrFetch
 
-func LookupOrFetch(ctx context.Context, loc string, t time.Time) (*Report, error, string) {
+func LookupOrFetch(ctx context.Context, p ds.DatastoreProvider, loc string, t time.Time) (*Report, error, string) {
 	dr := NewDayReport()
 	prevDr := NewDayReport()  // when we're called for 00:00, we need to update 23:56 for prev day
 
@@ -264,26 +273,26 @@ func LookupOrFetch(ctx context.Context, loc string, t time.Time) (*Report, error
 // }}}
 // {{{ LookupReport
 
-// This is the main API entrypoint. Does not fetch; only looks up from datastore.
+// This is the main API entrypoint. Does not fetch new data; only looks up from datastore.
 
 // Metar entries are published at 56m past the hour. Appengine hourly
 // cron entries can only run on the hour. The net result is that we
 // will *never* have a Metar entry for the current hour; we must
 // always lookup the previous hour.
-func LookupReport(ctx context.Context, loc string, t time.Time) (*Report, error) {
-	return directLookup(ctx, loc, t.Add(time.Hour * -1)) // See comment above, about the -1h
+func LookupReport(ctx context.Context, p ds.DatastoreProvider, loc string, t time.Time) (*Report, error) {
+	return directLookup(ctx, p, loc, t.Add(time.Hour * -1)) // See comment above, about the -1h
 }
 
 // }}}
 // {{{ LookupArchive
 
-// Other main entrypoint. Generates a metar archive for a timespan.
+// The actually used API entrypoint. Generates a metar archive for a timespan.
 
-func LookupArchive(ctx context.Context, loc string, s,e time.Time) (*Archive, error) {
+func LookupArchive(ctx context.Context, p ds.DatastoreProvider, loc string, s,e time.Time) (*Archive, error) {
 	ar := NewArchive()
 
 	for _,t := range date.Timeslots(s.UTC(), e.UTC(), time.Hour) {
-		mr,err := directLookup(ctx, loc, t)
+		mr,err := directLookup(ctx, p, loc, t)
 		if err == ErrNotFound {
 			continue
 
@@ -307,6 +316,7 @@ func LookupArchive(ctx context.Context, loc string, s,e time.Time) (*Archive, er
 //  [&n=6]  number of hours to lookup in an archive
 func lookupHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
+	p := appengineds.AppengineDSProvider{}
 	str := "OK\n--\n\n"
 
 	loc := r.FormValue("loc")
@@ -322,11 +332,11 @@ func lookupHandler(w http.ResponseWriter, r *http.Request) {
 
 	str += fmt.Sprintf("Lookup for loc=%s, t=%s (%s)\n", loc, t, date.InPdt(t))
 
-	mr,err,deb := LookupOrFetch(ctx, loc, t)
+	mr,err,deb := LookupOrFetch(ctx, p, loc, t)
 
 	str += fmt.Sprintf("LookupOrFetch Result: %s\nLookupOrFetch Err: %v\n\n%s", mr, err, deb)
 
-	mr2,err2 := LookupReport(ctx, loc,t)
+	mr2,err2 := LookupReport(ctx, p, loc, t)
 	str += fmt.Sprintf("\n********\n\nLookupReport Result: %s\nLookup Err: %v\n\n", mr2, err2)
 
 	log.Infof(ctx, str)
@@ -334,7 +344,7 @@ func lookupHandler(w http.ResponseWriter, r *http.Request) {
 	if n := widget.FormValueInt64(r, "n"); n > 0 {
 		s, e := t.Add(time.Duration(-1 * n) * time.Hour), t
 
-		ar,err := LookupArchive(ctx, loc, s,e)
+		ar,err := LookupArchive(ctx, p, loc, s, e)
 		str += fmt.Sprintf("\n********\n\nLookupArchive Result: %s\nLookup Err: %v\n\n", ar, err)		
 	}
 	
@@ -351,6 +361,7 @@ func lookupHandler(w http.ResponseWriter, r *http.Request) {
 //  [&loc=KSFO]
 func lookupAllHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
+	p := appengineds.AppengineDSProvider{}
 	str := "OK\n--\n\n"
 
 	n := widget.FormValueInt64(r, "n");
@@ -367,7 +378,7 @@ func lookupAllHandler(w http.ResponseWriter, r *http.Request) {
 	str += fmt.Sprintf("LookupAll for loc=%s, t=%s (%s)\n\n", loc, t, date.InPdt(t))
 
 	for ; n>0; n-- {
-		dr,err := LookupDayReport(ctx, loc, t)
+		dr,err := LookupDayReport(ctx, p, loc, t)
 		str += fmt.Sprintf("%s [err:%v]\n", dr, err)
 		t = t.AddDate(0,0,-1)
 	}

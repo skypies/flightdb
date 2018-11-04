@@ -46,7 +46,7 @@ func (r *Report)setupReportingContext(db fgae.FlightDB) error {
 	ctx := db.Ctx()
 	r.ReportingContext.Context = ctx
 	
-	metar,err := metar.LookupArchive(ctx, "KSFO",
+	metar,err := metar.LookupArchive(ctx, db.Backend, "KSFO",
 		r.Options.Start.AddDate(0,0,-1), r.Options.End.AddDate(0,0,1))
 	if err != nil {
 		return err

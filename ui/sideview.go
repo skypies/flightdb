@@ -51,7 +51,7 @@ func SideviewHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 	airframes := ref.NewAirframeCache(ctx)
 
 	// The UI options should have figured out a good timespan for metars
-	metars,_ := metar.LookupArchive(ctx, "KSFO", opt.Start, opt.End)
+	metars,_ := metar.LookupArchive(ctx, db.Backend, "KSFO", opt.Start, opt.End)
 	
 	svp := SideviewPDFInit(opt, w, r, len(idspecs))
 
