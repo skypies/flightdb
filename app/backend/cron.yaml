@@ -1,5 +1,3 @@
-application: serfr0-fdb
-
 cron:
 - description: Airframe/schedule polling
   url: /be/fr24
@@ -7,9 +5,9 @@ cron:
   target: backend
 
 - description: Metar gathering
-  url: /metar/lookup
+  url: /be/metar/lookup
   schedule: every 15 minutes synchronized
-  target: ui
+  target: backend
 
 - description: Publish flights into bigquery
   url: /batch/publish-flights?datestring=yesterday

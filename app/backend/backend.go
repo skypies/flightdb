@@ -48,6 +48,6 @@ func init() {
 	http.HandleFunc("/be/schedcache/view", ui.WithFdbCtx(ctxMaker, schedcacheViewHandler))
 
 	// backend/metar.go
-	http.HandleFunc("/metar/lookup", ui.WithFdbCtx(ctxMaker, metarLookupHandler))
-	http.HandleFunc("/metar/lookupall", ui.WithFdbCtx(ctxMaker, metarLookupAllHandler))
+	http.HandleFunc("/be/metar/lookup", ui.WithFdbCtx(ctxMaker, metarLookupHandler))
+	http.HandleFunc("/be/metar/lookupall", ui.WithFdbCtx(ctxMaker, metarLookupAllHandler))
 }

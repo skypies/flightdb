@@ -17,11 +17,9 @@ import(
 
 	"golang.org/x/net/context"
 
-	"github.com/skypies/util/gcp/ds"
-
-	sprovider "github.com/skypies/util/gcp/singleton"
-
 	"github.com/skypies/util/date"
+	"github.com/skypies/util/gcp/ds"
+	sprovider "github.com/skypies/util/gcp/singleton"
 )
 
 const DateFormat = "2006-01-02"
@@ -184,7 +182,7 @@ func LookupOrFetch(ctx context.Context, p ds.DatastoreProvider, loc string, t ti
 	str := fmt.Sprintf("[LookupOrFetch] key=%s\n", key)
 	
 	err := sp.ReadSingleton(ctx, key, dr)
-	str += fmt.Sprintf("*** LoadAnySingleton\n* err : %v\n* dr  : %s\n", err, dr)
+	str += fmt.Sprintf("*** ReadSingleton\n* err : %v\n* dr  : %s\n", err, dr)
 
 	// Try to fetch previous day; ignore errors
 	prevKey := toMetarSingletonKey(loc, t.AddDate(0,0,-1))
@@ -296,88 +294,6 @@ func LookupArchive(ctx context.Context, p ds.DatastoreProvider, loc string, s,e 
 }
 
 // }}}
-
-/*
-// {{{ lookupHandler
-
-// /metar/lookup [?t=123123123123] [&loc=KSFO]
-//  [&h=3]  offset hour (defaults to now)
-//  [&n=6]  number of hours to lookup in an archive
-func lookupHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
-	p := appengineds.AppengineDSProvider{}
-	str := "OK\n--\n\n"
-
-	loc := r.FormValue("loc")
-	if loc == "" { loc = DefaultStation }
-
-	t := time.Now().UTC()
-	if hours := widget.FormValueInt64(r,"h"); hours > 0 {
-		t = t.Add(time.Duration(-1 * hours) * time.Hour)
-	}
-	if r.FormValue("t") != "" {
-		t = widget.FormValueEpochTime(r, "t")
-	}
-
-	str += fmt.Sprintf("Lookup for loc=%s, t=%s (%s)\n", loc, t, date.InPdt(t))
-
-	mr,err,deb := LookupOrFetch(ctx, p, loc, t)
-
-	str += fmt.Sprintf("LookupOrFetch Result: %s\nLookupOrFetch Err: %v\n\n%s", mr, err, deb)
-
-	mr2,err2 := LookupReport(ctx, p, loc, t)
-	str += fmt.Sprintf("\n********\n\nLookupReport Result: %s\nLookup Err: %v\n\n", mr2, err2)
-
-	log.Infof(ctx, str)
-
-	if n := widget.FormValueInt64(r, "n"); n > 0 {
-		s, e := t.Add(time.Duration(-1 * n) * time.Hour), t
-
-		ar,err := LookupArchive(ctx, p, loc, s, e)
-		str += fmt.Sprintf("\n********\n\nLookupArchive Result: %s\nLookup Err: %v\n\n", ar, err)		
-	}
-	
-	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(str))
-}
-
-// }}}
-// {{{ lookupAllHandler
-
-// /metar/lookupall?
-//    n=17                (num days)
-//  [&t=123981723129837]
-//  [&loc=KSFO]
-func lookupAllHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
-	p := appengineds.AppengineDSProvider{}
-	str := "OK\n--\n\n"
-
-	n := widget.FormValueInt64(r, "n");
-	if n == 0 { n = 1 }
-
-	loc := r.FormValue("loc")
-	if loc == "" { loc = DefaultStation }
-
-	t := time.Now().UTC()
-	if r.FormValue("t") != "" {
-		t = widget.FormValueEpochTime(r, "t")
-	}
-	
-	str += fmt.Sprintf("LookupAll for loc=%s, t=%s (%s)\n\n", loc, t, date.InPdt(t))
-
-	for ; n>0; n-- {
-		dr,err := LookupDayReport(ctx, p, loc, t)
-		str += fmt.Sprintf("%s [err:%v]\n", dr, err)
-		t = t.AddDate(0,0,-1)
-	}
-	
-	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(str))
-}
-
-// }}}
-*/
 
 // {{{ -------------------------={ E N D }=----------------------------------
 
