@@ -5,39 +5,22 @@ import(
 	"bytes"
 	"compress/gzip"
 	"encoding/gob"
-	"fmt"
 
 	"golang.org/x/net/context"
 
 	"google.golang.org/appengine/log"
 
 	"github.com/skypies/util/ae"
-
-	fdb "github.com/skypies/flightdb"
 )
 
-// We build a big map, from Icao24 ADS-B Mode-S identifiers, to static data about the physical
-// airframe that is flying.
-type AirframeCache struct {
-	Map map[string]*fdb.Airframe
-}
-
-func (ac AirframeCache)String() string {
-	str := fmt.Sprintf("--- airframe cache (%d entries) ---\n", len(ac.Map))
-	for _,v := range ac.Map {
-		str += fmt.Sprintf(" %s\n", v)
-	}
-	return str
-}
-
 func NewAirframeCache(ctx context.Context) *AirframeCache {
-	data,err := ae.LoadSingleton(ctx, "airframes")
+	data,err := ae.LoadSingleton(ctx, kAirframeCacheSingletonName)
 	if err != nil {
 		log.Errorf(ctx, "airframecache: could not load: %v", err)
 		return nil
 	}
 
-	ac := AirframeCache{Map:map[string]*fdb.Airframe{}}
+	ac := BlankAirframeCache()
 	buf := bytes.NewBuffer(data)
 	if gzipReader,err := gzip.NewReader(buf); err != nil {
 		log.Errorf(ctx, "airframecache: could not gzip.NewReader: %v", err)
@@ -61,14 +44,5 @@ func (ac *AirframeCache)Persist(ctx context.Context) error {
 		return err
 	}
 
-	return ae.SaveSingleton(ctx, "airframes", buf.Bytes())
+	return ae.SaveSingleton(ctx, kAirframeCacheSingletonName, buf.Bytes())
 }
-
-func (ac *AirframeCache)Get(id string) *fdb.Airframe {
-	return ac.Map[id]
-}
-
-func (ac *AirframeCache)Set(af *fdb.Airframe) {
-	ac.Map[af.Icao24] = af
-}
-
