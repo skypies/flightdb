@@ -37,9 +37,12 @@ func listResult2Airframe(fs fdb.FlightSnapshot) fdb.Airframe {
 
 func updateAirframeCache(db fgae.FlightDB, resp []fdb.FlightSnapshot, list bool) (string,error) {
 	ctx := db.Ctx()
-	airframes := ref.NewAirframeCache(ctx)
-	if airframes == nil {
-		return "[error]", fmt.Errorf("ref.NewAirframeCache bailed")
+
+	airframes,err := ref.LoadAirframeCache(ctx, db.SingletonProvider)
+	if err != nil {
+		return "[error]", fmt.Errorf("ref.LoadAirframeCache error: %v", err)
+	} else if airframes == nil {
+		return "[error]", fmt.Errorf("ref.LoadAirframeCache bailed")
 	}
 
 	str := ""
@@ -57,7 +60,7 @@ func updateAirframeCache(db fgae.FlightDB, resp []fdb.FlightSnapshot, list bool)
 	}
 
 	if n>0 {
-		if err := airframes.Persist(ctx); err != nil {
+		if err := airframes.SaveAirframeCache(ctx, db.SingletonProvider); err != nil {
 			return "[error]", err
 		}
 	}
@@ -83,7 +86,7 @@ func updateScheduleCache(db fgae.FlightDB, resp []fdb.FlightSnapshot) error {
 	}
 	sc.LastUpdated = time.Now()
 	
-	if err := sc.Persist(ctx); err != nil {
+	if err := sc.SaveScheduleCache(ctx, db.SingletonProvider); err != nil {
 		db.Errorf("updateScheduleCache/Persist: %v", err)
 		return err
 	}
@@ -126,6 +129,8 @@ func saveFIFOSet(db fgae.FlightDB, s fdb.FIFOSet) error {
 func fr24PollHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 	fr,_ := fr24.NewFr24(db.HTTPClient())
 
+	// TODO: override the db.SingletonProvider with a combo-memcache one.
+	
 	db.Perff("fr24Poll_100", "making call")
 	flights,err := fr.LookupCurrentList(sfo.KLatlongSFO.Box(320,320))
 	if err != nil {
@@ -240,10 +245,10 @@ func fr24QueryHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) 
 func schedcacheViewHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 	ctx := db.Ctx()
 
-	sc := ref.NewScheduleCache(ctx)
+	sc,err := ref.LoadScheduleCache(ctx, db.SingletonProvider)
 
 	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(fmt.Sprintf("OK\n%s\n", sc)))
+	w.Write([]byte(fmt.Sprintf("OK\n%s\n(err: %v)\n", sc, err)))
 }
 
 // }}}

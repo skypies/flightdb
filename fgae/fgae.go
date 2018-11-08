@@ -10,20 +10,27 @@ import(
 	"golang.org/x/net/context"
 
 	"github.com/skypies/util/gcp/ds"
+	sprovider "github.com/skypies/util/gcp/singleton"
+	"github.com/skypies/util/singleton"
 )
 
 type FlightDB struct {
-	ctx        context.Context
-	StartTime  time.Time
-	Backend    ds.DatastoreProvider
+	ctx               context.Context
+	StartTime         time.Time
+	Backend           ds.DatastoreProvider
+	SingletonProvider singleton.SingletonProvider
 }
 
 func New(ctx context.Context, p ds.DatastoreProvider) FlightDB {
-	// TODO: should this be the place that calls ds.GetProviderOrPanic ?
 	return FlightDB{
 		ctx:ctx,
 		StartTime:time.Now(),
 		Backend: p,
+
+		// This is a default singletonprovider (e.g. to load up airframecache), which
+		// will read/write to datastore. High volume functions should use one with a
+		// memcaching layer on top.
+		SingletonProvider: sprovider.NewProvider(p),
 	}
 }
 

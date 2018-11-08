@@ -104,10 +104,12 @@ func (db *FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 
 	// Consult the airframe cache, and perhaps add some metadata, if not already present
 	if f.Airframe.Registration == "" {
-		airframes := ref.NewAirframeCache(db.Ctx())
-		if af := airframes.Get(f.IcaoId); af != nil {
-			f.DebugLog += "-- AddFrag "+prefix+": found airframe\n"
-			f.Airframe = *af
+		airframes,err := ref.LoadAirframeCache(db.Ctx(),db.SingletonProvider)
+		if err == nil {
+			if af := airframes.Get(f.IcaoId); af != nil {
+				f.DebugLog += "-- AddFrag "+prefix+": found airframe\n"
+				f.OverlayAirframe(*af)
+			}
 		}
 	}
 

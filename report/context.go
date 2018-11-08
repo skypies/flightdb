@@ -59,8 +59,6 @@ func (r *Report)setupReportingContext(db fgae.FlightDB) error {
 	}
 
 	r.AddACLs()
-
-	//airframes := ref.NewAirframeCache(ctx)
 	
 	return nil
 }

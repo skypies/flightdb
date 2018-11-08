@@ -15,7 +15,6 @@ import(
 	"github.com/skypies/flightdb/fgae"
 	"github.com/skypies/flightdb/fpdf"
 	"github.com/skypies/flightdb/metar"
-	"github.com/skypies/flightdb/ref"
 )
 
 // {{{ SideviewHandler
@@ -47,9 +46,6 @@ func SideviewHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// This whole Airframe cache thing should be automatic, and upstream from here.
-	airframes := ref.NewAirframeCache(ctx)
-
 	// The UI options should have figured out a good timespan for metars
 	metars,_ := metar.LookupArchive(ctx, db.Backend, "KSFO", opt.Start, opt.End)
 
@@ -71,7 +67,10 @@ func SideviewHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("idspec %s not found", idspec), http.StatusBadRequest)
 			return
 		}
-		if af := airframes.Get(f.IcaoId); af != nil { f.Airframe = *af }
+
+		// This might be a little problematic, in that it will call datastore each for
+		// each flight in the PDF. May need something cleverer.
+		db.MergeCachedAirframes([]*fdb.Flight{f})
 		
 		if err := SideviewPDFAddFlight(opt, r, svp, metars, f, (n==0)); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

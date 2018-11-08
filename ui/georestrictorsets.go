@@ -11,7 +11,6 @@ import(
 	"github.com/skypies/util/widget"
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/fgae"
-	"github.com/skypies/flightdb/ref"
 )
 
 var uriStem = "/fdb/restrictors"
@@ -374,20 +373,18 @@ func formValueFlightsViaIdspecs(db fgae.FlightDB, r *http.Request) ([]*fdb.Fligh
 	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)
 
-	// This whole Airframe cache thing should be automatic, and upstream from here.
-	airframes := ref.NewAirframeCache(ctx)
-
 	idspecs,_ := opt.IdSpecs()
 	
 	flights := []*fdb.Flight{}
 	for _,idspec := range idspecs {
-			f,err := db.LookupMostRecent(db.NewQuery().ByIdSpec(idspec))
-			if err != nil {
-				return flights,err
-			}
-		if af := airframes.Get(f.IcaoId); af != nil { f.OverlayAirframe(*af) }
+		f,err := db.LookupMostRecent(db.NewQuery().ByIdSpec(idspec))
+		if err != nil {
+			return flights,err
+		}
 		flights = append(flights, f)
 	}
+
+	db.MergeCachedAirframes(flights)
 
 	return flights,nil
 }

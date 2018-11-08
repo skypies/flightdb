@@ -7,7 +7,6 @@ import(
 
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/fgae"
-	"github.com/skypies/flightdb/ref"
 )
 
 // {{{ LookupIdspec
@@ -44,9 +43,6 @@ func JsonHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)
 
-	// This whole Airframe cache thing should be automatic, and upstream from here.
-	airframes := ref.NewAirframeCache(ctx)
-
 	idspecs,err := opt.IdSpecs()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -65,9 +61,6 @@ func JsonHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 		} else {
 			for _,f := range results {
 				if f == nil { continue }  // Bad input data ??
-				if af := airframes.Get(f.IcaoId); af != nil {
-					f.Airframe = *af
-				}
 				if r.FormValue("notracks") != "" {
 					f.PruneTrackContents()
 				}
@@ -76,6 +69,8 @@ func JsonHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	db.MergeCachedAirframes(flights)
+	
 	jsonBytes,err := json.MarshalIndent(flights, "", " ")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

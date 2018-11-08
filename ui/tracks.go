@@ -17,7 +17,6 @@ import(
 	"github.com/skypies/flightdb/fgae"
 	"github.com/skypies/flightdb/fr24"
 	"github.com/skypies/flightdb/report"
-	"github.com/skypies/flightdb/ref"
 )
 
 // {{{ maybeAddFr24Track
@@ -62,7 +61,6 @@ func maybeAddFr24Track(db fgae.FlightDB, f *fdb.Flight) string {
 func TrackHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 	// This whole Airframe cache thing should be automatic, and upstream from here.
 	ctx := db.Ctx()
-	airframes := ref.NewAirframeCache(ctx)
 	opt,_ := GetUIOptions(ctx)
 
 	idspecs,err := opt.IdSpecs()
@@ -80,7 +78,6 @@ func TrackHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			for _,f := range results {
-				if af := airframes.Get(f.IcaoId); af != nil { f.OverlayAirframe(*af) }
 				flights = append(flights, f)
 			}
 
@@ -93,11 +90,12 @@ func TrackHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 				http.Error(w, fmt.Sprintf("idspec %s not found", idspec), http.StatusInternalServerError)
 				return
 			}
-			if af := airframes.Get(f.IcaoId); af != nil { f.OverlayAirframe(*af) }
 			flights = append(flights, f)
 		}			
 	}
-	
+
+	db.MergeCachedAirframes(flights)
+
 	OutputTrackpointsOnAMap(db, w, r, flights)
 }
 
@@ -179,15 +177,9 @@ func OutputTrackpointsOnAMap(db fgae.FlightDB, w http.ResponseWriter, r *http.Re
 	if opt.Report != nil {
 		ms.Add(renderReportFurniture(opt.Report))
 	}
-	
-	// This whole Airframe cache thing should be automatic, and upstream from here.
-	airframes := ref.NewAirframeCache(ctx)
 
 	// Preprocess; get airframe data, and run reports (to annotate tracks)
 	for i,_ := range flights {
-		if af := airframes.Get(flights[i].IcaoId); af != nil {
-			flights[i].OverlayAirframe(*af)
-		}
 		if opt.Report != nil {
 			if _,err := opt.Report.Process(flights[i]); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)

@@ -5,7 +5,30 @@ import(
 	"golang.org/x/net/context"
 	"github.com/skypies/util/gcp/ds"
 	fdb "github.com/skypies/flightdb"
+	"github.com/skypies/flightdb/ref"
 )
+
+// {{{ db.MergeCachedAirframes
+
+// MergeAirframeCache will load up the airframecache singleton, and will in-place update all
+// flights passed to it.
+func (db *FlightDB)MergeCachedAirframes(flights []*fdb.Flight) error {
+	airframes,err := ref.LoadAirframeCache(db.ctx, db.SingletonProvider)
+	if err != nil {
+		return err
+	}
+
+	for _,f := range flights {
+		if f == nil { continue }
+		if af := airframes.Get(f.IcaoId); af != nil {
+			f.OverlayAirframe(*af)
+		}
+	}
+
+	return nil
+}
+
+// }}}
 
 // {{{ db.PersistFlight
 
@@ -66,6 +89,9 @@ func (db *FlightDB)LookupAll(fq *FQuery) ([]*fdb.Flight, error) {
 		}
 	}
 
+	// TODO: do this for real !
+	// db.mergeAirframeCache(flights)
+	
 	return flights, nil
 }
 
@@ -78,6 +104,9 @@ func (db *FlightDB)LookupFirst(fq *FQuery) (*fdb.Flight, error) {
 	} else if len(flights) == 0 {
 		return nil,nil
 	} else {
+		// TODO: do this for real !
+		// db.mergeAirframeCache(flights[:1])
+
 		return flights[0],nil
 	}
 }
