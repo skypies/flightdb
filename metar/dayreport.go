@@ -136,7 +136,7 @@ func LookupDayReport(ctx context.Context, p ds.DatastoreProvider, loc string, t 
 	t = t.UTC()
 	key := toMetarSingletonKey(loc, t)
 
-	err := sp.ReadSingleton(ctx, key, dr)
+	err := sp.ReadSingleton(ctx, key, nil, dr)
 	if err != nil {
 		return nil,err
 
@@ -181,12 +181,12 @@ func LookupOrFetch(ctx context.Context, p ds.DatastoreProvider, loc string, t ti
 	key := toMetarSingletonKey(loc, t)
 	str := fmt.Sprintf("[LookupOrFetch] key=%s\n", key)
 	
-	err := sp.ReadSingleton(ctx, key, dr)
+	err := sp.ReadSingleton(ctx, key, nil, dr)
 	str += fmt.Sprintf("*** ReadSingleton\n* err : %v\n* dr  : %s\n", err, dr)
 
 	// Try to fetch previous day; ignore errors
 	prevKey := toMetarSingletonKey(loc, t.AddDate(0,0,-1))
-	sp.ReadSingleton(ctx, prevKey, prevDr)
+	sp.ReadSingleton(ctx, prevKey, nil, prevDr)
 	if prevDr.IsInitialized() {
 		str += fmt.Sprintf("* prev: %s\n", prevDr)
 	}
@@ -243,12 +243,12 @@ func LookupOrFetch(ctx context.Context, p ds.DatastoreProvider, loc string, t ti
 	str += fmt.Sprintf("* final mr: %s\n* shouldPersist: %v\n", mr, shouldPersistChanges)
 
 	if shouldPersistChanges {
-		if err := sp.WriteSingleton(ctx, key, dr); err != nil {
+		if err := sp.WriteSingleton(ctx, key, nil, dr); err != nil {
 			return nil,err,str
 		}
 	}
 	if shouldPersistChangesToPrevDay {
-		if err := sp.WriteSingleton(ctx, prevKey, prevDr); err != nil {
+		if err := sp.WriteSingleton(ctx, prevKey, nil, prevDr); err != nil {
 			return nil,err,str
 		}
 	}
