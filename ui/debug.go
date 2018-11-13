@@ -16,6 +16,7 @@ import(
 	"github.com/skypies/adsb"
 	"github.com/skypies/geo"
 	"github.com/skypies/geo/sfo"
+	sprovider "github.com/skypies/util/gcp/singleton"
 	"github.com/skypies/util/widget"
 
 	fdb "github.com/skypies/flightdb"
@@ -203,18 +204,22 @@ func DebugHandler9(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 
 func DebugSchedHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 	ctx := db.Ctx()
-	//opt,_ := GetUIOptions(ctx)
-	str := ""
+	sp := sprovider.NewProvider(db.Backend)
 
+	str := "--{ DebugSchedHandler }--\n"
 	k := r.FormValue("k")
-	airframes := ref.NewAirframeCache(ctx)
-	schedules := ref.NewScheduleCache(ctx)
 
-	af := airframes.Get(k)
-	sched := schedules.Get(k)
+	if airframes,err := ref.LoadAirframeCache(ctx, sp); err != nil {
+		str += fmt.Sprintf("LoadAirframeCache: err=%v\n", err)
+	} else if schedules,err := ref.LoadScheduleCache(ctx, sp); err != nil {
+		str += fmt.Sprintf("LoadScheduleCache: err=%v\n", err)
+	} else {
+		af := airframes.Get(k)
+		sched := schedules.Get(k)
 
-	str += fmt.Sprintf("Live refdata lookup for '%s':-\n----\n%#v\n----\n%#v\n----\n%s", k, sched, af, schedules)
-	
+		str += fmt.Sprintf("Live refdata lookup for '%s':-\n----\n%#v\n----\n%#v\n----\n%s", k, sched, af, schedules)
+	}
+
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(fmt.Sprintf("OK\n\n%s", str)))
 }
