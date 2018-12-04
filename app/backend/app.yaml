@@ -10,9 +10,6 @@ basic_scaling:
 handlers:
 - url: /static
   static_dir: static
-- url: /be/fr24
-  script: _go_app
-  login: admin
 # Find a way to make batch exempt ...
 - url: /.*
   script: _go_app

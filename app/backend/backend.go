@@ -41,13 +41,4 @@ func init() {
 	http.HandleFunc("/foia/load", ui.WithFdbCtx(ctxMaker, foiaHandler))
 	http.HandleFunc("/foia/enqueue", ui.WithFdbCtx(ctxMaker, multiEnqueueHandler))
 	//http.HandleFunc("/foia/rm", ui.WithFdbCtx(ctxMaker, rmHandler))
-	
-	// backend/fr24poller.go
-	http.HandleFunc("/be/fr24", ui.WithFdbCtx(ctxMaker, fr24PollHandler))
-	http.HandleFunc("/be/fr24q", ui.WithFdbCtx(ctxMaker, fr24QueryHandler))
-	http.HandleFunc("/be/schedcache/view", ui.WithFdbCtx(ctxMaker, schedcacheViewHandler))
-
-	// backend/metar.go
-	http.HandleFunc("/be/metar/lookup", ui.WithFdbCtx(ctxMaker, metarLookupHandler))
-	http.HandleFunc("/be/metar/lookupall", ui.WithFdbCtx(ctxMaker, metarLookupAllHandler))
 }

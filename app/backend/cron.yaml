@@ -1,13 +1,13 @@
 cron:
 - description: Airframe/schedule polling
-  url: /be/fr24
+  url: /api/fr24
   schedule: every 2 minutes
-  target: backend
+  target: default
 
 - description: Metar gathering
-  url: /be/metar/lookup
+  url: /api/metar/lookup
   schedule: every 15 minutes synchronized
-  target: backend
+  target: default
 
 - description: Publish flights into bigquery
   url: /batch/publish-flights?datestring=yesterday

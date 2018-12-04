@@ -10,8 +10,6 @@ dispatch:
 - url: "*/static/*"
   module: default
 
-- url: "*/be/*"
-  module: backend
 - url: "*/report"
   module: backend
 - url: "*/batch/*"

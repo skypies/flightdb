@@ -88,4 +88,14 @@ func init() {
 	http.HandleFunc("/fdb/visualize", ui.WithFdbCtxOptTmpl(ctxMaker, tmpl, ui.VisualizeHandler))
 
 	http.HandleFunc("/fdb/memcachesingleton", ui.WithCtxOpt(ctxMaker, ae.SaveSingletonToMemcacheHandler))
+
+	
+	// fr24poller.go
+	http.HandleFunc("/api/fr24", ui.WithFdbCtx(ctxMaker, fr24PollHandler))
+	http.HandleFunc("/api/fr24q", ui.WithFdbCtx(ctxMaker, fr24QueryHandler))
+	http.HandleFunc("/api/schedcache/view", ui.WithFdbCtx(ctxMaker, schedcacheViewHandler))
+
+	// metar.go
+	http.HandleFunc("/api/metar/lookup", ui.WithFdbCtx(ctxMaker, metarLookupHandler))
+	http.HandleFunc("/api/metar/lookupall", ui.WithFdbCtx(ctxMaker, metarLookupAllHandler))
 }
