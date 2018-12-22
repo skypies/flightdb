@@ -33,7 +33,7 @@ func currentAccumulationTrack(f *fdb.Flight) *fdb.Track {
 // }}}
 // {{{ AddTrackFragment
 
-func (db *FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
+func (db *FlightDB)AddTrackFragment(frag *fdb.TrackFragment, airframes *ref.AirframeCache, schedules *ref.ScheduleCache) error {
 	db.Debugf("* adding frag %d\n", len(frag.Track))
 	f,err := db.LookupMostRecent(db.NewQuery().ByIcaoId(frag.IcaoId))
 	if err != nil { return err }
@@ -104,8 +104,7 @@ func (db *FlightDB)AddTrackFragment(frag *fdb.TrackFragment) error {
 
 	// Consult the airframe cache, and perhaps add some metadata, if not already present
 	if f.Airframe.Registration == "" {
-		airframes,err := ref.LoadAirframeCache(db.Ctx(),db.SingletonProvider)
-		if err == nil {
+		if airframes != nil {
 			if af := airframes.Get(f.IcaoId); af != nil {
 				f.DebugLog += "-- AddFrag "+prefix+": found airframe\n"
 				f.OverlayAirframe(*af)
