@@ -33,10 +33,13 @@ func currentAccumulationTrack(f *fdb.Flight) *fdb.Track {
 // }}}
 // {{{ AddTrackFragment
 
-func (db *FlightDB)AddTrackFragment(frag *fdb.TrackFragment, airframes *ref.AirframeCache, schedules *ref.ScheduleCache) error {
+func (db *FlightDB)AddTrackFragment(frag *fdb.TrackFragment, airframes *ref.AirframeCache, schedules *ref.ScheduleCache, perf map[string]time.Time) error {
+	perf["01_start"] = time.Now()
 	db.Debugf("* adding frag %d\n", len(frag.Track))
+
 	f,err := db.LookupMostRecent(db.NewQuery().ByIcaoId(frag.IcaoId))
 	if err != nil { return err }
+	perf["02_mostrecent"] = time.Now()
 
 	prefix := fmt.Sprintf("[%s/%s]%s %s", frag.IcaoId, frag.Callsign, frag.DataSystem, time.Now())
 
@@ -64,6 +67,8 @@ func (db *FlightDB)AddTrackFragment(frag *fdb.TrackFragment, airframes *ref.Airf
 			f.Tracks[trackKey] = &frag.Track
 
 		} else if plausible,debug := accTrack.PlausibleContribution(&frag.Track); plausible==true {
+			perf["03_plausible"] = time.Now()
+
 			f.DebugLog += fmt.Sprintf("-- AddFrag %s: extending (adding %d to %d points)\n",
 				prefix, len(frag.Track), len(*accTrack))
 			db.Debugf("* %s extending track ... debug:\n%s", prefix, debug)
@@ -95,6 +100,7 @@ func (db *FlightDB)AddTrackFragment(frag *fdb.TrackFragment, airframes *ref.Airf
 			db.Debugf("** post: %s", f.Tracks[trackKey])
 
 		}	else {
+			perf["03_notplausible"] = time.Now()
 			f = fdb.NewFlightFromTrackFragment(frag)
 			f.DebugLog += "-- AddFrag "+prefix+": was not plausible, so new flight\n"
 			db.Debugf("* %s not a plausible addition; starting afresh ... debug\n%s", prefix, debug)
@@ -121,13 +127,19 @@ func (db *FlightDB)AddTrackFragment(frag *fdb.TrackFragment, airframes *ref.Airf
 		frag.Track = append([]fdb.Trackpoint{*prevTP}, frag.Track...)
 	}
 
+	perf["04_trackbuild"] = time.Now()
+
 	// Incrementally identify waypoints, frag by frag
 	for wp,t := range frag.Track.MatchWaypoints(sfo.KFixes) {
 		f.DebugLog += "-- AddFrag "+prefix+": found waypoint "+wp+"\n"
 		f.SetWaypoint(wp,t)
 	}
-	
-	return db.PersistFlight(f)
+
+	perf["05_waypoints"] = time.Now()
+	err = db.PersistFlight(f)
+	perf["06_persist"] = time.Now()
+
+	return err
 }
 
 // }}}
