@@ -191,7 +191,7 @@ func RGrsViewHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 		"Shapes": ms,
 	}
 	getGoogleMapsParams(r, params)
-	params["MapsAPIKey"] = "AIzaSyDZd-t_YjSNGKmtmh6eR4Bt6eRR_w72b18"
+	params["MapsAPIKey"] = "AIzaSyBCNj05xH-7CAdVEXXSPpt2lGDmaynIOBU"
 	
 	if err := templates.ExecuteTemplate(w, "map", params); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

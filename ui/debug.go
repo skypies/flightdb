@@ -4,10 +4,6 @@ import(
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"regexp"
-	"sort"
-	"strconv"
-	"strings"
 	"time"
 
 	"golang.org/x/net/context"
@@ -287,6 +283,7 @@ func track2frag(t fdb.Track, id,callsign string, start,length int) fdb.TrackFrag
 }
 
 // }}}
+/*
 // {{{ debugFragsHandler
 
 // This handler reconstructs the series of TrackFragments that generated the set of
@@ -413,7 +410,7 @@ func debugFragsHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request)
 }
 
 // }}}
-
+*/
 // {{{ AirspaceDelayHandler
 
 // Pulls a skypi airspace, resyncs flight positions to some point in past (or future),
