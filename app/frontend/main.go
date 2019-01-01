@@ -1,11 +1,13 @@
-package frontend
+package main
 
 import(
 	"html/template"
 	"net/http"
 
 	"golang.org/x/net/context"
-	
+
+	"google.golang.org/appengine"
+
 	"github.com/skypies/util/ae"
 	appengineds "github.com/skypies/util/ae/ds"
 	"github.com/skypies/util/gcp/ds"
@@ -33,7 +35,9 @@ func init() {
 	// The functions to parse them live in the UI library.
 	// The "templates" dir lives under the appengine app's main dir; to reuse templates
 	// from other places, we symlink them underneath this.
-	tmpl = widget.ParseRecursive(template.New("").Funcs(ui.TemplateFuncMap()), "templates")
+	// For go111, appengine uses the module root, which is the root of the git repo; so
+	// the relative dirname for templates is relative to the root of the git repo.
+	tmpl = widget.ParseRecursive(template.New("").Funcs(ui.TemplateFuncMap()), "app/frontend/templates")
 
 	// This is the routine that creates new contexts, and injects a provider into them,
 	// as required by the FdbHandlers
@@ -99,3 +103,8 @@ func init() {
 	http.HandleFunc("/api/metar/lookup", ui.WithFdbCtx(ctxMaker, metarLookupHandler))
 	http.HandleFunc("/api/metar/lookupall", ui.WithFdbCtx(ctxMaker, metarLookupAllHandler))
 }
+
+func main() {
+	appengine.Main()
+}
+

@@ -1,4 +1,4 @@
-package backend
+package main
 
 import(
 	"compress/gzip"

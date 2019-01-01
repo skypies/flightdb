@@ -15,10 +15,10 @@ To deploy everything into a Google Cloud project:
     $ gcloud app deploy --project=serfr0-fdb app/frontend --version=one
     $ gcloud app deploy --project=serfr0-fdb app/backend  --version=one
 
-    $ gcloud app deploy --project=serfr0-fdb app/backend/dispatch.yaml
-    $ gcloud app deploy --project=serfr0-fdb app/backend/queues.yaml
-    $ gcloud app deploy --project=serfr0-fdb app/backend/cron.yaml
-    $ gcloud app deploy --project=serfr0-fdb app/backend/index.yaml
+    $ gcloud app deploy --project=serfr0-fdb app/dispatch.yaml
+    $ gcloud app deploy --project=serfr0-fdb app/queues.yaml
+    $ gcloud app deploy --project=serfr0-fdb app/cron.yaml
+    $ gcloud app deploy --project=serfr0-fdb app/index.yaml
 
 If you want it to accumulate realtime flight track data, you'll also want to:
 * deploy `github.com/skypies/pi/skypi` onto some Raspberry Pi receivers

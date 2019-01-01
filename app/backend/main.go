@@ -1,10 +1,12 @@
-package backend
+package main
 
 import(
 	"html/template"
 	"net/http"
 
 	"golang.org/x/net/context"
+
+	"google.golang.org/appengine"
 
 	appengineds "github.com/skypies/util/ae/ds"
 	"github.com/skypies/util/gcp/ds"
@@ -16,7 +18,9 @@ import(
 var tmpl *template.Template // Could this be a local inside init() ?
 
 func init() {
-	tmpl = widget.ParseRecursive(template.New("").Funcs(ui.TemplateFuncMap()), "templates")
+	// For go111, appengine uses the module root, which is the root of the git repo; so
+	// the relative dirname for templates is relative to the root of the git repo.
+	tmpl = widget.ParseRecursive(template.New("").Funcs(ui.TemplateFuncMap()), "app/backend/templates")
 
 	// This is the routine that creates new contexts, and injects a provider into them,
 	// as required by the FdbHandlers
@@ -41,4 +45,8 @@ func init() {
 	http.HandleFunc("/foia/load", ui.WithFdbCtx(ctxMaker, foiaHandler))
 	http.HandleFunc("/foia/enqueue", ui.WithFdbCtx(ctxMaker, multiEnqueueHandler))
 	//http.HandleFunc("/foia/rm", ui.WithFdbCtx(ctxMaker, rmHandler))
+}
+
+func main() {
+	appengine.Main()
 }
