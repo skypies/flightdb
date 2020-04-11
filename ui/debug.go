@@ -7,7 +7,7 @@ import(
 	"time"
 
 	"golang.org/x/net/context"
-	"google.golang.org/appengine/user"
+	// "google.golang.org/ appengine/user"
 
 	"github.com/skypies/adsb"
 	"github.com/skypies/geo"
@@ -94,7 +94,7 @@ func DebugHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 // {{{ debugUserHandler
 
 func debugUserHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	user := user.Current(ctx)
+	user := `{"Oh" no}`
 	json,_ := json.MarshalIndent(user, "", "  ")
 
 	w.Header().Set("Content-Type", "text/plain")

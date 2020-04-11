@@ -4,14 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"cloud.google.com/go/bigquery" // different API; see ffs below.
 
-	"google.golang.org/appengine/taskqueue"
+	// "google.golang.org/ appengine/taskqueue"
 
 	"github.com/skypies/util/date"
 	"github.com/skypies/util/gcp/gcs"
+	"github.com/skypies/util/gcp/tasks"
 	"github.com/skypies/util/widget"
 
 	"github.com/skypies/flightdb/fgae"
@@ -50,16 +52,29 @@ func publishAllFlightsHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.R
 
 	s,e,_ := widget.FormValueDateRange(r)
 	days := date.IntermediateMidnights(s.Add(-1 * time.Second),e) // decrement start, to include it
-	url := "/batch/publish-flights"
-	
+	taskUrl := "/batch/publish-flights"
+
+	taskClient,err := tasks.GetClient(ctx)
+	if err != nil {
+		db.Errorf(" publishAllFlightsHandler: GetClient: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	for _,day := range days {
 		dayStr := day.Format("2006.01.02")
-
-		thisUrl := fmt.Sprintf("%s?datestring=%s", url, dayStr)
+		thisUrl := fmt.Sprintf("%s?datestring=%s", taskUrl, dayStr)
 		if r.FormValue("skipload") != "" {
 			thisUrl += "&skipload=" + r.FormValue("skipload")
 		}
-		
+		params := url.Values{}
+
+		if _,err := tasks.SubmitAETask(ctx, taskClient, ProjectID, LocationID, QueueName, 0, thisUrl, params); err != nil {
+			db.Errorf(" publishAllFlightsHandler: enqueue: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+/*
 		t := taskqueue.NewPOSTTask(thisUrl, map[string][]string{})
 
 		if _,err := taskqueue.Add(ctx, t, "bigbatch"); err != nil {
@@ -67,7 +82,7 @@ func publishAllFlightsHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.R
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
+*/
 		str += " * posting for " + thisUrl + "\n"
 	}
 

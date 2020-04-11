@@ -6,7 +6,7 @@ import(
 	"net/http"
 	
 	"golang.org/x/net/context"
-	"google.golang.org/appengine/user"
+	// "google.golang.org/ appengine/user"
 
 	"github.com/skypies/util/gcp/ds"
 	"github.com/skypies/util/widget"
@@ -80,10 +80,12 @@ func WithOpt(ch widget.ContextHandler) widget.ContextHandler {
 			opt.Permalink = widget.URLStringReplacingGETArgs(r,&vals)
 		}
 
-		if u := user.Current(ctx); u != nil {
-			opt.UserEmail = u.Email
-		}
-		opt.LoginUrl,_ = user.LoginURL(ctx, r.URL.RequestURI()) // Also a re-login URL
+		// FIXME: get user from context, and implement login
+		//if u := user.Current(ctx); u != nil {
+		//	opt.UserEmail = u.Email
+		//}
+		// opt.LoginUrl,_ = user.LoginURL(ctx, r.URL.RequestURI()) // Also a re-login URL
+		opt.LoginUrl = "https://duckduckgo/"
 
 		if r.FormValue("debugoptions") != "" {
 			w.Header().Set("Content-Type", "text/plain")
@@ -125,6 +127,7 @@ func GetUIOptions(ctx context.Context) (UIOptions,bool) {
 	return opt, ok
 }
 
+// FIXME: Wow - we just piggyback off the options parsing. Should maybe not do that.
 func EnsureUser(ch widget.ContextHandler) widget.ContextHandler {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		opt,ok := GetUIOptions(ctx)

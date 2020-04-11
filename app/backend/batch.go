@@ -8,11 +8,13 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
-	"google.golang.org/appengine/taskqueue"
+	// "google.golang.org/ appengine/taskqueue"
 
 	"github.com/skypies/util/date"
+	"github.com/skypies/util/gcp/tasks"
 	"github.com/skypies/util/widget"
 
 	adsblib "github.com/skypies/adsb"
@@ -21,7 +23,11 @@ import (
 )
 
 var(
+	// Should really put these vars somewhere more sensible
+	LocationID  = "us-central1" // This is "us-central" in appengine-land, needs a 1 for cloud tasks
+	ProjectID   = "serfr0-fdb"
 	QueueName   = "batch"
+
 	batchDayUrl      = "/batch/flights/day"
 	batchInstanceUrl = "/batch/flights/flight"
 )
@@ -60,8 +66,15 @@ func batchFlightDateRangeHandler(db fgae.FlightDB, w http.ResponseWriter, r *htt
 		http.Error(w, "Missing argument: &job=foo", http.StatusInternalServerError)
 		return
 	}
-	
+
 	str += fmt.Sprintf("** s: %s\n** e: %s\n", s, e)
+
+	taskClient,err := tasks.GetClient(ctx)
+	if err != nil {
+		db.Errorf(" batchFlightDateRangeHandler: GetClient: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	tags := r.FormValue("tags")
 	days := date.IntermediateMidnights(s.Add(-1 * time.Second),e) // decrement start, to include it
@@ -72,6 +85,18 @@ func batchFlightDateRangeHandler(db fgae.FlightDB, w http.ResponseWriter, r *htt
 		str += fmt.Sprintf(" * adding %s tags=%v, %s via %s\n", job, tags, dayStr, batchDayUrl)
 		
 		if r.FormValue("dryrun") == "" {
+			params := url.Values{}
+			params.Set("day", dayStr)
+			params.Set("job", job)
+			params.Set("tags", tags)
+
+			if _,err := tasks.SubmitAETask(ctx, taskClient, ProjectID, LocationID, QueueName, 0, batchDayUrl, params); err != nil {
+				db.Errorf(" batchFlightDateRangeHandler: enqueue: %v", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			/*
 			// TODO: pass through *all* the CGI args
 			t := taskqueue.NewPOSTTask(batchDayUrl, map[string][]string{
 				"day": {dayStr},
@@ -84,6 +109,7 @@ func batchFlightDateRangeHandler(db fgae.FlightDB, w http.ResponseWriter, r *htt
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+*/
 			n++
 		}
 	}
@@ -125,14 +151,30 @@ func batchFlightDayHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Requ
 		return
 	}	
 
+	taskClient,err := tasks.GetClient(ctx)
+	if err != nil {
+		db.Errorf(" batchFlightDayHandler: GetClient: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	str := fmt.Sprintf("* start: %s\n* end  : %s\n* tags : %q\n* n    : %d\n",
 		start,end,tags,len(keyers))
 
 	n := 0
 	for i,keyer := range keyers {
 		if i<10 { str += " "+batchInstanceUrl+"?job="+job+"flightkey="+keyer.Encode() + "\n" }
-		n++
 
+		params := url.Values{}
+		params.Set("flightkey", keyer.Encode())
+		params.Set("job", job)
+
+		if _,err := tasks.SubmitAETask(ctx, taskClient, ProjectID, LocationID, QueueName, 0, batchInstanceUrl, params); err != nil {
+			db.Errorf(" bksvScanDayRange: enqueue: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+/*
 		t := taskqueue.NewPOSTTask(batchInstanceUrl, map[string][]string{
 			"flightkey": {keyer.Encode()},
 			"job": {job},
@@ -141,6 +183,7 @@ func batchFlightDayHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Requ
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+*/
 		n++
 	}
 

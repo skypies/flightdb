@@ -5,7 +5,7 @@ import(
 	"strings"
 
 	"golang.org/x/net/context"
-	"google.golang.org/appengine/user"
+	// "google.golang.org/ appengine/user"
 
 	"github.com/skypies/flightdb/fgae"
 	"github.com/skypies/flightdb/metar"
@@ -22,6 +22,7 @@ var(
 	// Lower case everything. Map email address to the FOIA sources they can access.
 	// An empty list means access to all FOIA sources.
 	// {"mtv-foia", "EB-FOIA"}
+	// FIXME: Move ACLFOIA group into an InitGroup()
 	ACLFOIA = map[string][]string{
 		"adam@worrall.cc": []string{},
 		"raymonde.guindon@gmail.com": []string{},
@@ -53,9 +54,10 @@ func (r *Report)setupReportingContext(db fgae.FlightDB) error {
 	}
 	r.ReportingContext.Archive = *metar
 	
-	user := user.Current(ctx)
-	if user != nil {
-		r.ReportingContext.UserEmail = user.Email
+	// FIXME: pull user out of context.
+	userEmail := "adam@worrall.cc"
+	if userEmail != "" {
+		r.ReportingContext.UserEmail = userEmail
 	}
 
 	r.AddACLs()

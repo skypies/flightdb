@@ -4,10 +4,9 @@ package ref
 import(
 	"bytes"
 	"encoding/gob"
+	"log"
 
 	"golang.org/x/net/context"
-
-	"google.golang.org/appengine/log"
 
 	"github.com/skypies/util/ae"
 )
@@ -15,14 +14,14 @@ import(
 func NewScheduleCache(ctx context.Context) *ScheduleCache {
 	data,err := ae.LoadSingleton(ctx, kScheduleCacheSingletonName)
 	if err != nil {
-		log.Errorf(ctx, "schedcache: could not load: %v")
+		log.Printf("schedcache: could not load: %v")
 		return nil
 	}
 
 	buf := bytes.NewBuffer(data)
 	ac := BlankScheduleCache()
 	if err := gob.NewDecoder(buf).Decode(&ac); err != nil {
-		log.Errorf(ctx, "airframecache: could not decode: %v", err)
+		log.Printf("airframecache: could not decode: %v", err)
 	}
 
 	return &ac

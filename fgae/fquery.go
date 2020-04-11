@@ -32,7 +32,7 @@ func (q *FQuery)ByTime(t time.Time) *FQuery {
 
 // Note that using this will prevent OrderBy stuff, unless it orders by timeslots ...
 func (q *FQuery)ByTimeRange(s,e time.Time) *FQuery {
-	// https://cloud.google.com/appengine/docs/go/datastore/queries#Go_Restrictions_on_queries
+  // https://cloud.google.com/datastore/docs/concepts/queries#restrictions_on_queries
 	// This pair of filters assert that a match must have at least one timeslot that matches
 	// both inequalities - i.e. that it has a timeslot within the range.
 	slots := date.Timeslots(s,e,fdb.TimeslotDuration)

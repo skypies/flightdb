@@ -1,16 +1,18 @@
 package main
 
 import(
+	"fmt"
 	"html/template"
 	"net/http"
+	"os"
+	"log"
+	"time"
 
 	"golang.org/x/net/context"
 
-	"google.golang.org/appengine"
-
 	"github.com/skypies/util/ae"
-	appengineds "github.com/skypies/util/ae/ds"
 	"github.com/skypies/util/gcp/ds"
+	hw "github.com/skypies/util/handlerware"
 	"github.com/skypies/util/widget"
 
 	_ "github.com/skypies/flightdb/analysis" // populate the reports registry
@@ -20,9 +22,10 @@ import(
 
 var(
 	tmpl *template.Template  // Singleton that belongs to the webapp
+	GoogleCloudProjectId = "serfr0-fdb"
 )
 
-// This is a one-off thing, for airspace/realtime; should kill it off
+// FIXME: This is a one-off thing, for airspace/realtime; should kill it off
 type hackTemplateHandler func(http.ResponseWriter, *http.Request, *template.Template)
 func hackHandleWithTemplates(tmpl *template.Template, th hackTemplateHandler) widget.BaseHandler {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -37,15 +40,23 @@ func init() {
 	// from other places, we symlink them underneath this.
 	// For go111, appengine uses the module root, which is the root of the git repo; so
 	// the relative dirname for templates is relative to the root of the git repo.
-	tmpl = widget.ParseRecursive(template.New("").Funcs(ui.TemplateFuncMap()), "app/frontend/templates")
+	tmpl = hw.ParseRecursive(template.New("").Funcs(ui.TemplateFuncMap()), "app/frontend/templates")
 
 	// This is the routine that creates new contexts, and injects a provider into them,
 	// as required by the FdbHandlers
+	//ctxMakerAE := func(r *http.Request) context.Context {
+	//	ctx := appengineds.CtxMakerFunc(r)
+	//	return ds.SetProvider(ctx, appengineds.AppengineDSProvider{}) 
+	//}
 	ctxMaker := func(r *http.Request) context.Context {
-		ctx := appengineds.CtxMakerFunc(r)
-		return ds.SetProvider(ctx, appengineds.AppengineDSProvider{}) 
+		ctx,_ := context.WithTimeout(r.Context(), 55 * time.Second)
+		p,err := ds.NewCloudDSProvider(ctx, GoogleCloudProjectId)
+		if err != nil {
+			panic(fmt.Errorf("NewDB: could not get a clouddsprovider (projectId=%s): %v\n", GoogleCloudProjectId, err))
+		}
+		return ds.SetProvider(ctx, p) 
 	}
-
+	
 	http.HandleFunc("/", hackHandleWithTemplates(tmpl, realtime.AirspaceHandler))
 
 	// ui/api.go
@@ -95,7 +106,7 @@ func init() {
 
 	
 	// fr24poller.go
-	http.HandleFunc("/api/fr24", ui.WithFdbCtx(ctxMaker, fr24PollHandler))
+	http.HandleFunc("/api/fr24", ui.WithFdbCtx(ctxMaker, fr24PollHandler)) // FIXME: AdminAccess
 	http.HandleFunc("/api/fr24q", ui.WithFdbCtx(ctxMaker, fr24QueryHandler))
 	http.HandleFunc("/api/schedcache/view", ui.WithFdbCtx(ctxMaker, schedcacheViewHandler))
 
@@ -105,6 +116,14 @@ func init() {
 }
 
 func main() {
-	appengine.Main()
-}
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 
+	fs := http.FileServer(http.Dir("./app/frontend/static"))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
+
+	log.Printf("Listening on port %s [flightdb/app/frontend]", port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), nil))
+}

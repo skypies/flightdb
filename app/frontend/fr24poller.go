@@ -5,9 +5,10 @@ import(
 	"net/http"
 	"time"
 	
-	"google.golang.org/appengine/memcache"
+	// "google.golang.org/ appengine/memcache"
 
 	"github.com/skypies/geo/sfo"
+	"github.com/skypies/util/singleton"
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/fgae"
 	"github.com/skypies/flightdb/fr24"
@@ -100,6 +101,22 @@ func updateScheduleCache(db fgae.FlightDB, resp []fdb.FlightSnapshot) error {
 
 var kFIFOSetMaxAgeMins = 120
 
+const kFifosetCacheSingletonName = "fifoset"
+
+
+// This is stored as a gzip'ed singleton, most likely in datastore.
+func loadFIFOSet(db fgae.FlightDB, fs *fdb.FIFOSet) (error) {
+	sp := db.SingletonProvider
+	return sp.ReadSingleton(db.Ctx(), kFifosetCacheSingletonName, singleton.GzipReader, fs)
+}
+
+func saveFIFOSet(db fgae.FlightDB, fs fdb.FIFOSet) error {
+	sp := db.SingletonProvider
+	fs.AgeOut(time.Minute * time.Duration(kFIFOSetMaxAgeMins))
+	return sp.WriteSingleton(db.Ctx(), kFifosetCacheSingletonName, singleton.GzipWriter, &fs)
+}
+
+/*
 // This is stored in memcache, so it can vanish
 func loadFIFOSet(db fgae.FlightDB, set *fdb.FIFOSet) (error) {
 	ctx := db.Ctx()
@@ -119,6 +136,7 @@ func saveFIFOSet(db fgae.FlightDB, s fdb.FIFOSet) error {
 	item := memcache.Item{Key:fdb.KMemcacheFIFOSetKey, Object:s}
 	return memcache.Gob.Set(ctx, &item)
 }
+*/
 
 // }}}
 

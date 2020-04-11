@@ -5,10 +5,9 @@ import(
 	"bytes"
 	"compress/gzip"
 	"encoding/gob"
+	"log"
 
 	"golang.org/x/net/context"
-
-	"google.golang.org/appengine/log"
 
 	"github.com/skypies/util/ae"
 )
@@ -16,18 +15,18 @@ import(
 func NewAirframeCache(ctx context.Context) *AirframeCache {
 	data,err := ae.LoadSingleton(ctx, kAirframeCacheSingletonName)
 	if err != nil {
-		log.Errorf(ctx, "airframecache: could not load: %v", err)
+		log.Printf("airframecache: could not load: %v", err)
 		return nil
 	}
 
 	ac := BlankAirframeCache()
 	buf := bytes.NewBuffer(data)
 	if gzipReader,err := gzip.NewReader(buf); err != nil {
-		log.Errorf(ctx, "airframecache: could not gzip.NewReader: %v", err)
+		log.Printf("airframecache: could not gzip.NewReader: %v", err)
 	} else if err := gob.NewDecoder(gzipReader).Decode(&ac); err != nil {
 		//db.Errorf("airframecache: could not decode: %v", err)
 	} else if err := gzipReader.Close(); err != nil {
-		log.Errorf(ctx, "airframecache: could not gzipReader.Close: %v", err)
+		log.Printf("airframecache: could not gzipReader.Close: %v", err)
 	}
 
 	return &ac

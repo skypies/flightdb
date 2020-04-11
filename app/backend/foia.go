@@ -5,14 +5,16 @@ import(
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"time"
 
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
-	"google.golang.org/appengine/taskqueue"
+	// "google.golang.org/ appengine/taskqueue"
 
 	"github.com/skypies/util/date"
+	"github.com/skypies/util/gcp/tasks"
 	"github.com/skypies/util/widget"
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/faadata"
@@ -73,12 +75,31 @@ func multiEnqueueHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Reques
 	
 	s,e,_ := widget.FormValueDateRange(r)
 	days := date.IntermediateMidnights(s.Add(-1 * time.Second),e) // decrement start, to include it
-	url := "/foia/load"
-	
+	taskUrl := "/foia/load"
+
+	taskClient,err := tasks.GetClient(ctx)
+	if err != nil {
+		db.Errorf(" multiEnqueueHandler: GetClient: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	for i,day := range days {
 		dayStr := day.Format("20060102")
-		thisUrl := fmt.Sprintf("%s?bucket=%s&date=%s", url, bucketName, dayStr)
-		
+		thisUrl := fmt.Sprintf("%s?bucket=%s&date=%s", taskUrl, bucketName, dayStr)
+		params := url.Values{}
+		//params.Set("bucket", bucketName)
+		//params.Set("date", dayStr)
+
+		// Give ourselves a few minutes to get the tasks posted ...
+		delay := 2*time.Minute + time.Duration(i)*15*time.Second
+
+		if _,err := tasks.SubmitAETask(ctx, taskClient, ProjectID, LocationID, QueueName, delay, thisUrl, params); err != nil {
+			db.Errorf(" multiEnqueueHandler: enqueue: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+/*
 		t := taskqueue.NewPOSTTask(thisUrl, map[string][]string{})
 
 		// Give ourselves a few minutes to get the tasks posted ...
@@ -89,7 +110,7 @@ func multiEnqueueHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Reques
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
+*/
 		str += " * posting for " + thisUrl + "\n"
 	}
 
