@@ -10,10 +10,8 @@ import(
 
 	"golang.org/x/net/context"
 
-	//"github.com/skypies/util/ae"
 	"github.com/skypies/util/gcp/ds"
 	hw "github.com/skypies/util/handlerware"
-	"github.com/skypies/util/widget"
 
 	_ "github.com/skypies/flightdb/analysis" // populate the reports registry
 	"github.com/skypies/flightdb/ui"
@@ -27,7 +25,7 @@ var(
 
 // FIXME: This is a one-off thing, for airspace/realtime; should kill it off
 type hackTemplateHandler func(http.ResponseWriter, *http.Request, *template.Template)
-func hackHandleWithTemplates(tmpl *template.Template, th hackTemplateHandler) widget.BaseHandler {
+func hackHandleWithTemplates(tmpl *template.Template, th hackTemplateHandler) hw.BaseHandler {
 	return func(w http.ResponseWriter, r *http.Request) {
 		th(w,r,tmpl)
 	}
