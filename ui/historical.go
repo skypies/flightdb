@@ -8,6 +8,7 @@ import(
 	"time"
 
 	"github.com/skypies/util/date"
+	hw "github.com/skypies/util/handlerware"
 	"github.com/skypies/util/widget"
 	"github.com/skypies/geo"
 	"github.com/skypies/geo/sfo"
@@ -53,7 +54,7 @@ func buildLegend(t time.Time) string {
 
 func HistoricalHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 	ctx := db.Ctx()
-	templates := widget.GetTemplates(ctx)
+	templates := hw.GetTemplates(ctx)
 
 	if r.FormValue("date") == "" && r.FormValue("epoch") == "" {
 		var params = map[string]interface{}{

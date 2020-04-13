@@ -10,7 +10,7 @@ import(
 	
 	"github.com/skypies/geo/sfo"
 	"github.com/skypies/util/date"
-	"github.com/skypies/util/widget"
+	hw "github.com/skypies/util/handlerware"
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/fgae"
 	"github.com/skypies/flightdb/report"
@@ -37,7 +37,7 @@ func maybeButtonPOST(idspecs []string, title string, url string) string {
 func ReportHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)
-	templates := widget.GetTemplates(ctx)
+	templates := hw.GetTemplates(ctx)
 
 	if r.FormValue("rep") == "" {
 		// Show blank form

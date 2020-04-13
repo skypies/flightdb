@@ -1,8 +1,39 @@
+# TODO
+
+Goal: move to go113 runtime
+ - which means removing all / appengine
+
+
+TODO
+ - pi/airspace/memcache, then the rest of pi/airspace/realtime
+
+ - remove flightdb/ref/*-old.go (pi uses them)
+ - remove pi/airspace/memcache
+ - mv flightdb/app/*/static/ and templates/ into a sensible place - but they are symlinked from other repos
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # flightdb - a database for flight tracks
 
 Prerequisites:
 * the [Go programming language](https://golang.org/dl/)
-* the [Go appengine SDK](https://cloud.google.com/appengine/docs/go/), and add it to your `$PATH`
 * define your Go workspace: `export GOPATH=~/go`
 
 Download and run things locally

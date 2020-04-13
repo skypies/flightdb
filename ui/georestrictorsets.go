@@ -8,6 +8,7 @@ import(
 
 	"github.com/skypies/geo"
 	"github.com/skypies/geo/sfo"
+	hw "github.com/skypies/util/handlerware"
 	"github.com/skypies/util/widget"
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/fgae"
@@ -20,7 +21,7 @@ var uriStem = "/fdb/restrictors"
 func RListHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)
-	templates := widget.GetTemplates(ctx)
+	templates := hw.GetTemplates(ctx)
 
 	if rsets,err := db.LookupRestrictorSets(opt.UserEmail); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -44,7 +45,7 @@ func RListHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 func RGrsNewHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)	
-	templates := widget.GetTemplates(ctx)
+	templates := hw.GetTemplates(ctx)
 
 	params := map[string]interface{}{
 		"Title": "New Restrictor Set",
@@ -65,7 +66,7 @@ func RGrsNewHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 func RGrsEditHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)	
-	templates := widget.GetTemplates(ctx)
+	templates := hw.GetTemplates(ctx)
 
 	grs := fdb.GeoRestrictorSet{User:opt.UserEmail}
 	maybeLoadGRSDSKey(db, r, &grs)	// If we have a key, load it up to populate the grs
@@ -130,7 +131,7 @@ func RGrsDeleteHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request)
 // RGrsViewHandler- (key [,idspec]) load it, go to [grs-mapview]
 func RGrsViewHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 	ctx := db.Ctx()
-	templates := widget.GetTemplates(ctx)
+	templates := hw.GetTemplates(ctx)
 	grs,err := formValueDSKey(db, r)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("RGrViewHandler, err: %v", err), http.StatusBadRequest)
@@ -205,7 +206,7 @@ func RGrsViewHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 func RGrNewHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)
-	templates := widget.GetTemplates(ctx)
+	templates := hw.GetTemplates(ctx)
 
 	grs,err := formValueDSKey(db, r)
 	if err != nil {
@@ -235,7 +236,7 @@ func RGrNewHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 func RGrEditHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)	
-	templates := widget.GetTemplates(ctx)
+	templates := hw.GetTemplates(ctx)
 
 	grs,err := formValueDSKey(db, r)
 	if err != nil {

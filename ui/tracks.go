@@ -12,6 +12,7 @@ import(
 
 	"github.com/skypies/geo"
 	"github.com/skypies/geo/sfo"
+	hw "github.com/skypies/util/handlerware"
 	"github.com/skypies/util/widget"
 	fdb "github.com/skypies/flightdb"
 	"github.com/skypies/flightdb/fgae"
@@ -164,7 +165,7 @@ func IdSpecsToJSVar(idspecs []string) template.JS {
 func OutputTrackpointsOnAMap(db fgae.FlightDB, w http.ResponseWriter, r *http.Request, flights []*fdb.Flight) {
 	ctx := db.Ctx()
 	opt,_ := GetUIOptions(ctx)
-	tmpl := widget.GetTemplates(ctx)
+	tmpl := hw.GetTemplates(ctx)
 
 	bannerText := ""
 	for i,_ := range flights {
@@ -307,7 +308,7 @@ func OutputTrackpointsOnAMap(db fgae.FlightDB, w http.ResponseWriter, r *http.Re
 
 func OutputMapLinesOnAStreamingMap(ctx context.Context, w http.ResponseWriter, r *http.Request, vectorURLPath string) {
 	opt,_ := GetUIOptions(ctx)
-	tmpl := widget.GetTemplates(ctx)
+	tmpl := hw.GetTemplates(ctx)
 	ms := NewMapShapes()
 	legend := ""
 

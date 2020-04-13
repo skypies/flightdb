@@ -9,6 +9,7 @@ import(
 
 	"github.com/skypies/geo"
 	"github.com/skypies/geo/sfo"
+	hw "github.com/skypies/util/handlerware"
 	"github.com/skypies/util/widget"
 )
 
@@ -42,7 +43,7 @@ func getGoogleMapsParams(r *http.Request, params map[string]interface{}) {
 	params["Center"] = center
 	params["Zoom"] = zoom
 	params["MapType"] = mapType
-	params["MapsAPIKey"] = "AIzaSyBCNj05xH-7CAdVEXXSPpt2lGDmaynIOBU"
+	params["MapsAPIKey"] = "AIzaSyBgpi-ezgalnvyc0lFSMN7HxRDtacELedc" // dev key
 	//params["MapsAPIKey"] = ""//kGoogleMapsAPIKey,
 }
 
@@ -99,7 +100,7 @@ func MapHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 // {{{ MapHandlerWithShapesParams
 
 func MapHandlerWithShapesParams(ctx context.Context, w http.ResponseWriter, r *http.Request, ms *MapShapes, params map[string]interface{}) {	
-	tmpl := widget.GetTemplates(ctx)
+	tmpl := hw.GetTemplates(ctx)
 
 	params["Zoom"] = 9
 	params["Shapes"] = ms

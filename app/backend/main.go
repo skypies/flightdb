@@ -2,7 +2,6 @@ package main
 
 import(
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -17,47 +16,39 @@ import(
 )
 
 var(
-	tmpl *template.Template // Could this be a local inside init() ?
 	GoogleCloudProjectId = "serfr0-fdb"
 )
 
 func init() {
-	// For go111, appengine uses the module root, which is the root of the git repo; so
-	// the relative dirname for templates is relative to the root of the git repo.
-	tmpl = hw.ParseRecursive(template.New("").Funcs(ui.TemplateFuncMap()), "app/backend/templates")
+	hw.InitTemplates("app/backend/templates") // relative to go module root, which is git repo root
 
 	// This is the routine that creates new contexts, and injects a provider into them,
 	// as required by the FdbHandlers
-	//ctxMaker := func(r *http.Request) context.Context {
-	//	ctx := appengineds.CtxMakerFunc(r)
-	//	return ds.SetProvider(ctx, appengineds.AppengineDSProvider{}) 
-	//}
-	ctxMaker := func(r *http.Request) context.Context {
+	hw.CtxMakerCallback = func(r *http.Request) context.Context {
 		ctx,_ := context.WithTimeout(r.Context(), 595 * time.Second)
 		p,err := ds.NewCloudDSProvider(ctx, GoogleCloudProjectId)
 		if err != nil {
 			panic(fmt.Errorf("NewDB: could not get a clouddsprovider (projectId=%s): %v\n", GoogleCloudProjectId, err))
 		}
-		return ds.SetProvider(ctx, p) 
+		return ds.SetProvider(ctx, p)
 	}
 
-
 	// ui/report - we host it here, to get batch server timeouts
-	http.HandleFunc("/report", ui.WithFdbCtxOptTmpl(ctxMaker, tmpl, ui.ReportHandler))
+	http.HandleFunc("/report",                    ui.WithFdb(ui.ReportHandler))
 
 	// backend/batch.go
-	http.HandleFunc("/batch/flights/dates",  ui.WithFdbCtx(ctxMaker, batchFlightDateRangeHandler))
-	http.HandleFunc(batchDayUrl,             ui.WithFdbCtx(ctxMaker, batchFlightDayHandler))
-	http.HandleFunc(batchInstanceUrl,        ui.WithFdbCtx(ctxMaker, batchFlightHandler))
+	http.HandleFunc("/batch/flights/dates",       ui.WithFdb(batchFlightDateRangeHandler))
+	http.HandleFunc(batchDayUrl,                  ui.WithFdb(batchFlightDayHandler))
+	http.HandleFunc(batchInstanceUrl,             ui.WithFdb(batchFlightHandler))
 
 	// backend/bigquery.go (ran out of dispatch.yaml entries, so put this in 'batch')
-	http.HandleFunc("/batch/publish-all-flights", ui.WithFdbCtx(ctxMaker, publishAllFlightsHandler))
-	http.HandleFunc("/batch/publish-flights",     ui.WithFdbCtx(ctxMaker, publishFlightsHandler))
+	http.HandleFunc("/batch/publish-all-flights", ui.WithFdb(publishAllFlightsHandler))
+	http.HandleFunc("/batch/publish-flights",     ui.WithFdb(publishFlightsHandler))
 
 	// backend/foia.go
-	http.HandleFunc("/foia/load", ui.WithFdbCtx(ctxMaker, foiaHandler))
-	http.HandleFunc("/foia/enqueue", ui.WithFdbCtx(ctxMaker, multiEnqueueHandler))
-	//http.HandleFunc("/foia/rm", ui.WithFdbCtx(ctxMaker, rmHandler))
+	http.HandleFunc("/foia/load",                 ui.WithFdb(foiaHandler))
+	http.HandleFunc("/foia/enqueue",              ui.WithFdb(multiEnqueueHandler))
+	//http.HandleFunc("/foia/rm",                   ui.WithFdb(rmHandler))
 }
 
 func main() {

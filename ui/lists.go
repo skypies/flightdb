@@ -3,6 +3,7 @@ package ui
 import(
 	"net/http"
 
+	hw "github.com/skypies/util/handlerware"
 	"github.com/skypies/util/widget"
 
 	fdb "github.com/skypies/flightdb"
@@ -12,7 +13,7 @@ import(
 // icaoid=A12345 - lookup recent flights on that airframe
 func ListHandler(db fgae.FlightDB, w http.ResponseWriter, r *http.Request) {
 	ctx := db.Ctx()
-	templates := widget.GetTemplates(ctx)
+	templates := hw.GetTemplates(ctx)
 
 	tags := widget.FormValueCommaSepStrings(r, "tags")
 	flights := []*fdb.Flight{}
