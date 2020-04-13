@@ -44,8 +44,6 @@ func getGoogleMapsParams(r *http.Request, params map[string]interface{}) {
 	params["Zoom"] = zoom
 	params["MapType"] = mapType
 	params["MapsAPIKey"] = "AIzaSyBCNj05xH-7CAdVEXXSPpt2lGDmaynIOBU" // prod key
-	params["MapsAPIKey"] = "AIzaSyBgpi-ezgalnvyc0lFSMN7HxRDtacELedc" // dev key
-	//params["MapsAPIKey"] = ""//kGoogleMapsAPIKey,
 }
 
 // }}}
