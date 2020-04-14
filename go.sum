@@ -125,6 +125,7 @@ github.com/ruudk/golang-pdf417 v0.0.0-20181029194003-1af4ab5afa58/go.mod h1:6lfF
 github.com/skypies/adsb v0.0.0-20170701162657-223af14f06df h1:DxuaVJITSvLUh2aC81IvbOHJIE2Xf9GASorf8iYDhGU=
 github.com/skypies/adsb v0.0.0-20170701162657-223af14f06df/go.mod h1:zKertS0PXBvjiXSal0tuPd6TWZk0XzXudkBxZSuHQhc=
 github.com/skypies/flightdb v0.1.0/go.mod h1:b2pVvHe3najayR0Eugm79rcdtG7gbAkOGypWKsw77JI=
+github.com/skypies/flightdb v0.1.2/go.mod h1:THCUmdtn4ns1lgDiAnhQ8axyVuP6cUFf5LQz2BCfbMA=
 github.com/skypies/geo v0.0.0-20180901233721-9d4f211f3066 h1:vte7oBRmTE9aQLTCl13pPkWt2dbuTNa+syTitbIhDh0=
 github.com/skypies/geo v0.0.0-20180901233721-9d4f211f3066/go.mod h1:AcO1S+o5UTglsKYjiwkNK/ByiAsjnKNt3NqJmq/f/As=
 github.com/skypies/gomemcache v0.0.0-20181230235850-ada73b82bad8 h1:RcWGljLGyFyy+o0tFy6zo7FKq+mDurflxdRXwmj+Clw=
@@ -133,6 +134,8 @@ github.com/skypies/pi v0.0.0-20181231003623-22e413099279 h1:GPvgLNC90LxBoT1mjY/s
 github.com/skypies/pi v0.0.0-20181231003623-22e413099279/go.mod h1:LcI31yQ13oGTMNmbYjnCMZSBC+21jBQnXWY6j6Eln0Y=
 github.com/skypies/pi v0.1.0 h1:UWAV7sQDJlFsjmpIKvp6bRXW48e6wQeuGw4ZYxLwgaw=
 github.com/skypies/pi v0.1.0/go.mod h1:k4zrHQSgL8lCVWtmWDDDJpHKLwJ+5dVeDnVTeIX3JWA=
+github.com/skypies/pi v0.1.1 h1:gCWKpgyYV35ebk5j26L1Um+zgZK3olF4A/XkJjN+MGQ=
+github.com/skypies/pi v0.1.1/go.mod h1:qVRNORuS4PttTlSyLnhie7F0OZpntWXXFp3I2DrgDz4=
 github.com/skypies/util v0.0.0-20190105191238-968094913d77 h1:YM4E4KBBu8/xOCGldIDN/AObx+1satrjHDi9oTFzKkk=
 github.com/skypies/util v0.0.0-20190105191238-968094913d77/go.mod h1:tvv5wvYsDRTGi0TrIKxVYKoTRYOcrHStYYirc7ADImU=
 github.com/skypies/util v0.1.18 h1:mETWMoIRhuOC3g5Fj7fHO/VTTTjayWPlan1LliYLupM=

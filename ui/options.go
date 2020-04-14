@@ -19,6 +19,7 @@ import(
 type UIOptions struct {
 	UserEmail       string // if nil, user not logged in
 	LoginUrl        string
+	LogoutUrl       string
 	
 	Permalink       string
 	ResultsetID     string

@@ -2,7 +2,6 @@ package main
 
 import(
 	"fmt"
-	"html/template"
 	"net/http"
 	"os"
 	"log"
@@ -12,45 +11,60 @@ import(
 
 	"github.com/skypies/util/gcp/ds"
 	hw "github.com/skypies/util/handlerware"
+	"github.com/skypies/util/login"
 
 	_ "github.com/skypies/flightdb/analysis" // populate the reports registry
+	"github.com/skypies/flightdb/config"
 	"github.com/skypies/flightdb/ui"
 	"github.com/skypies/pi/airspace/realtime"
 )
 
 var(
-	tmpl *template.Template  // Singleton that belongs to the webapp
 	GoogleCloudProjectId = "serfr0-fdb"
 )
 
-// FIXME: This is a one-off thing, for airspace/realtime; should kill it off
-type hackTemplateHandler func(http.ResponseWriter, *http.Request, *template.Template)
-func hackHandleWithTemplates(tmpl *template.Template, th hackTemplateHandler) hw.BaseHandler {
-	return func(w http.ResponseWriter, r *http.Request) {
-		th(w,r,tmpl)
-	}
-}
-	
 func init() {
+	hw.RequireTls = false
 	hw.InitTemplates("app/frontend/templates") // location relative to go module root, which is git repo root
-	tmpl = hw.Templates
 
-	// This is the routine that creates new contexts, and injects a provider into them,
-	// as required by the FdbHandlers
-	//ctxMakerAE := func(r *http.Request) context.Context {
-	//	ctx := appengineds.CtxMakerFunc(r)
-	//	return ds.SetProvider(ctx, appengineds.AppengineDSProvider{}) 
-	//}
+	// The FdbHandlers expect to find a DSProvider in the context
 	hw.CtxMakerCallback = func(r *http.Request) context.Context {
 		ctx,_ := context.WithTimeout(r.Context(), 55 * time.Second)
 		p,err := ds.NewCloudDSProvider(ctx, GoogleCloudProjectId)
 		if err != nil {
 			panic(fmt.Errorf("NewDB: could not get a clouddsprovider (projectId=%s): %v\n", GoogleCloudProjectId, err))
 		}
-		return ds.SetProvider(ctx, p) 
+		return ds.SetProvider(ctx, p)
 	}
-	
-	http.HandleFunc("/", hackHandleWithTemplates(tmpl, realtime.AirspaceHandler))
+
+
+	hw.CookieName = "serfrfdb"
+  hw.NoSessionHandler = loginPageHandler
+	hw.InitSessionStore(config.Get("sessions.key"), config.Get("sessions.prevkey"))
+  hw.InitGroup(hw.AdminGroup, config.Get("users.admin"))
+
+	login.OnSuccessCallback = func(w http.ResponseWriter, r *http.Request, email string) error {
+		hw.CreateSession(r.Context(), w, r, hw.UserSession{Email:email})
+		return nil
+	}
+	login.Host                  = "http://fdb.serfr1.org"
+	// login.Host                  = "http://localhost:8080"
+	login.RedirectUrlStem       = "/fdb/login" // oauth2 callbacks will register  under here
+	login.AfterLoginRelativeUrl = "/fdb/home" // where the user finally ends up, after being logged in
+	login.GoogleClientID        = config.Get("google.oauth2.appid")
+	login.GoogleClientSecret    = config.Get("google.oauth2.secret")
+	login.Init()
+
+	http.HandleFunc("/fdb/login",           hw.WithCtx(loginPageHandler))
+	http.HandleFunc("/fdb/logout",          hw.WithCtx(logoutHandler))
+
+	http.HandleFunc("/fdb/home",            hw.WithCtx(flatPageHandler))
+	http.HandleFunc("/fdb/privacy",         hw.WithCtx(flatPageHandler))
+	http.HandleFunc("/fdb/debug2",          hw.WithCtx(DebugSessionHandler))
+	http.HandleFunc("/fdb/debug3",          ui.WithFdbSession(DebugFdbSessionHandler))
+
+	// This handler comes from pi/
+	http.HandleFunc("/",                    hw.WithCtx(realtime.AirspaceHandler))
 
 	// ui/api.go
 	http.HandleFunc("/fdb/vector",          ui.WithFdb(ui.VectorHandler))
@@ -116,4 +130,32 @@ func main() {
 
 	log.Printf("Listening on port %s [flightdb/app/frontend]", port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), nil))
+}
+
+// To add a new flat page to a URL that is routed to this app:
+//  1. add http.HandleFunc(URL, flatPageHandler)
+//  2. Add a new template, and have it match the URL, e.g. {{define "/f/foobar"}}
+func flatPageHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	templates := hw.GetTemplates(ctx)
+	pagename := r.URL.Path
+	if err := templates.ExecuteTemplate(w, pagename, nil); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func loginPageHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {	
+	templates := hw.GetTemplates(ctx)
+	var params = map[string]interface{}{
+		"google": login.Goauth2.GetLoginUrl(w,r),
+		"googlefromscratch": login.Goauth2.GetLogoutUrl(w,r),
+	}
+
+	if err := templates.ExecuteTemplate(w, "login", params); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func logoutHandler (ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	hw.OverwriteSessionToNil(ctx, w, r)
+	http.Redirect(w, r, "/fdb/home", http.StatusFound)
 }

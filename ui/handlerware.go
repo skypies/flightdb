@@ -39,7 +39,6 @@ func WithFdb(fh FdbHandler) hw.BaseHandler {
 		fdb := fgae.New(ctx, p)
 		fh(fdb, w, r)
 	}
-
 	return hw.WithCtx(MaybeWithUiOptions(runFdbHandler))
 }
 
@@ -52,7 +51,12 @@ func WithoutFdb(ch hw.ContextHandler) FdbHandler {
 
 // FIXME: implement this - Ensure the user is logged in
 func WithFdbSession(fh FdbHandler) hw.BaseHandler {
-	return WithFdb(fh)
+	runFdbHandler := func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		p := ds.GetProviderOrPanic(ctx) // PANICs if not found
+		fdb := fgae.New(ctx, p)
+		fh(fdb, w, r)
+	}
+	return hw.WithSession(MaybeWithUiOptions(runFdbHandler))
 }
 
 
@@ -84,13 +88,13 @@ func MaybeWithUiOptions(ch hw.ContextHandler) hw.ContextHandler {
 			opt.Permalink = widget.URLStringReplacingGETArgs(r,&vals)
 		}
 
-		// FIXME: get user from context, and implement login
-		//if u := user.Current(ctx); u != nil {
-		//	opt.UserEmail = u.Email
-		//}
-		// opt.LoginUrl,_ = user.LoginURL(ctx, r.URL.RequestURI()) // Also a re-login URL
-		opt.LoginUrl = "https://duckduckgo/"
-
+		sesh,seshOK := hw.GetUserSession(ctx)
+		if seshOK {
+			opt.UserEmail = sesh.Email
+		}
+		opt.LoginUrl  = "/fdb/login"
+		opt.LogoutUrl = "/fdb/logout"
+		
 		if r.FormValue("debugoptions") != "" {
 			w.Header().Set("Content-Type", "text/plain")
 			w.Write([]byte(fmt.Sprintf("OK\n%#v\n", opt)))

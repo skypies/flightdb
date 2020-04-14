@@ -12,6 +12,7 @@ import(
 	"github.com/skypies/util/gcp/ds"
 	hw "github.com/skypies/util/handlerware"
 
+	"github.com/skypies/flightdb/config"
 	"github.com/skypies/flightdb/ui"
 )
 
@@ -20,6 +21,7 @@ var(
 )
 
 func init() {
+	hw.RequireTls = false
 	hw.InitTemplates("app/backend/templates") // relative to go module root, which is git repo root
 
 	// This is the routine that creates new contexts, and injects a provider into them,
@@ -33,8 +35,14 @@ func init() {
 		return ds.SetProvider(ctx, p)
 	}
 
+	// This stuff needs to be in sync with thew frontend app, which handles login
+	hw.CookieName = "serfrfdb"
+	hw.InitSessionStore(config.Get("sessions.key"), config.Get("sessions.prevkey"))
+  hw.NoSessionHandler = loginRedirectHandler // redirects to frontend app, which has all the login config
+  hw.InitGroup(hw.AdminGroup, config.Get("users.admin"))
+
 	// ui/report - we host it here, to get batch server timeouts
-	http.HandleFunc("/report",                    ui.WithFdb(ui.ReportHandler))
+	http.HandleFunc("/report",                    ui.WithFdbSession(ui.ReportHandler))
 
 	// backend/batch.go
 	http.HandleFunc("/batch/flights/dates",       ui.WithFdb(batchFlightDateRangeHandler))
@@ -46,8 +54,8 @@ func init() {
 	http.HandleFunc("/batch/publish-flights",     ui.WithFdb(publishFlightsHandler))
 
 	// backend/foia.go
-	http.HandleFunc("/foia/load",                 ui.WithFdb(foiaHandler))
-	http.HandleFunc("/foia/enqueue",              ui.WithFdb(multiEnqueueHandler))
+	//http.HandleFunc("/foia/load",                 ui.WithFdb(foiaHandler))
+	//http.HandleFunc("/foia/enqueue",              ui.WithFdb(multiEnqueueHandler))
 	//http.HandleFunc("/foia/rm",                   ui.WithFdb(rmHandler))
 }
 
@@ -62,4 +70,8 @@ func main() {
 
 	log.Printf("Listening on port %s [flightdb/app/backend]", port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), nil))
+}
+
+func loginRedirectHandler (ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/fdb/login", http.StatusFound)
 }

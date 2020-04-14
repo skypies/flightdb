@@ -1,0 +1,21 @@
+{{define "login"}}
+
+<html>
+  {{template "header"}}
+  <body>
+    <div class="stack">
+
+      <h1>The FDB system needs a Google login</h1>
+      
+      <div class="stack">
+        <div><a href="{{.google}}"><img width="300" src="/static/google-signin.png"/></a></div>
+      </div>
+
+      <p>(PS: if you're a Google power-user with multiple accounts,
+      <a href="{{.googlefromscratch}}">click here</a> to logout and
+      then log back into the account you want to use on stop.jetnoise.)</p>
+    </div>
+  </body>
+</html>
+
+{{end}}

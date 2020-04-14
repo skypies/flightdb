@@ -8,7 +8,8 @@
     <form action="{{.FormUrl}}" method="get">
       <div class="stack" style="max-width:600px">
 
-        {{if .UIOptions.UserEmail}}<p>Hello, <code>{{.UIOptions.UserEmail}}</code>.</p>
+        {{if .UIOptions.UserEmail}}
+        <p>Hello, <code>{{.UIOptions.UserEmail}}</code>(<a href="{{.UIOptions.LogoutUrl}}">Logout here</a>).</p>
         {{else}}<p>User not logged in - <a href="{{.UIOptions.LoginUrl}}">login here</a>.</p>
         {{end}}
         
