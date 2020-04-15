@@ -140,11 +140,15 @@ function PaintAircraft(a) {
 
 function aircraftToInfostring(a, ident, flightnumber) {
     var header = '<b>'+ident+'</b><br/>';
+    var descent = ''
+    if (a.X_UrlDescent) {
+        descent = ', <a target="_blank" href="'+a.X_UrlDescent+'">Descent</a>'
+    }
     if (a.X_UrlSkypi) {
         header = '<b><a target="_blank" href="'+a.X_UrlSkypi+'">'+ident+'</a></b> '+
             '[<a target="_blank" href="'+a.X_UrlFA+'">FA</a>,'+
-            ' <a target="_blank" href="'+a.X_UrlFR24+'">FR24</a>,'+
-            ' <a target="_blank" href="'+a.X_UrlDescent+'">Descent</a>'+
+            ' <a target="_blank" href="'+a.X_UrlFR24+'">FR24</a>'+
+            descent+
             ']<br/>'
     }
 

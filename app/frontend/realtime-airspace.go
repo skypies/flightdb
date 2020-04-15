@@ -18,9 +18,10 @@ import (
 	"github.com/skypies/util/gcp/singleton"
 	hw "github.com/skypies/util/handlerware"
 
-	"github.com/skypies/flightdb/ref"
-	"github.com/skypies/flightdb/fr24"
 	"github.com/skypies/flightdb/aex"
+	"github.com/skypies/flightdb/config"
+	"github.com/skypies/flightdb/fr24"
+	"github.com/skypies/flightdb/ref"
 )
 
 var(
@@ -56,7 +57,7 @@ func RealtimeAirspaceHandler(ctx context.Context, w http.ResponseWriter, r *http
 	}
 
 	var params = map[string]interface{}{
-		"MapsAPIKey": "AIzaSyBCNj05xH-7CAdVEXXSPpt2lGDmaynIOBU",
+		"MapsAPIKey": config.Get("googlemaps.apikey"),
 		"Center": sfo.KFixes["YADUT"],
 		"Zoom": 9,
 		"URLToPoll": url,
