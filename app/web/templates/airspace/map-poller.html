@@ -1,0 +1,19 @@
+{{define "map-poller"}}
+
+<html>
+  {{template "header-map"}}
+  <body>
+    <div id="map"></div>
+    <div id="legend"></div>
+    <div id="details"></div>
+    <div id="notes"></div>
+    <script type="text/javascript">
+      {{template "js-map-poller" . }}
+    </script>
+    <script async defer
+      src="https://maps.googleapis.com/maps/api/js?key={{.MapsAPIKey}}&callback=initMap&libraries=visualization">
+    </script>
+  </body>
+</html>
+
+{{end}}

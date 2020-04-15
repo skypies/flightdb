@@ -5,7 +5,7 @@ instance_class: F1
 
 handlers:
 - url: /static
-  static_dir: app/frontend/static
+  static_dir: app/web/static
 
 - url: /.*
   script: auto

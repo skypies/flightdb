@@ -22,7 +22,7 @@ var(
 
 func init() {
 	hw.RequireTls = false
-	hw.InitTemplates("app/backend/templates") // relative to go module root, which is git repo root
+	hw.InitTemplates("app/web/templates") // relative to go module root, which is git repo root
 
 	// This is the routine that creates new contexts, and injects a provider into them,
 	// as required by the FdbHandlers
@@ -65,7 +65,7 @@ func main() {
 		port = "8080"
 	}
 
-	fs := http.FileServer(http.Dir("./app/backend/static"))
+	fs := http.FileServer(http.Dir("./app/static"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	log.Printf("Listening on port %s [flightdb/app/backend]", port)

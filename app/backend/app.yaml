@@ -9,7 +9,7 @@ basic_scaling:
 
 handlers:
 - url: /static
-  static_dir: app/backend/static
+  static_dir: app/web/static
 
 - url: /.*
   script: auto

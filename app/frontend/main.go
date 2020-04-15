@@ -25,7 +25,7 @@ var(
 
 func init() {
 	hw.RequireTls = false
-	hw.InitTemplates("app/frontend/templates") // location relative to go module root, which is git repo root
+	hw.InitTemplates("app/web/templates") // location relative to go module root, which is git repo root
 
 	// The FdbHandlers expect to find a DSProvider in the context
 	hw.CtxMakerCallback = func(r *http.Request) context.Context {
@@ -125,7 +125,7 @@ func main() {
 		port = "8080"
 	}
 
-	fs := http.FileServer(http.Dir("./app/frontend/static"))
+	fs := http.FileServer(http.Dir("./app/static"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	log.Printf("Listening on port %s [flightdb/app/frontend]", port)
