@@ -16,7 +16,6 @@ import(
 	_ "github.com/skypies/flightdb/analysis" // populate the reports registry
 	"github.com/skypies/flightdb/config"
 	"github.com/skypies/flightdb/ui"
-	"github.com/skypies/pi/airspace/realtime"
 )
 
 var(
@@ -64,7 +63,7 @@ func init() {
 	http.HandleFunc("/fdb/debug3",          ui.WithFdbSession(DebugFdbSessionHandler))
 
 	// This handler comes from pi/
-	http.HandleFunc("/",                    hw.WithCtx(realtime.AirspaceHandler))
+	http.HandleFunc("/",                    hw.WithCtx(RealtimeAirspaceHandler))
 
 	// ui/api.go
 	http.HandleFunc("/fdb/vector",          ui.WithFdb(ui.VectorHandler))
