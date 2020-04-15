@@ -4,10 +4,12 @@ Prerequisites:
 * the [Go programming language](https://golang.org/dl/)
 * define your Go workspace: `export GOPATH=~/go`
 
-Download and run things locally
-* `go get github.com/skypies/flightdb/app/frontend` (pulls down all dependencies)
-* `go run $GOPATH/github.com/skypies/flightdb/app/frontend/*.go` (build & run locally)
-* Look at <http://localhost:8080/>
+Download and run things on <http://localhost:8080/>:
+
+```
+go get github.com/skypies/flightdb/app/frontend
+go run $GOPATH/github.com/skypies/flightdb/app/frontend/*.go
+```
 
 To deploy everything into a Google Cloud project:
 

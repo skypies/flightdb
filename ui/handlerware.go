@@ -49,7 +49,6 @@ func WithoutFdb(ch hw.ContextHandler) FdbHandler {
 	}
 }
 
-// FIXME: implement this - Ensure the user is logged in
 func WithFdbSession(fh FdbHandler) hw.BaseHandler {
 	runFdbHandler := func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		p := ds.GetProviderOrPanic(ctx) // PANICs if not found
@@ -57,6 +56,16 @@ func WithFdbSession(fh FdbHandler) hw.BaseHandler {
 		fh(fdb, w, r)
 	}
 	return hw.WithSession(MaybeWithUiOptions(runFdbHandler))
+}
+
+// WithFdbAdmin either requires an admin user, or that the request comes from within appengine
+func WithFdbAdmin(fh FdbHandler) hw.BaseHandler {
+	runFdbHandler := func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		p := ds.GetProviderOrPanic(ctx) // PANICs if not found
+		fdb := fgae.New(ctx, p)
+		fh(fdb, w, r)
+	}
+	return hw.WithAdmin(MaybeWithUiOptions(runFdbHandler))
 }
 
 
@@ -81,6 +90,7 @@ func MaybeWithUiOptions(ch hw.ContextHandler) hw.ContextHandler {
 		}
 
 		if opt.ResultsetID != "" {
+			// FIXME: this is weirdly broken, and annoyingly hard to test
 			// Rejigger all the POST and GET data into a single GET URL, then add our new field.
 			vals := widget.ExtractAllCGIArgs(r)
 			vals.Del("idspec")

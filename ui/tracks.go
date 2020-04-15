@@ -313,7 +313,7 @@ func OutputMapLinesOnAStreamingMap(ctx context.Context, w http.ResponseWriter, r
 	legend := ""
 
 	if opt.Permalink != "" {
-		legend += fmt.Sprintf("[<a target=\"_blank\" href=\"%s\">permalink</a>] ", opt.Permalink)
+		legend += fmt.Sprintf("[<a target=\"_blank\" href=\"%s\">permalinky</a>] ", opt.Permalink)
 	}
 	legend += fmt.Sprintf("%d flights", len(opt.IdSpecStrings))
 

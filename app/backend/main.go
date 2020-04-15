@@ -57,6 +57,53 @@ func init() {
 	//http.HandleFunc("/foia/load",                 ui.WithFdb(foiaHandler))
 	//http.HandleFunc("/foia/enqueue",              ui.WithFdb(multiEnqueueHandler))
 	//http.HandleFunc("/foia/rm",                   ui.WithFdb(rmHandler))
+
+
+	// STOLEN from app/frontend, just so we can run locally for testing; app/dispatch.yaml
+	// will prevent any of these URLs coming to this app when it is deployed to appengine
+
+	// ui/api.go
+	http.HandleFunc("/fdb/vector",          ui.WithFdb(ui.VectorHandler))
+	http.HandleFunc("/api/flight/lookup",   ui.WithFdb(ui.FlightLookupHandler))
+	http.HandleFunc("/api/procedures",      ui.WithFdb(ui.ProcedureHandler))
+
+	// ui/tracks.go
+	http.HandleFunc("/fdb/tracks",          ui.WithFdb(ui.TrackHandler))
+	http.HandleFunc("/fdb/trackset",        ui.WithFdb(ui.TracksetHandler))
+
+	// ui/map.go
+	http.HandleFunc("/fdb/map",             hw.WithCtx(ui.MapHandler))
+
+	// ui/debug.go
+	http.HandleFunc("/fdb/debug",           ui.WithFdb(ui.DebugHandler))  // fdb/text ??
+	http.HandleFunc("/fdb/sched",           ui.WithFdb(ui.DebugSchedHandler))  // fdb/text ??
+
+	// ui/georestrictorsets.go
+	stem := "/fdb/restrictors"
+	http.HandleFunc(stem+"/list",           ui.WithFdbSession(ui.RListHandler))
+	http.HandleFunc(stem+"/grs/new",        ui.WithFdbSession(ui.RGrsNewHandler))
+	http.HandleFunc(stem+"/grs/delete",     ui.WithFdbSession(ui.RGrsDeleteHandler))
+	http.HandleFunc(stem+"/grs/edit",       ui.WithFdbSession(ui.RGrsEditHandler))
+	http.HandleFunc(stem+"/grs/view",       ui.WithFdbSession(ui.RGrsViewHandler))
+	http.HandleFunc(stem+"/gr/new",         ui.WithFdbSession(ui.RGrNewHandler))
+	http.HandleFunc(stem+"/gr/edit",        ui.WithFdbSession(ui.RGrEditHandler))
+	http.HandleFunc(stem+"/gr/delete",      ui.WithFdbSession(ui.RGrDeleteHandler))
+
+	// ui/historical.go
+	http.HandleFunc("/fdb/historical",      ui.WithFdb(ui.HistoricalHandler))
+
+	// ui/json.go
+	http.HandleFunc("/fdb/json",            ui.WithFdb(ui.JsonHandler))
+	http.HandleFunc("/fdb/snarf",           ui.WithFdb(ui.SnarfHandler))
+
+	// ui/lists.go
+	http.HandleFunc("/fdb/list",            ui.WithFdb(ui.ListHandler))
+
+	// ui/sideview.go
+	http.HandleFunc("/fdb/sideview",        ui.WithFdb(ui.SideviewHandler))
+
+	// ui/visualize.go
+	http.HandleFunc("/fdb/visualize",       ui.WithFdb(ui.VisualizeHandler))
 }
 
 func main() {

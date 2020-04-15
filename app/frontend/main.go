@@ -109,13 +109,13 @@ func init() {
 	http.HandleFunc("/fdb/visualize",       ui.WithFdb(ui.VisualizeHandler))
 	
 	// fr24poller.go
-	http.HandleFunc("/api/fr24",            ui.WithFdbSession(fr24PollHandler)) // FIXME: AdminAccess
-	http.HandleFunc("/api/fr24q",           ui.WithFdbSession(fr24QueryHandler))
+	http.HandleFunc("/api/fr24",            ui.WithFdbAdmin(fr24PollHandler))
+	http.HandleFunc("/api/fr24q",           ui.WithFdbAdmin(fr24QueryHandler))
 	http.HandleFunc("/api/schedcache/view", ui.WithFdb(schedcacheViewHandler))
 
 	// metar.go
 	http.HandleFunc("/api/metar/lookup",    ui.WithFdb(metarLookupHandler))
-	http.HandleFunc("/api/metar/lookupall", ui.WithFdb(metarLookupAllHandler))
+	http.HandleFunc("/api/metar/lookupall", ui.WithFdbAdmin(metarLookupAllHandler))
 }
 
 func main() {
