@@ -86,6 +86,8 @@ function PaintAircraft(a) {
     var color = "#0033ff"; // Default: SkyPi/ADSB color
     if (a.X_DataSystem == "MLAT") {
         color = "#508aff";
+    } else if (a.X_DataSystem == "SWIM") {
+        color = "#55ff55";
     }
 
     if (a.Source == "fr24") {
@@ -96,6 +98,9 @@ function PaintAircraft(a) {
 
     } else if (a.Source == "fa") {
         color = "#ff3300";
+
+    } else if (a.Source == "swim") {
+        color = "#222222";
 
     } else if (a.Source == "AdsbExchange") {
         color = "#cc0066";

@@ -3,7 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 	
@@ -28,6 +30,7 @@ var(
 	kMaxStaleDuration = time.Second * 30
 	kMaxStaleScheduleDuration = time.Minute * 20
 	airspaceSingletonName = "consolidated-airspace"
+	swimAirspaceSingletonName = "swim-airspace"
 )
 
 // {{{ RealtimeAirspaceHandler
@@ -48,9 +51,11 @@ func RealtimeAirspaceHandler(ctx context.Context, w http.ResponseWriter, r *http
 		return
 	}
 
-	url := "http://fdb.serfr1.org/?json=1"
+	// FIXME: get scheme://host from the request, *or* just go relative
+	url := "/?json=1"
+	//url := "http://fdb.serfr1.org/?json=1"
 	// Propagate certain URL args to the JSON handler
-	for _,key := range []string{"comp","fr24","fa"} {
+	for _,key := range []string{"comp","fr24","fa","swim"} {
 		if r.FormValue(key) != "" {
 			url += fmt.Sprintf("&%s=%s", key, r.FormValue(key))
 		}
@@ -76,7 +81,7 @@ func jsonOutputHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	box := geo.FormValueLatlongBox(r, "box")
 	src := r.FormValue("src")
-
+	
 	if box.IsNil() { box = sfo.KAirports["KSFO"].Box(250,250) }
 	
 	as := airspace.NewAirspace()
@@ -100,6 +105,7 @@ func jsonOutputHandler(w http.ResponseWriter, r *http.Request) {
 	if r.FormValue("comp") != "" {
 		addAExToAirspace(ctx, box, &as)
 		if r.FormValue("fr24") != "" { addFr24ToAirspace(ctx, &as) }
+		if r.FormValue("swim") != "" { addSwimToAirspace(ctx, box, &as) }
 		//if r.FormValue("fa") != "" { faToAirspace(ctx, &as) }
 
 		// Weed out stale stuff (mostly from fa)
@@ -110,6 +116,8 @@ func jsonOutputHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+
+	fmt.Printf("%s\n", Airspace2String(as))
 	
 	// Bodge, to let goapp serve'd things call the deployed version of this URL
 	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
@@ -129,6 +137,31 @@ func jsonOutputHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // }}}
+
+// {{{ Airspace2String
+
+func Airspace2String(a airspace.Airspace) string {
+	str := ""
+
+	keys := []string{}
+	for k,_ := range a.Aircraft { keys = append(keys, string(k)) }
+	sort.Strings(keys)
+	
+	for _,k := range keys {
+		ac := a.Aircraft[adsb.IcaoId(k)]
+		str += fmt.Sprintf(" %8.8s/%-8.8s/%-6.6s (%s last:%6.1fs at %s/%-13.13s, %5d msgs) %5df, %3dk %s\n",
+			ac.Msg.Callsign, ac.Msg.Icao24, ac.Registration,
+			ac.Msg.DataSystem(),
+			time.Since(ac.Msg.GeneratedTimestampUTC).Seconds(),
+			ac.Source, ac.Msg.ReceiverName,
+			ac.NumMessagesSeen,
+			ac.Msg.Altitude, ac.Msg.GroundSpeed, ac.Msg.Position)
+	}
+	return str
+}
+
+// }}}
+
 
 // {{{ backfillReferenceData
 
@@ -220,6 +253,7 @@ func addFr24ToAirspace(ctx context.Context, as *airspace.Airspace) {
 			newk := string(k)
 			newk = "EE" + strings.TrimPrefix(newk, "EE") // Remove (if present), then add
 			ad.Airframe.Icao24 = newk
+			ad.Source = "swim" // the airspace.MaybeUpdate() route doesn't have a way to specify this
 			as.Aircraft[adsb.IcaoId(newk)] = ad
 		}
 	}
@@ -265,6 +299,45 @@ func addAExToAirspace(ctx context.Context, box geo.LatlongBox, as *airspace.Airs
 			ad.Airframe.Icao24 = newk
 			as.Aircraft[adsb.IcaoId(newk)] = ad
 		}
+	}
+}
+
+// }}}
+// {{{ addSwimToAirspace
+
+func addSwimToAirspace(ctx context.Context, box geo.LatlongBox, as *airspace.Airspace) {	
+	asSwim := airspace.NewAirspace()
+	
+	p,err := ds.NewCloudDSProvider(ctx, GoogleCloudProjectId)
+	if err != nil { return }
+	sp := singleton.NewProvider(p)
+
+	if err := sp.ReadSingleton(ctx, swimAirspaceSingletonName, nil, &asSwim); err != nil {
+		log.Printf("gAFD/ReadSingleton error:%v", err)
+		return
+	}
+	
+	for k,_ := range asSwim.Aircraft {
+		age := time.Since(asSwim.Aircraft[k].Msg.GeneratedTimestampUTC)
+		if age > kMaxStaleDuration {
+			delete(asSwim.Aircraft, k)
+			continue
+		}
+		/*
+		if !bbox.SW.IsNil() && !bbox.Contains(aircraft.Msg.Position) {
+			delete(a.Aircraft, k)
+			continue
+		}
+*/
+	}
+
+	// backfillReferenceData(ctx, sp, asAEx)
+
+	for k,ad := range asSwim.Aircraft {
+		newk := string(k)
+		newk = "WW" + strings.TrimPrefix(newk, "WW") // Remove (if present), then re-add
+		ad.Airframe.Icao24 = newk
+		as.Aircraft[adsb.IcaoId(newk)] = ad
 	}
 }
 

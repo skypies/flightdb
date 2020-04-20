@@ -7,7 +7,7 @@ require (
 	cloud.google.com/go/storage v1.6.0
 	github.com/jung-kurt/gofpdf v1.12.6
 	github.com/paulmach/go.geo v0.0.0-20180829195134-22b514266d33
-	github.com/skypies/adsb v0.0.0-20170701162657-223af14f06df
+	github.com/skypies/adsb v0.1.0
 	github.com/skypies/geo v0.0.0-20180901233721-9d4f211f3066
 	github.com/skypies/pi v0.1.2
 	github.com/skypies/util v0.1.19

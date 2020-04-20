@@ -124,6 +124,8 @@ github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFR
 github.com/ruudk/golang-pdf417 v0.0.0-20181029194003-1af4ab5afa58/go.mod h1:6lfFZQK844Gfx8o5WFuvpxWRwnSoipWe/p622j1v06w=
 github.com/skypies/adsb v0.0.0-20170701162657-223af14f06df h1:DxuaVJITSvLUh2aC81IvbOHJIE2Xf9GASorf8iYDhGU=
 github.com/skypies/adsb v0.0.0-20170701162657-223af14f06df/go.mod h1:zKertS0PXBvjiXSal0tuPd6TWZk0XzXudkBxZSuHQhc=
+github.com/skypies/adsb v0.1.0 h1:F4ho9xgdY3DbptROVu04U3OvizrvGKhZrRThN9UemDA=
+github.com/skypies/adsb v0.1.0/go.mod h1:gn9oaV25RXaK/xHSOaV5jHuXHVebQVAc27BQSZAWVJ0=
 github.com/skypies/flightdb v0.1.0/go.mod h1:b2pVvHe3najayR0Eugm79rcdtG7gbAkOGypWKsw77JI=
 github.com/skypies/flightdb v0.1.2/go.mod h1:THCUmdtn4ns1lgDiAnhQ8axyVuP6cUFf5LQz2BCfbMA=
 github.com/skypies/geo v0.0.0-20180901233721-9d4f211f3066 h1:vte7oBRmTE9aQLTCl13pPkWt2dbuTNa+syTitbIhDh0=
