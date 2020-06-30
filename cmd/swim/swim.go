@@ -4,6 +4,9 @@ package main
 
 import(
 	"bufio"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"time"
@@ -12,6 +15,7 @@ import(
 
 	"github.com/skypies/adsb"
 	"github.com/skypies/pi/airspace"
+	"github.com/skypies/util/date"
 	"github.com/skypies/util/gcp/ds"
 	"github.com/skypies/util/gcp/singleton"
 
@@ -22,6 +26,7 @@ var(
 	ProjectName   = "serfr0-fdb"
 	SingletonName = "swim-airspace" // to identify the datastore singleton entity
 	ctx           = context.Background()
+	dumpDir       = "" // "/home/abw/msgs"
 )
 
 func main() {
@@ -43,8 +48,22 @@ func main() {
 		}
 
 		txt := scanner.Text()
-
+		
+		if dumpDir != "" {
+			fname := fmt.Sprintf("%s/msg-%s", dumpDir, date.NowInPdt().Format("20060102-150405"))
+			jsonMap := map[string]interface{}{}
+			json.Unmarshal([]byte(txt), &jsonMap)
+			contents,_ := json.MarshalIndent(jsonMap, "", "  ")
+			ioutil.WriteFile(fname, []byte(contents), 0644)
+		}			
+			
 		for _,f := range swim.Json2Flights(txt) {
+			if dumpDir != "" {
+				fname := fmt.Sprintf("%s/flight-%s-%s", dumpDir, date.NowInPdt().Format("20060102-150405"), f.Source)
+				contents,_ := json.MarshalIndent(f, "", "  ")
+				ioutil.WriteFile(fname, []byte(contents), 0644)
+			}
+
 			if f.Source != "TH" { continue }
 
 			msg := f.AsAdsb()
