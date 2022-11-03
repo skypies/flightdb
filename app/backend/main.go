@@ -56,7 +56,7 @@ func init() {
 	// backend/foia.go
 	//http.HandleFunc("/foia/load",                 ui.WithFdb(foiaHandler))
 	//http.HandleFunc("/foia/enqueue",              ui.WithFdb(multiEnqueueHandler))
-	//http.HandleFunc("/foia/rm",                   ui.WithFdb(rmHandler))
+	http.HandleFunc("/foia/rm",                   ui.WithFdb(rmHandler))
 
 
 	// STOLEN from app/frontend, just so we can run locally for testing; app/dispatch.yaml

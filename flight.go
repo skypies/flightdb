@@ -22,6 +22,10 @@ type Flight struct {
 	DebugLog      string
 }
 
+func (f *Flight)LastUpdate() time.Time {
+	return f.lastUpdate
+}
+
 func BlankFlight() Flight {
 	return Flight{
 		Tracks: map[string]*Track{},
