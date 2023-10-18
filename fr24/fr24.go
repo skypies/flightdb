@@ -1,5 +1,7 @@
 package fr24
 
+// Note - much/all of this is probably obsolete, now that fr24 has moved to gRPC.
+
 import (
 	"encoding/json"
 	"fmt"
@@ -320,7 +322,7 @@ func (db *Fr24)LookupCurrentList(box geo.LatlongBox) ([]fdb.FlightSnapshot, erro
 	if body,err := db.Url2Body(db.GetCurrentListUrl(bounds)); err != nil {
 		return nil, err
 	} else {
-		//fmt.Printf("---Body---\n%s\n-------\n", body)
+		fmt.Printf("----url: %s\n---Body---\n%s\n-------\n", db.GetCurrentListUrl(bounds), body)
 		return db.ParseCurrentList(body)
 	}
 }
