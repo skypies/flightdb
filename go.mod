@@ -11,7 +11,7 @@ require (
 	github.com/skypies/geo v0.0.0-20180901233721-9d4f211f3066
 	github.com/skypies/pi v0.1.2
 	github.com/skypies/util v0.1.29
-	golang.org/x/net v0.12.0
+	golang.org/x/net v0.17.0
 	google.golang.org/api v0.126.0
 	google.golang.org/grpc v1.58.3
 	google.golang.org/protobuf v1.31.0
