@@ -83,7 +83,9 @@ func GRPCGetFeed(box geo.LatlongBox) ([]fdb.FlightSnapshot, error) {
 			TrafficType: LiveFeedRequest_Settings_ALL,
 		},
 		FieldMask: &LiveFeedRequest_FieldMask{
-			FieldName: []string{"flight", "reg", "route", "type", "schedule"},
+			// Too many fields requested for free user
+			// FieldName: []string{"flight", "reg", "route", "type", "schedule"},
+			FieldName: []string{"flight", "reg", "route", "type"},
 		},
 		Stats: true,
 		Limit: 400,
