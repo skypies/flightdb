@@ -6,7 +6,6 @@ import(
 	"context"
 	"crypto/tls"
 	"fmt"
-	"log"
 	"regexp"
 	"time"
 
@@ -101,14 +100,14 @@ func GRPCGetFeed(box geo.LatlongBox) ([]fdb.FlightSnapshot, error) {
 
 	conn, err := grpc.Dial(grpcUrl, grpc.WithTransportCredentials(creds))
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		return ret, fmt.Errorf("GRPC to fr24 failed: did not connect: %v", err)
 	}
 	defer conn.Close()
 
 	feed := NewFeedClient(conn)
 	resp, err := feed.LiveFeed(ctx, req)
 	if err != nil {
-		log.Fatalf("client.Feed(_) = _, %v: ", err)
+		return ret, fmt.Errorf("GRPC to fr24 failed: client.Feed(_) = _, %v: ", err)
 	}
 
 	for _, f := range resp.FlightsList {
