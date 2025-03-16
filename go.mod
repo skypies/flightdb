@@ -1,7 +1,6 @@
 module github.com/skypies/flightdb
 
 go 1.21
-
 toolchain go1.23.4
 
 require (
@@ -13,7 +12,7 @@ require (
 	github.com/skypies/geo v0.0.0-20180901233721-9d4f211f3066
 	github.com/skypies/pi v0.1.2
 	github.com/skypies/util v0.1.33
-	golang.org/x/net v0.33.0
+	golang.org/x/net v0.36.0
 	google.golang.org/api v0.126.0
 	google.golang.org/grpc v1.58.3
 	google.golang.org/protobuf v1.35.2
@@ -50,15 +49,14 @@ require (
 	github.com/paulmach/go.geojson v1.4.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.15 // indirect
 	github.com/skypies/gomemcache v0.0.0-20181230235850-ada73b82bad8 // indirect
-	github.com/stretchr/testify v1.8.3 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
+	golang.org/x/crypto v0.35.0 // indirect
 	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/oauth2 v0.10.0 // indirect
-	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/sync v0.11.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
