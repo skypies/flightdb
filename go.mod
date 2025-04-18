@@ -1,6 +1,7 @@
 module github.com/skypies/flightdb
 
-go 1.21
+go 1.23.0
+
 toolchain go1.23.4
 
 require (
@@ -11,7 +12,7 @@ require (
 	github.com/skypies/adsb v0.1.0
 	github.com/skypies/geo v0.0.0-20180901233721-9d4f211f3066
 	github.com/skypies/pi v0.1.2
-	github.com/skypies/util v0.1.33
+	github.com/skypies/util v0.1.34
 	golang.org/x/net v0.36.0
 	google.golang.org/api v0.126.0
 	google.golang.org/grpc v1.58.3
