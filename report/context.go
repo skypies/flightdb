@@ -4,7 +4,7 @@ import(
 	"fmt"
 	"strings"
 
-	"golang.org/x/net/context"
+	"context"
 	// "google.golang.org/ appengine/user"
 
 	"github.com/skypies/flightdb/fgae"

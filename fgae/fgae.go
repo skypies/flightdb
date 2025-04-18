@@ -7,7 +7,7 @@ import(
 	"net/http"
 	"time"
 
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/skypies/util/gcp/ds"
 	sprovider "github.com/skypies/util/gcp/singleton"

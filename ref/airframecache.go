@@ -3,7 +3,7 @@ package ref
 import(
 	"fmt"
 
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/skypies/util/singleton"
 	

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 	
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/skypies/adsb"
 	"github.com/skypies/geo"

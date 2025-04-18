@@ -5,7 +5,7 @@ import(
 	//"html/template"
 	"net/http"
 	
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/skypies/util/gcp/ds"
 	hw "github.com/skypies/util/handlerware"

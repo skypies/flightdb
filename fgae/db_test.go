@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"golang.org/x/net/context"
+	"context"
 
 	"google.golang.org/ appengine"
 	"google.golang.org/ appengine/aetest" // Also used for testing Cloud API

@@ -10,7 +10,7 @@ import(
 	"reflect"
 	"time"
 
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/skypies/adsb"
 	"github.com/skypies/util/date"

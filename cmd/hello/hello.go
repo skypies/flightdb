@@ -8,7 +8,7 @@ import(
 	_ "github.com/skypies/flightdb/app/frontend"
 	//_ "github.com/skypies/flightdb/ui" // panics if it can't find ./templates/foo.html
 
-	"golang.org/x/net/context"
+	"context"
 	mcprovider "github.com/skypies/util/singleton/memcache"
 	"github.com/skypies/geo/sfo"
 

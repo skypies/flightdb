@@ -7,7 +7,7 @@ import(
 	"os"
 	"time"
 
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/skypies/util/gcp/ds"
 	hw "github.com/skypies/util/handlerware"

@@ -5,7 +5,7 @@ import(
 	"fmt"
 	"net/http"
 
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/skypies/geo"
 	"github.com/skypies/geo/sfo"

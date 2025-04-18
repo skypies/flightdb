@@ -5,7 +5,7 @@ import(
 	"fmt"
 	"time"
 
-	"golang.org/x/net/context"
+	"context"
 	"github.com/skypies/util/singleton"
 
 	fdb "github.com/skypies/flightdb"
